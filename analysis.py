@@ -10,7 +10,13 @@ from plotly.subplots import make_subplots
 # coefficient `a` is calibrated per weigh-day so each day's estimates sum to the
 # measured bag (ground truth). If enough individual `measured_wt_lbs` exist, the
 # exponent is fitted from our own fish instead.
-B_LITERATURE = 3.180        # walleye standard-weight exponent (Oahe-specific: 3.061)
+# Literature length-weight exponents for walleye, kept as a reference to measure our
+# own (future) fitted exponent against. Our per-day MEASURED bags are the source of
+# truth for now; switching b never changes a bag total (the per-day calibration
+# reproduces it exactly) -- it only shifts the per-fish split.
+#   b = 3.180  continental standard-weight equation (Murphy et al. 1990; Anderson & Neumann 1996)
+#   b = 3.061  Lake Oahe, SD specific (Carlander's Handbook)
+B_LITERATURE = 3.180        # default; see exponents above
 WS_INTERCEPT = -3.643       # English-unit walleye standard-weight intercept (log10)
 MIN_FIT_N = 12              # min individual weights to trust a fitted exponent
 
