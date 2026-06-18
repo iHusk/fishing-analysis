@@ -94,10 +94,12 @@ See **ADR 0001** (`docs/adr/0001-weight-curve-estimation.md`) for the decision r
 
 ## Known data-quality issues
 
-- **2024-06-15 weigh-day:** logged fish lengths sum to 240.75″ but the measured
-  `day_inches` is 250.75″ (~10″ ⇒ one **unlogged fish**). Its bag weight is currently
-  spread over that day's logged fish. The notebook auto-flags this; fix by entering the
-  missing fish.
+- **2024-06-15 weigh-day:** logged fish lengths sum to 240.75″ but the recorded
+  `day_inches` is 250.75″ — a ~10″ discrepancy of **unknown cause** (a length typo on a
+  logged fish, a wrong `day_inches` entry, or an unlogged fish are all possible). This
+  does **not** affect weight estimates — those are calibrated to the measured bag
+  *weight* (23.0 lb), not to `day_inches`. The notebook surfaces it only as a
+  reconciliation check.
 
 ## Dev notes
 
