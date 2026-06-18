@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>__TITLE__ · Replay</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{
+    --bg:#05080d; --panel:rgba(12,18,28,.82); --panel-solid:#0c1623;
+    --stroke:rgba(255,255,255,.10); --text:#eaf2ff; --muted:#9fb2c9;
+    --gold:#ffd24d; --accent:#36c5ff; --good:#5cffb1; --warn:#ff7b54;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    color:var(--text);overflow:hidden;-webkit-text-size-adjust:100%}
+  #map{position:absolute;inset:0;background:#05080d}
+  /* dawn->dusk mood wash, sits above tiles but below the glass panels */
+  #sky{position:absolute;inset:0;z-index:400;pointer-events:none;mix-blend-mode:soft-light;
+    opacity:.0;transition:background 1.2s linear,opacity 1.2s linear}
+  .leaflet-container{background:#05080d;font-family:inherit}
+  .leaflet-control-attribution{background:rgba(0,0,0,.4)!important;color:#7d8ea3!important}
+  .leaflet-control-attribution a{color:#9fb2c9!important}
+
+  /* ---- glassy panels ---- */
+  .panel{position:absolute;z-index:1000;background:var(--panel);
+    backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+    border:1px solid var(--stroke);border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);padding:14px 16px}
+  .title{top:16px;left:16px;max-width:46vw}
+  .title h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.2px}
+  .title .sub{margin-top:2px;font-size:11px;color:var(--muted)}
+
+  .hud{top:16px;left:50%;transform:translateX(-50%);display:flex;gap:16px;
+    padding:10px 18px;align-items:center}
+  .hud .stat{text-align:center;min-width:50px}
+  .hud .stat .v{font-size:18px;font-weight:750;line-height:1}
+  .hud .stat .v small{font-size:11px;font-weight:600;color:var(--muted)}
+  .hud .stat .k{font-size:10px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.6px;margin-top:3px}
+  .hud .stat.brag .v{color:var(--gold)}
+  .hud .sep{width:1px;height:30px;background:var(--stroke)}
+
+  .tools{top:16px;right:16px;display:flex;flex-direction:column;gap:8px;
+    padding:10px;align-items:stretch}
+  .tools button{all:unset;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);
+    padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.06);
+    border:1px solid var(--stroke);text-align:center;white-space:nowrap;
+    transition:background .15s,color .15s}
+  .tools button:hover{background:rgba(255,255,255,.14)}
+  .tools button.on{background:var(--accent);color:#02121d;border-color:transparent}
+
+  .legend{bottom:118px;right:16px;padding:12px 14px;font-size:12px;max-width:230px}
+  .legend .lg-title{font-size:10px;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--muted);margin:0 0 6px}
+  .legend .row{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .legend .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;
+    box-shadow:0 0 8px rgba(0,0,0,.6)}
+  .legend .ln{width:18px;height:4px;border-radius:3px;flex:0 0 auto}
+  .legend .days{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .legend .heatbar{height:8px;border-radius:4px;margin:4px 0 2px;
+    background:linear-gradient(90deg,#1f6f8b,#5cffb1,#ffd24d,#ff4d4d)}
+  .legend .heatcap{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+  #heatLegend{display:none}
+  .chip{cursor:pointer;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;
+    border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--text);
+    user-select:none;transition:opacity .15s}
+  .chip.off{opacity:.3;text-decoration:line-through}
+
+  /* ---- transport / timeline ---- */
+  .transport{left:16px;right:16px;bottom:16px;display:flex;align-items:center;gap:14px;
+    padding:12px 16px}
+  .playbtn{all:unset;cursor:pointer;width:46px;height:46px;border-radius:50%;
+    flex:0 0 auto;display:grid;place-items:center;
+    background:linear-gradient(145deg,var(--gold),#ff9f1c);color:#1a1300;
+    box-shadow:0 6px 22px rgba(255,180,40,.45);font-size:18px}
+  .playbtn:active{transform:scale(.94)}
+  .clock{flex:0 0 auto;min-width:158px}
+  .clock .tod{font-size:20px;font-weight:750;line-height:1;font-variant-numeric:tabular-nums}
+  .clock .day{font-size:11px;color:var(--muted);margin-top:3px}
+  .track-wrap{flex:1;display:flex;flex-direction:column;gap:6px}
+  .scrub{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;
+    background:rgba(255,255,255,.14);outline:none;cursor:pointer;transition:background .1s linear}
+  .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 0 10px rgba(255,255,255,.7);cursor:pointer}
+  .scrub::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:#fff;cursor:pointer}
+  .marks{position:relative;height:11px}
+  .marks .m{position:absolute;top:0;width:9px;height:9px;border-radius:50%;cursor:pointer;
+    transform:translateX(-50%);box-shadow:0 0 6px rgba(0,0,0,.7);border:1.5px solid rgba(0,0,0,.45)}
+  .marks .m:hover{transform:translateX(-50%) scale(1.5)}
+  .speeds{flex:0 0 auto;display:flex;gap:4px}
+  .speeds button{all:unset;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);
+    padding:6px 8px;border-radius:8px;min-width:34px;text-align:center}
+  .speeds button.on{background:rgba(54,197,255,.2);color:var(--accent)}
+
+  /* ---- catch markers ---- */
+  .catch-pin{display:grid;place-items:center}
+  .catch-pin .badge{width:30px;height:30px;border-radius:50% 50% 50% 2px;transform:rotate(45deg);
+    display:grid;place-items:center;background:rgba(8,14,22,.92);
+    border:2.5px solid var(--c,#fff);
+    box-shadow:0 3px 10px rgba(0,0,0,.6),0 0 12px var(--c,#fff),0 0 0 3px var(--d,transparent)}
+  .catch-pin .badge.released{border-style:dashed;background:rgba(8,14,22,.55)}
+  .catch-pin .emoji{transform:rotate(-45deg);font-size:15px;line-height:1}
+  .catch-pin.big .badge{width:40px;height:40px;border-width:3px;border-color:var(--gold);
+    box-shadow:0 4px 16px rgba(0,0,0,.7),0 0 26px var(--gold),0 0 0 3px var(--d,transparent)}
+  .catch-pin.big .emoji{font-size:19px}
+  .catch-pin.big::after{content:"\1F451";position:absolute;top:-16px;font-size:15px;
+    filter:drop-shadow(0 1px 2px #000)}
+  .catch-pin.pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{0%{transform:scale(0) translateY(-14px);opacity:0}
+    60%{transform:scale(1.25) translateY(0);opacity:1}100%{transform:scale(1)}}
+  .ripple{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;
+    transform:translate(-50%,-50%);border:2px solid var(--c,#fff);pointer-events:none;
+    animation:ripple 1.1s ease-out forwards}
+  @keyframes ripple{0%{opacity:.9;width:14px;height:14px}
+    100%{opacity:0;width:120px;height:120px}}
+
+  /* ---- boat (comet head) ---- */
+  .boat{display:grid;place-items:center;pointer-events:none}
+  .boat .arrow{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;
+    border-bottom:17px solid var(--c,#fff);
+    filter:drop-shadow(0 0 6px var(--c,#fff)) drop-shadow(0 1px 3px #000);
+    transition:transform .12s linear}
+  .boat .pulse{position:absolute;width:16px;height:16px;border-radius:50%;
+    background:var(--c,#fff);opacity:.85;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--c,#fff)}
+    70%{box-shadow:0 0 0 15px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+  /* ---- popup ---- */
+  .leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text);
+    border-radius:14px;border:1px solid var(--stroke);box-shadow:0 12px 40px rgba(0,0,0,.6)}
+  .leaflet-popup-tip{background:var(--panel-solid)}
+  .leaflet-popup-content{margin:12px 14px;font-size:13px;line-height:1.45}
+  .pc .hd{display:flex;align-items:center;gap:8px;font-weight:750;font-size:15px;margin-bottom:6px}
+  .pc .hd .em{font-size:18px}
+  .pc .who{font-size:11px;color:var(--muted);font-weight:600;margin-left:auto}
+  .pc .crown{color:var(--gold);font-size:11px;font-weight:700;margin-bottom:4px}
+  .pc table{border-collapse:collapse;width:100%}
+  .pc td{padding:2px 0;vertical-align:top}
+  .pc td.k{color:var(--muted);padding-right:10px;white-space:nowrap}
+  .pc .tag{display:inline-block;background:rgba(255,255,255,.08);border-radius:6px;
+    padding:1px 7px;margin:1px 3px 1px 0;font-size:11px}
+  .pc .rel{color:var(--warn);font-weight:600}
+
+  .toast{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);z-index:1200;
+    background:rgba(8,14,22,.92);border:1px solid var(--stroke);border-radius:10px;
+    padding:8px 16px;font-size:13px;color:var(--text);opacity:0;transition:opacity .3s;
+    pointer-events:none;max-width:80vw;text-align:center}
+  .toast.show{opacity:1}
+  .toast.big{border-color:var(--gold);box-shadow:0 0 24px rgba(255,210,77,.4);font-weight:700}
+
+  @media (max-width:760px){
+    .hud{display:none}
+    .title{max-width:60vw}
+    .legend{bottom:140px;max-width:160px;font-size:11px}
+    .transport{flex-wrap:wrap;gap:10px}
+    .clock{min-width:96px}.clock .tod{font-size:16px}
+    .marks .m{width:13px;height:13px}
+    .speeds{order:3;width:100%;justify-content:space-between}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="sky"></div>
+
+<div class="panel title">
+  <h1 id="ttl">Trip</h1>
+  <div class="sub" id="sub"></div>
+</div>
+
+<div class="panel hud" id="hud"></div>
+
+<div class="panel tools">
+  <button id="btnFit">⤢ Fit</button>
+  <button id="btnBase">🛰 Satellite</button>
+  <button id="btnHeat">🔥 Heatmap</button>
+  <button id="btnLabels">🏷 Labels</button>
+</div>
+
+<div class="panel legend" id="legend"></div>
+
+<div class="panel transport">
+  <button class="playbtn" id="play">▶</button>
+  <div class="clock">
+    <div class="tod" id="tod">--:--</div>
+    <div class="day" id="dayLabel">—</div>
+  </div>
+  <div class="track-wrap">
+    <div class="marks" id="marks"></div>
+    <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" step="1">
+  </div>
+  <div class="speeds" id="speeds"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+/* eslint-disable */
+const DATA = /*__PAYLOAD__*/null;
+
+(function(){
+  if(!DATA || !DATA.days || !DATA.days.length){
+    document.body.innerHTML = '<div style="color:#eaf2ff;padding:40px;font-family:sans-serif">No data to replay.</div>';
+    return;
+  }
+  const $=s=>document.querySelector(s);
+  const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // render epochs with UTC getters so the wall-clock shows verbatim regardless of viewer tz
+  const pad=n=>n<10?'0'+n:''+n;
+  function clockStr(e){const d=new Date(e*1000);let h=d.getUTCHours();const m=d.getUTCMinutes();
+    const ap=h<12?'AM':'PM';h=h%12||12;return h+':'+pad(m)+' '+ap;}
+
+  // ---------- map + basemaps ----------
+  const map = L.map('map',{zoomControl:false,attributionControl:true,zoomSnap:.25})
+    .setView([44.5,-100.43],12);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  const sat = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {maxZoom:19,attribution:'Tiles © Esri, Maxar, Earthstar Geographics'});
+  const dark = L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap, © CARTO'});
+  const labels = L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+    {maxZoom:20,subdomains:'abcd',opacity:.9});
+  sat.addTo(map);
+  let baseIsSat=true, labelsOn=false;
+
+  // ---------- speed coloring ----------
+  const TROLL=DATA.speed.troll, RUN=DATA.speed.run;
+  function bandOf(s){ if(s==null||isNaN(s)) return 'unk';
+    if(s<=TROLL) return 'troll'; if(s>=RUN) return 'run'; return 'cruise'; }
+  const BANDCOL={troll:'#ffd24d',cruise:'#36c5ff',run:'#b388ff',unk:'#7d8ea3'};
+  const BANDLABEL={troll:'Trolling',cruise:'Cruising',run:'Running'};
+  const multi = DATA.days.length>1;
+
+  // ---------- per-day visual state ----------
+  const renderer = L.svg({padding:0.6});
+  const days = DATA.days.map((d,i)=>{
+    const st={def:d, idx:i, visible:true};
+    st.bands={};
+    for(const b of ['troll','cruise','run','unk']){
+      const col=BANDCOL[b];
+      const glow=L.polyline([], {renderer,color:col,weight:11,opacity:.18,
+        lineCap:'round',lineJoin:'round',interactive:false});
+      const core=L.polyline([], {renderer,color:col,weight:3.2,opacity:.95,
+        lineCap:'round',lineJoin:'round',interactive:false});
+      st.bands[b]={glow,core,segs:[],openBand:false,dirty:false};
+    }
+    // bright "hot tail" comet just behind the boat (weight>=5 so band tests ignore it)
+    st.tail=L.polyline([], {renderer,color:d.color,weight:5,opacity:.9,
+      lineCap:'round',lineJoin:'round',interactive:false});
+    st.boat=L.marker([0,0], {interactive:false,zIndexOffset:500,
+      icon:L.divIcon({className:'',iconSize:[26,26],iconAnchor:[13,13],
+        html:`<div class="boat" style="--c:${d.color}"><div class="pulse"></div><div class="arrow"></div></div>`})});
+    st.catchLayer=L.layerGroup();
+    // time range from track + catches (handles catches-only / track-only days)
+    const ts=[...d.track.map(p=>p.t), ...d.catches.filter(c=>c.t!=null).map(c=>c.t)];
+    st.range = ts.length? [Math.min.apply(null,ts), Math.max.apply(null,ts)] : null;
+    return st;
+  });
+
+  function addDayLayers(st){
+    for(const b of ['unk','run','cruise','troll']){ st.bands[b].glow.addTo(map); st.bands[b].core.addTo(map); }
+    st.tail.addTo(map); st.catchLayer.addTo(map);
+  }
+  function removeDayLayers(st){
+    for(const b in st.bands){ map.removeLayer(st.bands[b].glow); map.removeLayer(st.bands[b].core); }
+    map.removeLayer(st.tail); map.removeLayer(st.catchLayer); map.removeLayer(st.boat);
+  }
+  days.forEach(addDayLayers);
+
+  // ---------- global timeline ----------
+  let tMin=Infinity, tMax=-Infinity;
+  for(const st of days){
+    for(const p of st.def.track){ if(p.t<tMin)tMin=p.t; if(p.t>tMax)tMax=p.t; }
+    for(const c of st.def.catches){ if(c.t!=null){ if(c.t<tMin)tMin=c.t; if(c.t>tMax)tMax=c.t; } }
+  }
+  if(!isFinite(tMin)){ tMin=0; tMax=1; }
+  const SPAN=Math.max(1,tMax-tMin);
+
+  let eventTimes=[];
+  function rebuildEventTimes(){
+    const s=new Set();
+    for(const st of days){ if(!st.visible) continue;
+      for(const p of st.def.track) s.add(p.t);
+      for(const c of st.def.catches) if(c.t!=null) s.add(c.t); }
+    eventTimes=Array.from(s).sort((a,b)=>a-b);
+  }
+  rebuildEventTimes();
+
+  let clock=tMin, lastClock=tMin, playing=false, speed=240, lastFrame=null;
+  let bigFlashed=false;
+
+  // ---------- reveal engine ----------
+  function resetDayReveal(st){
+    for(const b in st.bands){ const bd=st.bands[b];
+      bd.segs=[]; bd.openBand=false; bd.dirty=false; bd.glow.setLatLngs([]); bd.core.setLatLngs([]); }
+    st.tail.setLatLngs([]);
+    st.revIdx=0; st.lastLatLng=null;
+    st.catchLayer.clearLayers(); st.shown=new Set();
+    if(map.hasLayer(st.boat)) map.removeLayer(st.boat);
+  }
+  function appendPoint(st,p){
+    const ll=[p.lat,p.lon]; const b=bandOf(p.s); const bd=st.bands[b];
+    if(st.lastLatLng){
+      if(bd.openBand) bd.segs[bd.segs.length-1].push(ll);
+      else bd.segs.push([st.lastLatLng,ll]);
+    } else bd.segs.push([ll]);
+    for(const k in st.bands) st.bands[k].openBand=(k===b);
+    bd.dirty=true; st.lastLatLng=ll;
+  }
+  function catchKey(c){ return c.uuid || c.id || (c.t+'|'+c.lat+'|'+c.lon); }
+  function showCatch(st,c,animate){
+    const key=catchKey(c); if(st.shown.has(key)) return; st.shown.add(key);
+    const cls='catch-pin'+(animate?' pop':'')+(c.big?' big':'');
+    const dvar = multi ? `--d:${st.def.color};` : '';
+    const m=L.marker([c.lat,c.lon],{zIndexOffset:c.big?900:800, icon:L.divIcon({className:'',
+      iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-28],
+      html:`<div class="${cls}" style="--c:${c.color};${dvar}">`+
+        (animate?`<div class="ripple" style="--c:${c.color}"></div>`:'')+
+        `<div class="badge${c.kept?'':' released'}"><span class="emoji">${c.emoji}</span></div></div>`})});
+    m.bindPopup(popupHTML(st.def,c),{closeButton:true,maxWidth:280});
+    m.addTo(st.catchLayer);
+    if(animate){
+      if(c.big && !bigFlashed){ bigFlashed=true;
+        flash(`🏆 Big fish! ${c.len?c.len+'″ ':''}${esc(c.species)} — ${esc(c.fisher)}`, true);
+      } else {
+        flash(`${c.emoji} ${esc(c.fisher)} — ${esc(c.species)}${c.len?` · ${c.len}″`:''}`);
+      }
+    }
+  }
+
+  function seek(newClock,animate){
+    if(newClock<lastClock){ days.forEach(st=>{ if(st.visible) resetDayReveal(st); }); lastClock=tMin; }
+    for(const st of days){
+      if(!st.visible) continue;
+      if(st.revIdx===undefined) resetDayReveal(st);
+      const T=st.def.track;
+      while(st.revIdx<T.length && T[st.revIdx].t<=newClock){ appendPoint(st,T[st.revIdx]); st.revIdx++; }
+      // flush each dirty band once (avoids O(n^2) setLatLngs)
+      for(const k in st.bands){ const bd=st.bands[k];
+        if(bd.dirty){ bd.glow.setLatLngs(bd.segs); bd.core.setLatLngs(bd.segs); bd.dirty=false; } }
+      // hot tail = last few revealed points
+      if(st.revIdx>0){
+        const tail=T.slice(Math.max(0,st.revIdx-14),st.revIdx).map(p=>[p.lat,p.lon]);
+        st.tail.setLatLngs(tail);
+      } else st.tail.setLatLngs([]);
+      // boat head
+      if(st.lastLatLng){
+        st.boat.setLatLng(st.lastLatLng);
+        if(!map.hasLayer(st.boat)) st.boat.addTo(map);
+        const k=Math.max(0,st.revIdx-1); const crs=T[k]&&T[k].c!=null?T[k].c:null;
+        if(crs!=null){ const el=st.boat.getElement&&st.boat.getElement();
+          const a=el&&el.querySelector('.arrow'); if(a) a.style.transform=`rotate(${crs}deg)`; }
+      }
+      for(const c of st.def.catches){ if(c.t!=null && c.t<=newClock) showCatch(st,c,animate); }
+    }
+    lastClock=newClock; clock=newClock;
+    updateClockUI();
+  }
+
+  // ---------- playback loop ----------
+  function frame(ts){
+    if(!playing){ lastFrame=null; return; }
+    if(lastFrame==null) lastFrame=ts;
+    let dt=(ts-lastFrame)/1000; lastFrame=ts;
+    let nc=clock+dt*speed;
+    const nextEv=eventTimes.find(t=>t>clock+0.001);
+    if(nextEv!=null && nextEv-clock>DATA.gapSkip && nc<nextEv){ nc=nextEv; flashGap(); }
+    if(nc>=tMax){ nc=tMax; playing=false; setPlayUI(); }
+    seek(nc,true);
+    if(playing) requestAnimationFrame(frame);
+  }
+  function play(){ if(clock>=tMax){ bigFlashed=false; seek(tMin,false); } playing=true; setPlayUI();
+    lastFrame=null; requestAnimationFrame(frame); }
+  function pause(){ playing=false; setPlayUI(); }
+  function toggle(){ playing?pause():play(); }
+  function setPlayUI(){ $('#play').textContent=playing?'❚❚':'▶'; }
+
+  // ---------- header / HUD ----------
+  $('#ttl').textContent=DATA.title;
+  const S=DATA.stats;
+  $('#sub').textContent=
+    `${S.days} day${S.days>1?'s':''} · ${S.catches} caught · ${S.miles} mi · ${S.hours} hr`+
+    (S.bagTotal!=null?` · ${S.bagTotal} lb`:'')+(DATA.generated?` · made ${DATA.generated}`:'');
+
+  const hud=$('#hud');
+  const hudStats=[
+    ['Catches', S.catches, false],
+    ['Kept', S.kept, false],
+    ['Biggest', S.biggest?`${S.biggest}<small>″</small>`:'—', true],
+  ];
+  if(S.bagTotal!=null) hudStats.push([multi?'Weekend bag':'Bag', `${S.bagTotal}<small> lb</small>`, true]);
+  hudStats.push(['Miles', S.miles, false], ['Hours', S.hours, false],
+    ['Top lure', esc(S.topLure||'—'), false]);
+  hud.innerHTML=hudStats.map(([k,v,brag],i)=>
+    `${i?'<div class="sep"></div>':''}<div class="stat${brag?' brag':''}"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`
+  ).join('');
+
+  // ---------- legend ----------
+  let lh='';
+  if(DATA.fishermen.length){
+    lh+='<p class="lg-title">Anglers</p>';
+    for(const f of DATA.fishermen)
+      lh+=`<div class="row"><span class="dot" style="background:${f.color}"></span>${esc(f.name)}</div>`;
+  }
+  lh+='<p class="lg-title" style="margin-top:10px">Boat speed</p>';
+  for(const b of ['troll','cruise','run'])
+    lh+=`<div class="row"><span class="ln" style="background:${BANDCOL[b]}"></span>${BANDLABEL[b]}</div>`;
+  if(multi) lh+='<p class="lg-title" style="margin-top:10px">Days (tap to toggle)</p><div class="days" id="dayChips"></div>';
+  lh+='<div id="heatLegend"><p class="lg-title" style="margin-top:10px">Catch density</p>'+
+      '<div class="heatbar"></div><div class="heatcap"><span>fewer</span><span>more fish</span></div></div>';
+  $('#legend').innerHTML=lh;
+
+  if(multi){
+    const dc=$('#dayChips');
+    days.forEach(st=>{
+      const chip=document.createElement('span');
+      chip.className='chip'; chip.style.borderColor=st.def.color; chip.style.color=st.def.color;
+      const n=st.def.stats.catches;
+      chip.textContent=st.def.label+(n?` · ${n}`:' · Ø');
+      chip.onclick=()=>{
+        st.visible=!st.visible; chip.classList.toggle('off',!st.visible);
+        if(!st.visible) removeDayLayers(st); else addDayLayers(st);
+        rebuildEventTimes(); rebuildMarks();
+        const c=clock; lastClock=tMin;                 // rebuild at the CURRENT moment, keep place
+        days.forEach(s=>{ if(s.visible) resetDayReveal(s); });
+        seek(c,false);
+        if(heat){ refreshHeat(); }
+      };
+      dc.appendChild(chip); st.chip=chip;
+    });
+  }
+
+  // ---------- scrubber marks (clickable) ----------
+  function rebuildMarks(){
+    const m=$('#marks'); m.innerHTML='';
+    for(const st of days){ if(!st.visible) continue;
+      for(const c of st.def.catches){ if(c.t==null) continue;
+        const x=((c.t-tMin)/SPAN)*100;
+        const dot=document.createElement('div'); dot.className='m';
+        dot.style.left=x+'%';
+        dot.style.background = multi ? st.def.color : c.color;       // day color when stitching
+        dot.style.borderColor = c.color;                            // angler as inner rim
+        dot.title=`${c.fisher} · ${c.species}${c.len?` · ${c.len}″`:''}`;
+        dot.onclick=()=>{ pause(); seek(c.t,false); };
+        m.appendChild(dot);
+      }
+    }
+  }
+  rebuildMarks();
+
+  // ---------- speeds ----------
+  const SPEEDS=[[60,'60×'],[240,'240×'],[1000,'1000×'],[4000,'max']];
+  const sp=$('#speeds');
+  sp.innerHTML=SPEEDS.map(([v,l])=>`<button data-v="${v}">${l}</button>`).join('');
+  function setSpeedUI(){ sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===speed)); }
+  sp.querySelectorAll('button').forEach(b=>b.onclick=()=>{ speed=+b.dataset.v; setSpeedUI(); });
+  setSpeedUI();
+
+  // ---------- play + scrub ----------
+  $('#play').onclick=toggle;
+  const scrub=$('#scrub');
+  let wasPlaying=false;
+  const armResume=()=>{ wasPlaying=playing; };
+  scrub.addEventListener('pointerdown',armResume);
+  scrub.addEventListener('mousedown',armResume);
+  scrub.addEventListener('touchstart',armResume);
+  scrub.addEventListener('input',()=>{ if(playing) pause();
+    const frac=+scrub.value/1000; seek(tMin+frac*SPAN,false); });
+  scrub.addEventListener('change',()=>{ if(wasPlaying && clock<tMax) play(); });
+
+  function skyTint(e){
+    const h=new Date(e*1000).getUTCHours()+new Date(e*1000).getUTCMinutes()/60;
+    // pre-dawn deep blue -> dawn gold -> midday neutral -> dusk orange -> night blue
+    let top,bot,op;
+    if(h<5){ top='#0a1840';bot='#03060f';op=.5; }
+    else if(h<8){ top='#ff9e5e';bot='#2a3a6b';op=.42; }
+    else if(h<16){ top='#bfe0ff';bot='#7fa8cf';op=.16; }
+    else if(h<20){ top='#ff8a3d';bot='#7a2f5e';op=.4; }
+    else { top='#102050';bot='#03060f';op=.5; }
+    const sky=$('#sky'); sky.style.background=`linear-gradient(180deg,${top},${bot})`; sky.style.opacity=op;
+  }
+
+  function updateClockUI(){
+    $('#tod').textContent=clockStr(clock);
+    // nearest visible day (never blanks, even in the overnight gap)
+    let best=null,bestDist=Infinity;
+    for(const st of days){ if(!st.visible||!st.range) continue;
+      const a=st.range[0],b=st.range[1];
+      const dist = clock<a? a-clock : (clock>b? clock-b : 0);
+      if(dist<bestDist){ bestDist=dist; best=st; } }
+    let lbl='—';
+    if(best){ lbl=best.def.label;
+      if(best.def.stats.catches===0) lbl+=' · skunked 🚫';
+      else if(best.def.bag!=null) lbl+=` · ${best.def.bag} lb bag`; }
+    $('#dayLabel').textContent=lbl;
+    const pct=((clock-tMin)/SPAN)*100;
+    scrub.style.background=`linear-gradient(90deg,var(--accent) ${pct}%,rgba(255,255,255,.14) ${pct}%)`;
+    if(!scrub.matches(':active')) scrub.value=Math.round(pct*10);
+    skyTint(clock);
+  }
+
+  // ---------- tools ----------
+  $('#btnFit').onclick=fitAll;
+  $('#btnBase').onclick=()=>{ baseIsSat=!baseIsSat;
+    if(baseIsSat){ map.removeLayer(dark); sat.addTo(map); $('#btnBase').textContent='🛰 Satellite'; }
+    else{ map.removeLayer(sat); dark.addTo(map); $('#btnBase').textContent='🌑 Dark'; }
+    if(labelsOn) labels.bringToFront(); };
+  $('#btnLabels').onclick=()=>{ labelsOn=!labelsOn; $('#btnLabels').classList.toggle('on',labelsOn);
+    if(labelsOn){ labels.addTo(map); labels.bringToFront(); } else map.removeLayer(labels); };
+
+  let heat=null;
+  function heatPoints(){ const pts=[]; for(const st of days){ if(!st.visible) continue;
+    for(const c of st.def.catches) pts.push([c.lat,c.lon,0.55+(c.len?Math.min(c.len/40,1):0.3)]); } return pts; }
+  function refreshHeat(){ if(heat){ map.removeLayer(heat); heat=null; }
+    const pts=heatPoints(); if(!pts.length) return;
+    heat=L.heatLayer(pts,{radius:34,blur:24,maxZoom:14,minOpacity:.45,
+      gradient:{0.2:'#1f6f8b',0.45:'#5cffb1',0.7:'#ffd24d',1:'#ff4d4d'}}).addTo(map); }
+  $('#btnHeat').onclick=()=>{
+    if(heat){ map.removeLayer(heat); heat=null; $('#btnHeat').classList.remove('on');
+      $('#heatLegend').style.display='none'; return; }
+    if(!heatPoints().length){ flash('No catches with GPS to map'); return; }
+    refreshHeat(); $('#btnHeat').classList.add('on'); $('#heatLegend').style.display='block';
+  };
+
+  // ---------- toasts ----------
+  let toastTimer=null;
+  function flash(msg,big){ const t=$('#toast'); t.textContent=msg;
+    t.classList.toggle('big',!!big); t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),big?2600:1800); }
+  let gapShown=0;
+  function flashGap(){ if(clock-gapShown<1) return; gapShown=clock; flash('⏭ skipping ahead…'); }
+
+  function fitAll(){
+    const b=L.latLngBounds([]);
+    for(const st of days){ if(!st.visible) continue;
+      for(const p of st.def.track) b.extend([p.lat,p.lon]);
+      for(const c of st.def.catches) b.extend([c.lat,c.lon]); }
+    if(b.isValid()) map.fitBounds(b,{padding:[60,60],maxZoom:16});
+  }
+
+  // ---------- popup card ----------
+  function popupHTML(day,c){
+    const rows=[];
+    const add=(k,v)=>{ if(v!=null&&v!=='') rows.push(`<tr><td class="k">${k}</td><td>${v}</td></tr>`); };
+    add('Time', clockStr(c.t)+' · '+esc(day.label));
+    add('Length', c.len?`${c.len}″`:null);
+    add('Depth', c.depth!=null?`${c.depth} ft`:null);
+    add('Water', c.temp!=null?`${c.temp}°F`:null);
+    const lures=[c.lure1,c.lure2].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
+    if(lures) add('Lure', lures);
+    add('Bait', c.bait?esc(c.bait):null);
+    add('Spot', c.loc?esc(c.loc):null);
+    if(c.notes) add('Notes', esc(c.notes));
+    if(!c.kept) rows.push(`<tr><td class="k">Status</td><td class="rel">released ↩︎</td></tr>`);
+    return `<div class="pc">`+(c.big?`<div class="crown">🏆 Biggest of the trip</div>`:'')+
+      `<div class="hd"><span class="em">${c.emoji}</span>`+
+      `<span>${esc(cap(c.species))}</span><span class="who" style="color:${c.color}">${esc(c.fisher)}</span></div>`+
+      `<table>${rows.join('')}</table></div>`;
+  }
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+
+  // ---------- keyboard ----------
+  window.addEventListener('keydown',e=>{
+    if(e.code==='Space'){ e.preventDefault(); toggle(); }
+    else if(e.code==='ArrowRight'){ pause(); seek(Math.min(tMax,clock+SPAN*0.02),false); }
+    else if(e.code==='ArrowLeft'){ pause(); seek(Math.max(tMin,clock-SPAN*0.02),false); }
+  });
+
+  // ---------- go ----------
+  days.forEach(resetDayReveal);
+  fitAll();
+  if(SPAN>3){
+    seek(tMin,false);
+    let started=false;
+    const startPlay=()=>{ if(started) return; started=true; play(); };
+    if(DATA.bounds){
+      try{ map.flyToBounds(L.latLngBounds(DATA.bounds),{padding:[60,60],maxZoom:15,duration:1.8}); }
+      catch(e){}
+      map.once('moveend',startPlay);
+    }
+    setTimeout(startPlay,2200);   // robust fallback if moveend never fires
+  } else {
+    seek(tMax,false);             // degenerate / ultra-short trip: show everything revealed
+  }
+})();
+</script>
+</body>
+</html>

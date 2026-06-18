@@ -1,8 +1,41 @@
-# Replay Map — build spec (handoff)
+# Replay Map — build spec + usage
 
-**Status:** not built yet. Post-compaction, point me at this file and I'll build `replay_trip.py`.
+**Status: BUILT** (2026-06-18). `replay_trip.py` + `replay_template.html` at the repo root.
 **Owner ask (Tyler's words):** "revisit our tracks and where/when we caught the fish. Almost
 *replaying* the trip… a sexy way to show that." He's excited about this one.
+
+## How to run it
+```
+# one export folder -> replay_<trip>.html inside it (auto-opens in any browser)
+uv run --with pandas python replay_trip.py path/to/export_dir
+
+# stitch a whole weekend of separate per-day export folders into one replay
+uv run --with pandas python replay_trip.py --all path/to/parent_dir
+
+# custom output / title
+uv run --with pandas python replay_trip.py export_dir -o ~/Desktop/oahe.html -t "Oahe 2026"
+```
+Open the resulting `.html` on wifi (map tiles load from the web; everything else is embedded).
+
+## What it does (shipped)
+- **Satellite** basemap (toggle to dark + labels), auto **fly-in** intro, then auto-plays.
+- Boat **GPS track unfolds** along a time slider, **colored by speed** (gold trolling /
+  blue cruising / purple running) with a glow + a bright comet **hot-tail** at the boat head.
+- **Fish pins pop in** at the exact spot+moment each was landed (ripple animation); pin
+  **size/crown** marks the **biggest fish of the trip**; angler = pin color; released = hollow.
+- **Multi-day stitching:** per-day toggle **chips** (with catch counts / skunk marker),
+  day-colored pins + scrubber dots, automatic **overnight gap-skip** during playback.
+- **Stats HUD** (catches, kept, biggest, weekend bag, miles, hours, top lure), **catch-density
+  heatmap** toggle with legend, **dawn→dusk** mood tint, play/pause/scrub + speed presets,
+  clickable timeline marks, spacebar/arrow-key control. Popups show length/depth/water-temp/
+  lure/spot/notes — all HTML-escaped.
+
+## Tests
+- `tests/make_fixtures.py` → synthetic 3-day weekend + edge cases under `/tmp/fixtures`.
+- `tests/harness.js` → stubs Leaflet/DOM, drives the playback engine, asserts every catch
+  reveals exactly once and speed bands segment. Run: `node tests/harness.js <generated.html>`.
+- Validated against real `test_export/` and a multi-subagent adversarial review (XSS/timezone/
+  coord-sanity/perf/dedup fixes all applied + verified).
 
 ## Goal
 
