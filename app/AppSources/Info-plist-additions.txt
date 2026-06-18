@@ -1,0 +1,96 @@
+================================================================================
+FishingLogger — Info.plist additions
+================================================================================
+
+Add the following keys to the app target's Info settings. In modern Xcode there is
+NO standalone Info.plist file by default — set these under:
+
+    Project navigator > select the FishingLogger PROJECT (blue icon at top)
+      > select the FishingLogger TARGET
+      > the "Info" tab (NOT the "Build Settings" tab)
+      > "Custom iOS Target Properties" table
+      > hover any row, click the small "+" to add a new row.
+
+For each key below: type (or paste) the KEY in the left column, leave the TYPE as the
+default shown, and put the VALUE in the right column. Background Modes is the one
+exception — see the note under key #4; the cleanest way to add it is via the
+"Signing & Capabilities" tab instead of typing it by hand.
+
+Xcode shows friendly display names for some of these raw keys; both the raw key and
+the display name are listed so you can find them either way.
+
+--------------------------------------------------------------------------------
+1. NSLocationWhenInUseUsageDescription
+   (display name: "Privacy - Location When In Use Usage Description")
+   Type:  String
+   Value: FishingLogger tags each catch with your GPS position and records the boat's
+          travel track for the day. Location is used only on-device and is never
+          shared.
+
+--------------------------------------------------------------------------------
+2. NSLocationAlwaysAndWhenInUseUsageDescription
+   (display name: "Privacy - Location Always and When In Use Usage Description")
+   Type:  String
+   Value: FishingLogger keeps recording your travel track while the phone is in your
+          pocket or the screen is off, so the full day on the water is captured.
+          Location stays on-device and is never shared.
+
+--------------------------------------------------------------------------------
+3. UIFileSharingEnabled
+   (display name: "Application supports iTunes file sharing")
+   Type:  Boolean
+   Value: YES
+
+   Makes the app's Documents folder (catches.csv, daily_weights.csv, track.csv,
+   and the JSON source-of-truth files) visible so the exports can be pulled off the
+   phone even if the app itself later refuses to launch.
+
+--------------------------------------------------------------------------------
+4. LSSupportsOpeningDocumentsInPlace
+   (display name: "Supports opening documents in place")
+   Type:  Boolean
+   Value: YES
+
+   Lets the Files app browse INTO the app's Documents folder directly, so the
+   always-current CSVs are reachable in Files > On My iPhone > FishingLogger.
+
+--------------------------------------------------------------------------------
+5. UIBackgroundModes  ->  location
+   (display name: "Required background modes" -> "App registers for location updates")
+   Type:  Array (with one String item whose value is exactly:  location )
+
+   PREFERRED WAY (do this instead of hand-typing the array):
+     Project > FishingLogger TARGET > "Signing & Capabilities" tab
+       > "+ Capability" (top-left) > add "Background Modes"
+       > tick the checkbox "Location updates".
+   Xcode then writes the UIBackgroundModes array containing "location" for you.
+
+   This background mode is REQUIRED for the all-day travel track. Without it, setting
+   allowsBackgroundLocationUpdates = true in LocationManager.startRecording() would
+   crash the app. (That is exactly why the code sets that flag inside startRecording,
+   not at launch — so a misconfigured build fails loudly only when you press Start
+   Track, never silently.)
+
+================================================================================
+Raw plist snippet (reference only)
+================================================================================
+If you ever edit the plist as source ("Open As > Source Code"), the five additions
+look like this inside the top-level <dict>:
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>FishingLogger tags each catch with your GPS position and records the boat's travel track for the day. Location is used only on-device and is never shared.</string>
+
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>FishingLogger keeps recording your travel track while the phone is in your pocket or the screen is off, so the full day on the water is captured. Location stays on-device and is never shared.</string>
+
+    <key>UIFileSharingEnabled</key>
+    <true/>
+
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+    </array>
+================================================================================

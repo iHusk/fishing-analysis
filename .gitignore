@@ -11,3 +11,20 @@ venv/
 
 # Excel lock files
 ~$*.xlsx
+
+.mcp.json
+
+# Swift / Xcode build artifacts
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Claude Code local config
+.claude/
+
+# Scratch test exports (may contain personal GPS)
+test_export/
+
+# macOS
+.DS_Store
