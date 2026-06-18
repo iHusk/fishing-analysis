@@ -33,6 +33,8 @@ function Layer(extra) {
     getLatLngs() { return this._ll; },
     getLatLng() { return this._ll; },
     bindPopup() { return this; },
+    bindTooltip() { return this; },
+    openPopup() { return this; },
     bringToFront() { return this; },
     getElement() { return { querySelector() { return { style: {} }; } }; },
     addEventListener() {}, on() { return this; },
@@ -46,6 +48,10 @@ const L = {
       setView() { return this; },
       fitBounds() { return this; },
       flyToBounds() { return this; },
+      flyTo() { return this; },
+      panTo() { return this; },
+      setZoom() { return this; },
+      getZoom() { return 14; },
       once(ev, cb) { if (cb) cb(); return this; }, // fire moveend synchronously -> auto-play
       hasLayer(l) { return !!(l && l._onMap); },
       removeLayer(l) { if (l) l._onMap = false; return this; },
@@ -74,6 +80,7 @@ const L = {
     return Layer();
   },
   divIcon(o) { return { _html: (o && o.html) || "" }; },
+  circleMarker() { return Layer(); },
   layerGroup() {
     let items = [];
     return Layer({
@@ -109,7 +116,10 @@ function El() {
     appendChild(c){ this.children.push(c); return c; },
     querySelector(){ return El(); }, querySelectorAll(){ return []; },
     addEventListener(ev,fn){ (this._ev=this._ev||{})[ev]=fn; },
-    matches(){ return false; }, getContext(){ return {}; },
+    matches(){ return false; },
+    getContext(){ return { clearRect(){}, fillRect(){}, drawImage(){}, beginPath(){},
+      moveTo(){}, lineTo(){}, arc(){}, fill(){}, stroke(){}, fillStyle:'', globalAlpha:1 }; },
+    toBlob(){}, getBoundingClientRect(){ return {width:600,height:26,left:0,top:0}; },
     set onclick(fn){ this._click=fn; }, get onclick(){ return this._click; },
     set oninput(fn){ this._input=fn; }, get oninput(){ return this._input; },
   };

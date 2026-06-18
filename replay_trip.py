@@ -395,6 +395,69 @@ def _epoch_s(t) -> float | None:
     return float(pd.Timestamp(t).tz_localize("UTC").timestamp())
 
 
+def _band_of(s):
+    if s is None:
+        return None
+    if s <= TROLL_SPEED_MPS:
+        return "troll"
+    if s >= RUN_SPEED_MPS:
+        return "run"
+    return "cruise"
+
+
+def _catch_conditions(full: list[dict], ct: float) -> dict:
+    """Boat conditions around a catch time `ct`, from the day's full (undecimated) track:
+    speed/heading at the hit + whether the boat was slowing into it. Empty if no track."""
+    if not full or ct is None:
+        return {}
+    # nearest track point in time
+    near = min(full, key=lambda p: abs(p["t"] - ct))
+    if abs(near["t"] - ct) > 120:        # no track within 2 min -> don't fabricate conditions
+        return {}
+    out = {}
+    if near.get("s") is not None:
+        mph = near["s"] * 2.236936
+        out["bspeed"] = round(mph, 1)
+        out["bband"] = _band_of(near["s"])
+    if near.get("c") is not None:
+        out["bcourse"] = round(near["c"])
+    # speed trend: mean speed in the 45 s before vs the 45 s before that
+    recent = [p["s"] for p in full if p["s"] is not None and ct - 45 <= p["t"] <= ct]
+    prior = [p["s"] for p in full if p["s"] is not None and ct - 90 <= p["t"] < ct - 45]
+    if recent and prior:
+        dr = (sum(recent) / len(recent)) - (sum(prior) / len(prior))
+        out["btrend"] = "slowing" if dr < -0.25 else ("speeding" if dr > 0.25 else "steady")
+    return out
+
+
+def _detect_dwell(full: list[dict], min_seconds=120, radius_m=45.0):
+    """Spots the boat genuinely worked: runs of slow movement that stay within a small radius
+    for a while. Returns [{lat,lon,sec}] (centroid + dwell seconds), independent of catches."""
+    clusters = []
+    i, n = 0, len(full)
+    while i < n:
+        s = full[i].get("s")
+        if s is None or s > TROLL_SPEED_MPS:
+            i += 1
+            continue
+        j = i + 1
+        clat, clon = full[i]["lat"], full[i]["lon"]
+        while j < n:
+            if haversine_m(clat, clon, full[j]["lat"], full[j]["lon"]) > radius_m:
+                break
+            j += 1
+        dur = full[j - 1]["t"] - full[i]["t"]
+        if dur >= min_seconds:
+            seg = full[i:j]
+            clusters.append({
+                "lat": round(sum(p["lat"] for p in seg) / len(seg), 6),
+                "lon": round(sum(p["lon"] for p in seg) / len(seg), 6),
+                "sec": int(dur),
+            })
+        i = max(j, i + 1)
+    return clusters
+
+
 def build_payload(data: Loaded, title: str) -> dict:
     track, catches, weights = data.track, data.catches, data.weights
 
@@ -432,7 +495,7 @@ def build_payload(data: Loaded, title: str) -> dict:
         color = DAY_COLORS[di % len(DAY_COLORS)]
 
         # --- track points for this day ---
-        tpts = []
+        full = []   # undecimated, for conditions + dwell
         if not track.empty:
             sub = track[track_g.values == gid]
             prev = None
@@ -446,7 +509,7 @@ def build_payload(data: Loaded, title: str) -> dict:
                 spd = float(spd) if pd.notna(spd) else None
                 crs = r.get("course_deg")
                 crs = float(crs) if pd.notna(crs) else None
-                tpts.append({"lat": lat, "lon": lon, "t": ts, "s": spd, "c": crs})
+                full.append({"lat": lat, "lon": lon, "t": ts, "s": spd, "c": crs})
                 all_lat.append(lat); all_lon.append(lon)
                 if prev is not None:
                     total_distance += haversine_m(prev[0], prev[1], lat, lon)
@@ -457,7 +520,8 @@ def build_payload(data: Loaded, title: str) -> dict:
             total_track_seconds += seg_seconds
 
         # decimate the animated track but keep timing fidelity
-        tpts = decimate(tpts, MAX_REVEAL_POINTS)
+        tpts = decimate(full, MAX_REVEAL_POINTS)
+        dwell = _detect_dwell(full)
 
         # --- catches for this day ---
         cpts = []
@@ -471,7 +535,7 @@ def build_payload(data: Loaded, title: str) -> dict:
                 species = (r.get("species") or "").strip() or "fish"
                 kept_raw = (str(r.get("kept")) or "").strip().lower()
                 kept = kept_raw in ("true", "1", "yes", "t", "y")
-                cpts.append({
+                cpt = {
                     "lat": lat, "lon": lon, "t": ts,
                     "uuid": (r.get("uuid") or "").strip(),
                     "fisher": fisher,
@@ -489,7 +553,9 @@ def build_payload(data: Loaded, title: str) -> dict:
                     "notes": (r.get("notes") or "").strip(),
                     "id": (r.get("id") or "").strip(),
                     "big": False,
-                })
+                }
+                cpt.update(_catch_conditions(full, ts))   # boat speed/heading/trend at the hit
+                cpts.append(cpt)
 
         # day-level bounds + label
         d_lat = [p["lat"] for p in tpts] + [c["lat"] for c in cpts]
@@ -514,6 +580,7 @@ def build_payload(data: Loaded, title: str) -> dict:
         days.append({
             "id": gid, "label": label, "color": color,
             "track": tpts, "catches": cpts, "bounds": bounds, "bag": bag,
+            "dwell": dwell,
             "stats": _day_stats(tpts, cpts),
         })
 
@@ -525,6 +592,8 @@ def build_payload(data: Loaded, title: str) -> dict:
         big["big"] = True
 
     bags = [d["bag"] for d in days if d["bag"] is not None]
+    stats = _trip_stats(days, total_distance, total_track_seconds, big,
+                        round(sum(bags), 1) if bags else None)
     payload = {
         "title": title,
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -533,14 +602,14 @@ def build_payload(data: Loaded, title: str) -> dict:
         "fishermen": [{"name": f, "color": fisher_color[f]} for f in fishermen],
         "speed": {"troll": TROLL_SPEED_MPS, "run": RUN_SPEED_MPS},
         "gapSkip": GAP_SKIP_SECONDS,
+        "caption": _caption(stats, big, days),
         "tz": {
             "offset": data.tz_offset_hours,
             "label": _tz_label(data.tz_offset_hours),
             "straddle": ([_tz_label(o) for o in data.tz_offsets_seen]
                          if len(data.tz_offsets_seen) > 1 else []),
         },
-        "stats": _trip_stats(days, total_distance, total_track_seconds, big,
-                             round(sum(bags), 1) if bags else None),
+        "stats": stats,
         "quality": {
             "droppedTrack": (data.dropped_track_bad + data.dropped_track_acc
                              + data.dropped_track_spike + data.dropped_track_orphan),
@@ -579,6 +648,23 @@ def _bounds(lats, lons):
     if not lats or not lons:
         return None
     return [[min(lats), min(lons)], [max(lats), max(lons)]]
+
+
+def _caption(stats, big, days) -> str:
+    """A hero one-liner built from the trip stats — connective tissue the end-card / Wrapped
+    reuse. Branches on skunk / one-fish / banner so even a slow day reads intentionally."""
+    n = stats["catches"]
+    spots = [c.get("loc") for d in days for c in d["catches"] if c.get("loc")]
+    top_spot = max(set(spots), key=spots.count) if spots else None
+    if n == 0:
+        return f"A quiet day on the water — {stats['miles']} mi, {stats['hours']} hr, no fish landed."
+    if big is not None:
+        lead = f"{big['len']}\" {big['species']}" if big.get("len") else f"a {big['species']}"
+        who = f" by {big['fisher']}" if big.get("fisher") else ""
+        tail = f" out of {top_spot}" if top_spot else ""
+        more = f" · {n} fish" if n > 1 else ""
+        return f"Best fish: {lead}{who}{tail}{more}."
+    return f"{n} fish over {stats['miles']} mi" + (f" — top lure {stats['topLure']}" if stats.get("topLure") else "") + "."
 
 
 def _day_stats(tpts, cpts):

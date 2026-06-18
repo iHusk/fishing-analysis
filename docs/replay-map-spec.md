@@ -28,6 +28,19 @@ Open the resulting `.html` on wifi (map tiles load from the web; everything else
   long time gap (e.g. the drive to the lake logged before launch).
 - **Coord/length sanity:** out-of-range + (0,0) coords and implausible fish lengths filtered.
 
+## Cinematic + insight layer (v2)
+- **Follow-camera** (🎥, default on): chases the boat and eases zoom by speed band; grab the
+  map or hit Fit to disengage. **Slow-mo + fly-in beat** on every catch (longer for the biggest),
+  with a sonar ping. **Title card** cold-open → fly-in; **end-card recap** at the finish with
+  Replay + Wrapped buttons.
+- **Speed sparkline** ribbon under the timeline (band-colored) + a **live telemetry chip**
+  (mph / band / heading at the playhead). **Conditions-at-the-catch** in popups (boat speed,
+  "slowing", heading when it hit). **Hot spots** toggle (💧) blooms gold where the boat dwelled.
+- **Ambient:** water shimmer (satellite-gated), golden-hour tile grade + vignette, material
+  polish + micro-interactions. **Trip Wrapped** (✨): self-drawn SVG poster → one-tap PNG (no deps).
+- **Caption:** auto hero one-liner (`payload.caption`) reused by title/end-card/Wrapped.
+  All degrade gracefully on a 1-catch slow day.
+
 ## What it does (shipped)
 - **Satellite** basemap (toggle to dark + labels), auto **fly-in** intro, then auto-plays.
 - Boat **GPS track unfolds** along a time slider, **colored by speed** (gold trolling /
