@@ -295,7 +295,7 @@ const DATA = /*__PAYLOAD__*/null;
   rebuildEventTimes();
 
   let clock=tMin, lastClock=tMin, playing=false, speed=240, lastFrame=null;
-  let bigFlashed=false;
+  let bigFlashed=false, toastTimer=null;
 
   // ---------- reveal engine ----------
   function resetDayReveal(st){
@@ -386,9 +386,14 @@ const DATA = /*__PAYLOAD__*/null;
   // ---------- header / HUD ----------
   $('#ttl').textContent=DATA.title;
   const S=DATA.stats;
+  const tz=DATA.tz||{label:''};
   $('#sub').textContent=
     `${S.days} day${S.days>1?'s':''} · ${S.catches} caught · ${S.miles} mi · ${S.hours} hr`+
-    (S.bagTotal!=null?` · ${S.bagTotal} lb`:'')+(DATA.generated?` · made ${DATA.generated}`:'');
+    (S.bagTotal!=null?` · ${S.bagTotal} lb`:'')+(tz.label?` · times ${tz.label}`:'')+
+    (DATA.generated?` · made ${DATA.generated}`:'');
+  if(tz.straddle && tz.straddle.length){
+    setTimeout(()=>flash(`⏱ Phone straddled ${tz.straddle.join(' & ')} — showing all times in ${tz.label}`),1200);
+  }
 
   const hud=$('#hud');
   const hudStats=[
@@ -531,7 +536,6 @@ const DATA = /*__PAYLOAD__*/null;
   };
 
   // ---------- toasts ----------
-  let toastTimer=null;
   function flash(msg,big){ const t=$('#toast'); t.textContent=msg;
     t.classList.toggle('big',!!big); t.classList.add('show');
     clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),big?2600:1800); }

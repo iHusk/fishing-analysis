@@ -17,6 +17,17 @@ uv run --with pandas python replay_trip.py export_dir -o ~/Desktop/oahe.html -t 
 ```
 Open the resulting `.html` on wifi (map tiles load from the web; everything else is embedded).
 
+## Data cleaning the loader does automatically (reported each run)
+- **Time zone:** drives ordering/gaps/clock off `timestamp_utc` and shows ONE consistent zone
+  (**default Central / CDT** — Lake Oahe straddles CDT/MDT and the phone hops zones mid-trip,
+  which otherwise jumps `timestamp_local` an hour and scrambles the track). Override per run
+  with `--tz-offset -6` (Mountain), etc. Prints a note when a straddle is detected.
+- **GPS spikes:** drops isolated teleport fixes (out-and-back jumps with falsely-confident
+  accuracy) via a geometry test (a glitch snaps back near where it left; a real run moves on).
+- **Car-drive trim:** drops a small, catch-free lead-in/trailing track segment split off by a
+  long time gap (e.g. the drive to the lake logged before launch).
+- **Coord/length sanity:** out-of-range + (0,0) coords and implausible fish lengths filtered.
+
 ## What it does (shipped)
 - **Satellite** basemap (toggle to dark + labels), auto **fly-in** intro, then auto-plays.
 - Boat **GPS track unfolds** along a time slider, **colored by speed** (gold trolling /

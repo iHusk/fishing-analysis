@@ -52,6 +52,12 @@ TROLL_SPEED_MPS = 1.6          # <= this reads as "fishing / trolling" (gold)
 RUN_SPEED_MPS = 4.5            # >= this reads as "running" (blue)
 LENGTH_MIN_IN = 1.0            # ignore implausible fish lengths outside [MIN, MAX]
 LENGTH_MAX_IN = 80.0
+SPIKE_JUMP_M = 2000.0         # a fix this far from the last good fix is a candidate teleport
+SPIKE_RETURN_LOOKAHEAD = 40   # ...and is a glitch if the track returns near the anchor this soon
+SEGMENT_GAP_MIN = 15.0        # a time gap longer than this splits the track into segments
+ORPHAN_MAX_FRAC = 0.30        # drop a catch-free segment only if it's under this fraction of pts
+HOME_TZ_OFFSET = -5.0         # default display zone = Central (CDT). Lake Oahe straddles CDT/MDT;
+                              # we show one consistent clock. Override per-run with --tz-offset.
 
 # Per-day track colors (cycled). Picked to glow on a dark satellite basemap.
 DAY_COLORS = [
@@ -112,10 +118,14 @@ class Loaded:
     weights: pd.DataFrame
     dropped_track_bad: int = 0      # missing/invalid lat/lon/time or out-of-range coords
     dropped_track_acc: int = 0      # dropped purely for poor GPS accuracy
+    dropped_track_spike: int = 0    # GPS teleport glitches (impossible speed from last good fix)
+    dropped_track_orphan: int = 0   # small catch-free segment split off by a long time gap (e.g. car drive)
     dropped_catch_acc: int = 0
     dropped_catch_nogps: int = 0
     dropped_catch_coord: int = 0    # out-of-range / null-island coords
     dropped_catch_notime: int = 0   # valid GPS but no usable timestamp (can't be animated)
+    tz_offset_hours: float = 0.0    # the single display offset chosen for this load
+    tz_offsets_seen: tuple = ()      # distinct hour offsets present (len>1 => phone straddled zones)
     source: str = ""
 
 
@@ -141,6 +151,34 @@ def _parse_local(ts: pd.Series) -> pd.Series:
     return pd.to_datetime(ts, errors="coerce")
 
 
+def _offsets_hours(df: pd.DataFrame) -> pd.Series:
+    """Per-row (local - utc) offset in whole hours, for rows that carry both stamps."""
+    if df.empty or "timestamp_utc" not in df or "timestamp_local" not in df:
+        return pd.Series(dtype=float)
+    u = _parse_local(df["timestamp_utc"])
+    l = _parse_local(df["timestamp_local"])
+    return ((l - u).dt.total_seconds() / 3600.0).round()
+
+
+def _display_time(df: pd.DataFrame, off_td: pd.Timedelta) -> pd.Series:
+    """One consistent display clock = timestamp_utc + a single chosen offset. This is immune to
+    the phone hopping CDT<->MDT at a time-zone-straddling lake (which makes timestamp_local jump
+    an hour mid-trip). Falls back to the row's own local stamp where utc is missing."""
+    utc = _parse_local(df.get("timestamp_utc")) if "timestamp_utc" in df else pd.Series(pd.NaT, index=df.index)
+    loc = _parse_local(df.get("timestamp_local"))
+    t = utc + off_td
+    return t.where(utc.notna(), loc)
+
+
+def _tz_label(h: float) -> str:
+    """Friendly-ish label for a whole-hour UTC offset (US DST names where we can)."""
+    names = {-4: "EDT", -5: "CDT", -6: "MDT", -7: "PDT", -8: "AKDT"}
+    hi = int(h)
+    sign = "+" if h >= 0 else "-"
+    base = f"UTC{sign}{abs(hi)}" if h == hi else f"UTC{h:+g}"
+    return f"{names[hi]} ({base})" if h == hi and hi in names else base
+
+
 def _bad_coords(lat: pd.Series, lon: pd.Series) -> pd.Series:
     """True where coordinates are out of range or the (0,0) 'null island' no-fix sentinel."""
     out_of_range = ~(lat.between(-90, 90) & lon.between(-180, 180))
@@ -148,13 +186,94 @@ def _bad_coords(lat: pd.Series, lon: pd.Series) -> pd.Series:
     return out_of_range | null_island
 
 
-def load_export(export_dir: Path) -> Loaded:
-    """Load + clean one export folder. Robust to blanks and missing optional files."""
+def _despike(track: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Drop GPS teleport glitches (the burst-out-and-back outliers that have falsely-confident
+    accuracy). Geometry, not time (robust to the coarse/clustered timestamps some exports
+    carry): a fix far from the last *kept* point is a glitch only if the track soon RETURNS
+    near that anchor — a real run/long-gap moves on and stays, an excursion that snaps back is
+    spurious. Expects `track` already sorted by time."""
+    n = len(track)
+    if n < 3:
+        return track, 0
+    lat = track["lat"].to_numpy()
+    lon = track["lon"].to_numpy()
+    keep = [True] * n
+    last = 0  # index of the last KEPT point
+    for i in range(1, n):
+        if haversine_m(lat[last], lon[last], lat[i], lon[i]) > SPIKE_JUMP_M:
+            returns = any(
+                haversine_m(lat[last], lon[last], lat[j], lon[j]) < SPIKE_JUMP_M
+                for j in range(i + 1, min(i + 1 + SPIKE_RETURN_LOOKAHEAD, n))
+            )
+            if returns:                 # boat snaps back near the anchor -> excursion was a glitch
+                keep[i] = False
+                continue
+        last = i
+    kept = [i for i in range(n) if keep[i]]
+    return track.iloc[kept], n - len(kept)
+
+
+def _epoch_secs(t: pd.Series):
+    # force ns resolution first — pandas datetimes can be us/s, which would mis-scale //1e9
+    return (t.to_numpy().astype("datetime64[ns]").astype("int64") // 10**9)
+
+
+def _trim_orphan_segments(track: pd.DataFrame, catch_times) -> tuple[pd.DataFrame, int]:
+    """Split the track at large time gaps and drop a small, *catch-free* lead-in/trailing
+    segment — e.g. a setup car-drive logged before launch, separated from the real trip by a
+    long gap. Conservative: only drops segments with no catches AND under ORPHAN_MAX_FRAC of
+    points, and never drops everything. Expects `track` sorted by time."""
+    n = len(track)
+    if n < 2:
+        return track, 0
+    secs = _epoch_secs(track["t"])
+    cuts = [0]
+    for i in range(1, n):
+        if secs[i] - secs[i - 1] > SEGMENT_GAP_MIN * 60:
+            cuts.append(i)
+    cuts.append(n)
+    segs = [(cuts[k], cuts[k + 1]) for k in range(len(cuts) - 1)]
+    if len(segs) < 2:
+        return track, 0
+    ct = list(catch_times)
+    keep = [True] * n
+    dropped = 0
+    for a, b in segs:                       # [a, b)
+        seg_len = b - a
+        t0, t1 = secs[a], secs[b - 1]
+        has_catch = any(t0 - 30 <= c <= t1 + 30 for c in ct)
+        if (not has_catch) and seg_len < ORPHAN_MAX_FRAC * n:
+            for k in range(a, b):
+                keep[k] = False
+            dropped += seg_len
+    if dropped >= n:                        # safety: never trim everything
+        return track, 0
+    idx = [i for i in range(n) if keep[i]]
+    return track.iloc[idx], dropped
+
+
+def load_export(export_dir: Path, tz_offset: float | None = None) -> Loaded:
+    """Load + clean one export folder. Robust to blanks and missing optional files.
+    tz_offset (UTC offset in hours, e.g. -5 Central / -6 Mountain) forces the display zone;
+    None auto-picks the trip's dominant zone from the data."""
     catches = _read_csv(export_dir / "catches.csv")
     track = _read_csv(export_dir / "track.csv")
     weights = _read_csv(export_dir / "daily_weights.csv")
 
     out = Loaded(catches=catches, track=track, weights=weights, source=export_dir.name)
+
+    # choose ONE consistent display offset (the phone may straddle CDT/MDT at the lake)
+    allo = pd.concat([_offsets_hours(track), _offsets_hours(catches)], ignore_index=True).dropna()
+    seen = sorted(allo.unique().tolist())
+    if tz_offset is not None:
+        off_h = float(tz_offset)                # explicit override
+    elif allo.empty:
+        off_h = 0.0                             # no utc stamps -> fall back to raw local
+    else:
+        off_h = HOME_TZ_OFFSET                  # default to the home zone (CDT)
+    off_td = pd.Timedelta(hours=off_h)
+    out.tz_offset_hours = off_h
+    out.tz_offsets_seen = tuple(seen)
 
     # --- track ---
     if not track.empty:
@@ -162,7 +281,7 @@ def load_export(export_dir: Path) -> Loaded:
         for col in ("lat", "lon", "accuracy_m", "altitude_m", "speed_mps", "course_deg"):
             if col in track:
                 track[col] = _to_float(track[col])
-        track["t"] = _parse_local(track.get("timestamp_local"))
+        track["t"] = _display_time(track, off_td)
         n0 = len(track)
         track = track.dropna(subset=["lat", "lon", "t"])
         bad = _bad_coords(track["lat"], track["lon"])
@@ -174,6 +293,8 @@ def load_export(export_dir: Path) -> Loaded:
             track = track[acc.isna() | (acc <= ACCURACY_LIMIT_M)]
             out.dropped_track_acc = n1 - len(track)
         track = track.sort_values("t").reset_index(drop=True)
+        track, out.dropped_track_spike = _despike(track)
+        track = track.reset_index(drop=True)
     out.track = track
 
     # --- catches ---
@@ -183,7 +304,7 @@ def load_export(export_dir: Path) -> Loaded:
                     "water_temp_f", "heading_deg"):
             if col in catches:
                 catches[col] = _to_float(catches[col])
-        catches["t"] = _parse_local(catches.get("timestamp_local"))
+        catches["t"] = _display_time(catches, off_td)
         # keep catches with no GPS out of the *map* but count them
         has_gps = catches["lat"].notna() & catches["lon"].notna()
         out.dropped_catch_nogps = int((~has_gps).sum())
@@ -203,6 +324,12 @@ def load_export(export_dir: Path) -> Loaded:
         catches = catches.sort_values("t").reset_index(drop=True)
     out.catches = catches
 
+    # with both loaded, drop an orphan lead-in/trailing track segment (e.g. setup car drive)
+    if not out.track.empty:
+        catch_times = (_epoch_secs(out.catches["t"]) if not out.catches.empty else [])
+        out.track, out.dropped_track_orphan = _trim_orphan_segments(out.track, catch_times)
+        out.track = out.track.reset_index(drop=True)
+
     return out
 
 
@@ -216,10 +343,14 @@ def merge_loaded(items: list[Loaded]) -> Loaded:
         catches=cat("catches"), track=cat("track"), weights=cat("weights"),
         dropped_track_bad=sum(i.dropped_track_bad for i in items),
         dropped_track_acc=sum(i.dropped_track_acc for i in items),
+        dropped_track_spike=sum(i.dropped_track_spike for i in items),
+        dropped_track_orphan=sum(i.dropped_track_orphan for i in items),
         dropped_catch_acc=sum(i.dropped_catch_acc for i in items),
         dropped_catch_nogps=sum(i.dropped_catch_nogps for i in items),
         dropped_catch_coord=sum(i.dropped_catch_coord for i in items),
         dropped_catch_notime=sum(i.dropped_catch_notime for i in items),
+        tz_offset_hours=(items[0].tz_offset_hours if items else 0.0),
+        tz_offsets_seen=tuple(sorted({o for i in items for o in i.tz_offsets_seen})),
         source=", ".join(i.source for i in items),
     )
     if not merged.track.empty:
@@ -402,12 +533,21 @@ def build_payload(data: Loaded, title: str) -> dict:
         "fishermen": [{"name": f, "color": fisher_color[f]} for f in fishermen],
         "speed": {"troll": TROLL_SPEED_MPS, "run": RUN_SPEED_MPS},
         "gapSkip": GAP_SKIP_SECONDS,
+        "tz": {
+            "offset": data.tz_offset_hours,
+            "label": _tz_label(data.tz_offset_hours),
+            "straddle": ([_tz_label(o) for o in data.tz_offsets_seen]
+                         if len(data.tz_offsets_seen) > 1 else []),
+        },
         "stats": _trip_stats(days, total_distance, total_track_seconds, big,
                              round(sum(bags), 1) if bags else None),
         "quality": {
-            "droppedTrack": data.dropped_track_bad + data.dropped_track_acc,
+            "droppedTrack": (data.dropped_track_bad + data.dropped_track_acc
+                             + data.dropped_track_spike + data.dropped_track_orphan),
             "droppedTrackBad": data.dropped_track_bad,
             "droppedTrackAcc": data.dropped_track_acc,
+            "droppedTrackSpike": data.dropped_track_spike,
+            "droppedTrackOrphan": data.dropped_track_orphan,
             "droppedCatchAcc": data.dropped_catch_acc,
             "droppedCatchNoGPS": data.dropped_catch_nogps,
             "droppedCatchCoord": data.dropped_catch_coord,
@@ -529,6 +669,9 @@ def main(argv=None):
                     help="stitch every export subfolder under PATH into one replay")
     ap.add_argument("-o", "--out", help="output .html path")
     ap.add_argument("-t", "--title", help="map title")
+    ap.add_argument("--tz-offset", type=float, default=None, metavar="H",
+                    help="display time zone as a UTC offset in hours "
+                         "(e.g. -5 Central, -6 Mountain). Default: Central (CDT).")
     args = ap.parse_args(argv)
 
     root = Path(args.path).expanduser().resolve()
@@ -539,11 +682,11 @@ def main(argv=None):
         dirs = find_export_dirs(root)
         if not dirs:
             sys.exit(f"no export folders (catches.csv/track.csv) found under {root}")
-        loaded = merge_loaded([load_export(d) for d in dirs])
+        loaded = merge_loaded([load_export(d, tz_offset=args.tz_offset) for d in dirs])
         default_title = f"{root.name} — {len(dirs)} day(s)"
         default_out = root / "replay_all.html"
     else:
-        loaded = load_export(root)
+        loaded = load_export(root, tz_offset=args.tz_offset)
         if loaded.track.empty and loaded.catches.empty:
             sys.exit(f"no usable data in {root} (need catches.csv and/or track.csv)")
         default_title = root.name
@@ -570,6 +713,10 @@ def main(argv=None):
     notes = []
     if q["droppedTrackAcc"]:
         notes.append(f"{q['droppedTrackAcc']} track pts >{int(ACCURACY_LIMIT_M)}m")
+    if q["droppedTrackSpike"]:
+        notes.append(f"{q['droppedTrackSpike']} GPS spikes")
+    if q["droppedTrackOrphan"]:
+        notes.append(f"{q['droppedTrackOrphan']} pre/post-trip pts (car drive?)")
     if q["droppedTrackBad"]:
         notes.append(f"{q['droppedTrackBad']} bad track rows")
     if q["droppedCatchAcc"]:
@@ -582,6 +729,12 @@ def main(argv=None):
         notes.append(f"{q['droppedCatchNoTime']} catches w/o time")
     if notes:
         print("  filtered: " + ", ".join(notes))
+    tz = payload["tz"]
+    if tz["straddle"]:
+        print(f"  ⏱ device straddled zones ({' & '.join(tz['straddle'])}); "
+              f"showing all times in {tz['label']} (override with --tz-offset)")
+    else:
+        print(f"  ⏱ times shown in {tz['label']}")
     print(f"  open it: open '{out}'")
 
 

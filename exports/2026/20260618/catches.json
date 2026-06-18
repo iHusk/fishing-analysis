@@ -1,0 +1,24 @@
+[
+  {
+    "bait" : "Crawler",
+    "depthFt" : 11,
+    "fisherman" : "Brian",
+    "gpsAccuracyM" : 6.271270169307489,
+    "headingDeg" : 95.64680710705811,
+    "id" : 1,
+    "kept" : false,
+    "lat" : 44.75798679108791,
+    "lengthIn" : 16.5,
+    "locationName" : "Mouth Of Cheyenne",
+    "lon" : -100.7589623240476,
+    "lureColor1" : "Purple",
+    "lureColor2" : "",
+    "notes" : "",
+    "species" : "smallmouth bass",
+    "timestamp" : "2026-06-18T19:26:48Z",
+    "trip" : "2026-06",
+    "uuid" : "5B26065F-0C95-4B7C-AF6A-D9A367779D16",
+    "waterTempF" : 63.5,
+    "weighSessionID" : "2026-06-18"
+  }
+]
