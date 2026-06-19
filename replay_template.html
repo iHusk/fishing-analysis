@@ -196,9 +196,16 @@
     backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
     opacity:0;pointer-events:none;transition:opacity .6s ease}
   .overlay.show{opacity:1;pointer-events:auto}
-  /* the end recap keeps the (zoomed-to-extents) map visible: no blur, only a soft edge vignette */
+  /* the end recap keeps the (zoomed-to-extents) map visible AND interactive: no blur, soft edge
+     vignette, and the overlay is click-through — only the card itself catches pointer events */
   #endOverlay{background:radial-gradient(125% 125% at 50% 50%,transparent 42%,rgba(3,7,14,.62) 100%);
     backdrop-filter:none;-webkit-backdrop-filter:none;align-items:end;padding-bottom:104px}
+  #endOverlay.show{pointer-events:none}
+  #endOverlay #endCard{pointer-events:auto;position:relative}
+  .ecclose{position:absolute;top:8px;right:10px;cursor:pointer;font-size:15px;line-height:1;
+    color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--stroke);
+    border-radius:50%;width:26px;height:26px;display:grid;place-items:center;transition:color .15s,background .15s}
+  .ecclose:hover{color:var(--text);background:rgba(255,255,255,.16)}
   .titlecard{text-align:center;transform:translateY(8px);transition:transform .6s ease}
   .overlay.show .titlecard{transform:translateY(0)}
   .titlecard .eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent)}
@@ -342,8 +349,8 @@ const DATA = /*__PAYLOAD__*/null;
   const multi = DATA.days.length>1;
 
   // ---------- per-day visual state ----------
-  // canvas renderer: redraws the track far cheaper than SVG (no growing DOM path per frame)
-  const renderer = L.canvas({padding:0.5});
+  // SVG renderer: reprojects the path crisply during animated zooms (canvas warps mid-zoom)
+  const renderer = L.svg({padding:0.6});
   const days = DATA.days.map((d,i)=>{
     const st={def:d, idx:i, visible:true};
     st.bands={};
@@ -845,6 +852,7 @@ const DATA = /*__PAYLOAD__*/null;
     } else fitAll();
     const g=(v,k,gold)=>`<div class="g"><div class="v${gold?' gold':''}">${v}</div><div class="k">${k}</div></div>`;
     $('#endCard').innerHTML=
+      `<button class="ecclose" id="ecClose" title="Close (explore the map)">✕</button>`+
       `<div class="kik">That's a wrap</div><h2>${esc(DATA.title)}</h2>`+
       (DATA.caption?`<div class="cap">${esc(DATA.caption)}</div>`:'')+
       `<div class="grid">`+
@@ -857,6 +865,7 @@ const DATA = /*__PAYLOAD__*/null;
     showOverlay('#endOverlay');
     $('#ecReplay').onclick=()=>{ hideOverlay('#endOverlay'); bigFlashed=false; seek(tMin,false); setFollow(!reduced); play(); };
     $('#ecWrap').onclick=()=>{ hideOverlay('#endOverlay'); openWrapped(); };
+    $('#ecClose').onclick=()=>hideOverlay('#endOverlay');   // dismiss + freely explore the map
   }
 
   // ---------- Trip Wrapped poster (self-drawn SVG -> PNG, dependency-free) ----------
