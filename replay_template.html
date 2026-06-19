@@ -419,7 +419,7 @@ const DATA = /*__PAYLOAD__*/null;
       bd.segs=[]; bd.openBand=false; bd.dirty=false; bd.core.setLatLngs([]); }
     st.glow.setLatLngs([]); st.glowPts=[]; st.glowDirty=false;
     st.tail.setLatLngs([]);
-    st.revIdx=0; st.lastLatLng=null; st.curBand=null; st.arrowEl=null; st._lastCrs=null;
+    st.revIdx=0; st.lastLatLng=null; st.boatLL=null; st.curBand=null; st.arrowEl=null; st._lastCrs=null;
     st.catchLayer.clearLayers(); st.shown=new Set(); st.markers={};
     if(map.hasLayer(st.boat)) map.removeLayer(st.boat);
   }
@@ -471,9 +471,18 @@ const DATA = /*__PAYLOAD__*/null;
         st.tail.setLatLngs(tail);
       } else st.tail.setLatLngs([]);
       if(st.lastLatLng){
-        st.boat.setLatLng(st.lastLatLng);
+        // INTERPOLATE the boat to the exact clock between the last revealed point and the next
+        // one, so it glides smoothly instead of snapping point-to-point (fixes the "skipping").
+        const prev=T[st.revIdx-1], next=T[st.revIdx];
+        let bll=st.lastLatLng, crs=(prev&&prev.c!=null?prev.c:null);
+        if(prev && next && next.t>prev.t){
+          const f=Math.max(0,Math.min(1,(newClock-prev.t)/(next.t-prev.t)));
+          bll=[prev.lat+(next.lat-prev.lat)*f, prev.lon+(next.lon-prev.lon)*f];
+          if(next.c!=null) crs=next.c;
+        }
+        st.boatLL=bll;
+        st.boat.setLatLng(bll);
         if(!map.hasLayer(st.boat)) st.boat.addTo(map);
-        const k=Math.max(0,st.revIdx-1); const crs=T[k]&&T[k].c!=null?T[k].c:null;
         if(crs!=null){
           if(!st.arrowEl){ const el=st.boat.getElement&&st.boat.getElement(); st.arrowEl=el&&el.querySelector('.arrow'); }
           if(st.arrowEl && (st._lastCrs==null || Math.abs(st._lastCrs-crs)>2)){
@@ -500,13 +509,13 @@ const DATA = /*__PAYLOAD__*/null;
   let _lastPanTs=-1e9;
   function applyFollow(st){
     if(!follow || !playing || !started || establishing || _vt<beatUntil) return;
-    if(!st) st=leadDay(); if(!st||!st.lastLatLng) return;
+    if(!st) st=leadDay(); const ll=st&&(st.boatLL||st.lastLatLng); if(!ll) return;
     // PAN ONLY — never change zoom during playback (zoom = tile reload + path reproject = jank).
-    // The map glides to keep the boat centered at whatever zoom you're on.
-    if(_vt-_lastPanTs>=33){ map.panTo(st.lastLatLng, {animate:false}); _lastPanTs=_vt; }
+    // Recenter on the interpolated boat EVERY frame so it stays pinned to center (no drift-snap).
+    map.panTo(ll, {animate:false});
   }
   function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on);
-    if(on){ const st=leadDay(); if(st&&st.lastLatLng){ map.panTo(st.lastLatLng,{animate:false}); _lastPanTs=_vt; } }
+    if(on){ const st=leadDay(); const ll=st&&(st.boatLL||st.lastLatLng); if(ll){ map.panTo(ll,{animate:false}); } }
   }
   map.on('dragstart',()=>{ if(follow) setFollow(false); });   // grab the map -> stop following (zoom keeps following)
 
