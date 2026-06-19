@@ -326,10 +326,10 @@ const DATA = /*__PAYLOAD__*/null;
   L.control.zoom({position:'bottomright'}).addTo(map);
   const sat = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    {maxZoom:19,keepBuffer:8,attribution:'Tiles © Esri, Maxar, Earthstar Geographics'});
+    {maxZoom:19,keepBuffer:12,attribution:'Tiles © Esri, Maxar, Earthstar Geographics'});
   const dark = L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    {maxZoom:20,subdomains:'abcd',keepBuffer:8,attribution:'© OpenStreetMap, © CARTO'});
+    {maxZoom:20,subdomains:"abcd",keepBuffer:12,attribution:'© OpenStreetMap, © CARTO'});
   const labels = L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
     {maxZoom:20,subdomains:'abcd',opacity:.9});
@@ -410,8 +410,8 @@ const DATA = /*__PAYLOAD__*/null;
   let clock=tMin, lastClock=tMin, playing=false, speed=240, lastFrame=null;
   let bigFlashed=false, toastTimer=null;
   // cinematic state
-  let follow=!reduced, followBand=null, beatUntil=0, beatRequest=null, started=false, ended=false;
-  const FOLLOWZOOM={run:13, cruise:14, troll:15, unk:14};
+  let follow=!reduced, beatUntil=0, beatRequest=null, started=false, ended=false, establishing=false;
+  const FOLLOW_ZOOM=14;   // fixed follow framing — never auto-zooms during playback (you can zoom manually)
 
   // ---------- reveal engine ----------
   function resetDayReveal(st){
@@ -499,23 +499,16 @@ const DATA = /*__PAYLOAD__*/null;
   };
   let _lastPanTs=-1e9;
   function applyFollow(st){
-    if(!follow || !playing || !started || _vt<beatUntil) return;
+    if(!follow || !playing || !started || establishing || _vt<beatUntil) return;
     if(!st) st=leadDay(); if(!st||!st.lastLatLng) return;
-    const band = st.curBand || 'cruise';
-    if(band!==followBand){
-      // change zoom only on a band transition (animated), so tiles never thrash to black
-      followBand=band;
-      map.setView(st.lastLatLng, FOLLOWZOOM[band]||14, {animate:true, duration:0.9});
-      _lastPanTs=_vt;
-    } else if(_vt-_lastPanTs>=33){           // throttle recenter to ~30Hz (was every frame)
-      map.panTo(st.lastLatLng, {animate:false});
-      _lastPanTs=_vt;
-    }
+    // PAN ONLY — never change zoom during playback (zoom = tile reload + path reproject = jank).
+    // The map glides to keep the boat centered at whatever zoom you're on.
+    if(_vt-_lastPanTs>=33){ map.panTo(st.lastLatLng, {animate:false}); _lastPanTs=_vt; }
   }
-  function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on); followBand=null;
-    if(on){ const st=leadDay(); if(st&&st.lastLatLng)
-      map.setView(st.lastLatLng, FOLLOWZOOM[st.curBand]||14, {animate:false}); } }
-  map.on('dragstart',()=>{ if(follow) setFollow(false); });
+  function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on);
+    if(on){ const st=leadDay(); if(st&&st.lastLatLng){ map.panTo(st.lastLatLng,{animate:false}); _lastPanTs=_vt; } }
+  }
+  map.on('dragstart',()=>{ if(follow) setFollow(false); });   // grab the map -> stop following (zoom keeps following)
 
   // ---------- playback loop (with cinematic slow-mo beats) ----------
   function performance_now(){ return _vt; }   // virtual clock fed by rAF timestamps
@@ -532,14 +525,11 @@ const DATA = /*__PAYLOAD__*/null;
     if(ts>=beatUntil && nextEv!=null && nextEv-clock>DATA.gapSkip && nc<nextEv){ nc=nextEv; flashGap(); }
     if(nc>=tMax){ nc=tMax; }
     seek(nc,true);
-    // a catch may have requested a cinematic beat during seek()
+    // a catch may have requested a cinematic beat during seek() — slow-mo only (no zoom punch;
+    // follow already keeps the catch near center, and a zoom mid-playback caused tile/path jank)
     if(beatRequest){
       const b=beatRequest; beatRequest=null;
-      beatUntil = ts + (b.big?2000:1100);
-      followBand=null;   // after the fly-in beat, let follow re-apply the band zoom cleanly
-      if(follow && !reduced){
-        try{ map.flyTo([b.lat,b.lon], Math.max(map.getZoom(), b.big?16:15.5), {duration:0.7}); }catch(e){}
-      }
+      beatUntil = ts + (b.big?1800:1000);
     }
     if(nc>=tMax && ts>=beatUntil){ playing=false; setPlayUI(); showEndcard(); }
     if(playing) requestAnimationFrame(frame);
@@ -942,7 +932,18 @@ const DATA = /*__PAYLOAD__*/null;
 
   // ---------- go ----------
   function startPlay(){ if(started) return; started=true; hideOverlay('#titleOverlay');
-    setFollow(follow); play(); }
+    $('#btnFollow').classList.toggle('on',follow);
+    if(follow){
+      const st=leadDay(); const ll=st&&st.lastLatLng;
+      if(ll){
+        // ONE establishing zoom-in from the whole-track overview to follow framing, then pan-only
+        if(!reduced){ establishing=true;
+          try{ map.flyTo(ll, FOLLOW_ZOOM, {duration:1.1}); }catch(e){ try{map.setView(ll,FOLLOW_ZOOM,{animate:false});}catch(_){} }
+          setTimeout(()=>{ establishing=false; _lastPanTs=-1e9; }, 1200);
+        } else { try{map.setView(ll,FOLLOW_ZOOM,{animate:false});}catch(_){} }
+      }
+    }
+    play(); }
   function skipTitle(){ if(started) return; flyAndPlay(); }
   function flyAndPlay(){
     hideOverlay('#titleOverlay');
