@@ -306,7 +306,7 @@ const DATA = /*__PAYLOAD__*/null;
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- map + basemaps ----------
-  const map = L.map('map',{zoomControl:false,attributionControl:true,zoomSnap:0})
+  const map = L.map('map',{zoomControl:false,attributionControl:true,zoomSnap:0.5})
     .setView([44.5,-100.43],12);
   L.control.zoom({position:'bottomright'}).addTo(map);
   const sat = L.tileLayer(
@@ -388,7 +388,8 @@ const DATA = /*__PAYLOAD__*/null;
   let clock=tMin, lastClock=tMin, playing=false, speed=240, lastFrame=null;
   let bigFlashed=false, toastTimer=null;
   // cinematic state
-  let follow=!reduced, followZoom=14.5, beatUntil=0, beatRequest=null, started=false, ended=false;
+  let follow=!reduced, followBand=null, beatUntil=0, beatRequest=null, started=false, ended=false;
+  const FOLLOWZOOM={run:13, cruise:14, troll:15, unk:14};
 
   // ---------- reveal engine ----------
   function resetDayReveal(st){
@@ -468,14 +469,20 @@ const DATA = /*__PAYLOAD__*/null;
     return best;
   };
   function applyFollow(){
-    if(!follow || !playing || !started || performance_now()<beatUntil) return;
+    if(!follow || !playing || !started || _vt<beatUntil) return;
     const st=leadDay(); if(!st||!st.lastLatLng) return;
-    const targetZoom = st.curBand==='run'?13.4 : st.curBand==='cruise'?14.3 : 15.4;
-    followZoom += (targetZoom-followZoom)*0.06;
-    map.setView(st.lastLatLng, followZoom, {animate:false});
+    const band = st.curBand || 'cruise';
+    if(band!==followBand){
+      // change zoom only on a band transition (animated), so tiles never thrash to black
+      followBand=band;
+      map.setView(st.lastLatLng, FOLLOWZOOM[band]||14, {animate:true, duration:0.9});
+    } else {
+      map.panTo(st.lastLatLng, {animate:false});   // just recenter each frame; tiles stay loaded
+    }
   }
-  function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on);
-    if(on){ const st=leadDay(); if(st&&st.lastLatLng) map.setView(st.lastLatLng,followZoom,{animate:false}); } }
+  function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on); followBand=null;
+    if(on){ const st=leadDay(); if(st&&st.lastLatLng)
+      map.setView(st.lastLatLng, FOLLOWZOOM[st.curBand]||14, {animate:false}); } }
   map.on('dragstart',()=>{ if(follow) setFollow(false); });
 
   // ---------- playback loop (with cinematic slow-mo beats) ----------
@@ -497,8 +504,9 @@ const DATA = /*__PAYLOAD__*/null;
     if(beatRequest){
       const b=beatRequest; beatRequest=null;
       beatUntil = ts + (b.big?2000:1100);
+      followBand=null;   // after the fly-in beat, let follow re-apply the band zoom cleanly
       if(follow && !reduced){
-        try{ map.flyTo([b.lat,b.lon], Math.max(map.getZoom(), b.big?16.5:16), {duration:0.7}); }catch(e){}
+        try{ map.flyTo([b.lat,b.lon], Math.max(map.getZoom(), b.big?16:15.5), {duration:0.7}); }catch(e){}
       }
     }
     if(nc>=tMax && ts>=beatUntil){ playing=false; setPlayUI(); showEndcard(); }
