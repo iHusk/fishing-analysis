@@ -27,4 +27,6 @@ xcuserdata/
 test_export/
 
 # macOS
-.DS_Store
+.DS_Storenode_modules/
+package-lock.json
+bench-results/
