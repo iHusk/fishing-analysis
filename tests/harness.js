@@ -61,6 +61,7 @@ const L = {
   control: { zoom: () => ({ addTo() { return this; } }) },
   tileLayer() { return Layer(); },
   svg() { return {}; },
+  canvas() { return {}; },
   polyline(_, opts) {
     const lyr = Layer({ _color: opts && opts.color, _weight: opts && opts.weight });
     const orig = lyr.setLatLngs.bind(lyr);

@@ -38,9 +38,14 @@
 
   /* ---- glassy panels ---- */
   .panel{position:absolute;z-index:1000;background:var(--panel);
-    backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     border:1px solid var(--stroke);border-radius:16px;
-    box-shadow:0 10px 40px rgba(0,0,0,.5);padding:14px 16px}
+    box-shadow:0 10px 40px rgba(0,0,0,.5);padding:14px 16px;
+    transition:background .25s linear}
+  /* PERF: while the map is moving (playback), drop the expensive backdrop blur + caustics and
+     make panels solid-readable; the pretty blur/shimmer return the instant you pause. */
+  body.playing .panel{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,15,23,.93)}
+  body.playing #shimmer{opacity:0}
   .title{top:16px;left:16px;max-width:46vw}
   .title h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.2px}
   .title .sub{margin-top:2px;font-size:11px;color:var(--muted)}
@@ -103,7 +108,7 @@
   #spark{width:100%;height:26px;display:block;border-radius:5px;background:rgba(255,255,255,.04)}
   #phead{position:absolute;top:0;width:2px;background:rgba(255,255,255,.85);
     box-shadow:0 0 8px rgba(255,255,255,.7);pointer-events:none;left:0;
-    height:37px;border-radius:2px}
+    height:37px;border-radius:2px;will-change:transform}
   .scrub{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;
     background:rgba(255,255,255,.14);outline:none;cursor:pointer;transition:background .1s linear}
   .scrub::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
@@ -324,6 +329,9 @@ const DATA = /*__PAYLOAD__*/null;
   sat.addTo(map);
   let baseIsSat=true, labelsOn=false;
   $('#shimmer').classList.toggle('on', baseIsSat && !reduced);
+  // cache per-frame clock-UI nodes (static; never recreated) + the tile pane (Leaflet makes it once)
+  const elTod=$('#tod'),elDay=$('#dayLabel'),elTele=$('#tele'),elPhead=$('#phead'),elSky=$('#sky');
+  let elTilePane=document.querySelector('.leaflet-tile-pane');
 
   // ---------- speed coloring ----------
   const TROLL=DATA.speed.troll, RUN=DATA.speed.run;
@@ -334,18 +342,20 @@ const DATA = /*__PAYLOAD__*/null;
   const multi = DATA.days.length>1;
 
   // ---------- per-day visual state ----------
-  const renderer = L.svg({padding:0.6});
+  // canvas renderer: redraws the track far cheaper than SVG (no growing DOM path per frame)
+  const renderer = L.canvas({padding:0.5});
   const days = DATA.days.map((d,i)=>{
     const st={def:d, idx:i, visible:true};
     st.bands={};
     for(const b of ['troll','cruise','run','unk']){
-      const col=BANDCOL[b];
-      const glow=L.polyline([], {renderer,color:col,weight:11,opacity:.18,
+      const core=L.polyline([], {renderer,color:BANDCOL[b],weight:3.2,opacity:.95,
         lineCap:'round',lineJoin:'round',interactive:false});
-      const core=L.polyline([], {renderer,color:col,weight:3.2,opacity:.95,
-        lineCap:'round',lineJoin:'round',interactive:false});
-      st.bands[b]={glow,core,segs:[],openBand:false,dirty:false};
+      st.bands[b]={core,segs:[],openBand:false,dirty:false};
     }
+    // ONE shared wide glow per day (was 4 band-colored glows) — far fewer pixels painted/frame
+    st.glow=L.polyline([], {renderer,color:d.color,weight:11,opacity:.16,
+      lineCap:'round',lineJoin:'round',interactive:false});
+    st.glowPts=[]; st.glowDirty=false;
     st.tail=L.polyline([], {renderer,color:d.color,weight:5,opacity:.9,
       lineCap:'round',lineJoin:'round',interactive:false});
     st.boat=L.marker([0,0], {interactive:false,zIndexOffset:500,
@@ -359,11 +369,13 @@ const DATA = /*__PAYLOAD__*/null;
   });
 
   function addDayLayers(st){
-    for(const b of ['unk','run','cruise','troll']){ st.bands[b].glow.addTo(map); st.bands[b].core.addTo(map); }
+    st.glow.addTo(map);   // glow underneath the band cores
+    for(const b of ['unk','run','cruise','troll']){ st.bands[b].core.addTo(map); }
     st.tail.addTo(map); st.catchLayer.addTo(map);
   }
   function removeDayLayers(st){
-    for(const b in st.bands){ map.removeLayer(st.bands[b].glow); map.removeLayer(st.bands[b].core); }
+    map.removeLayer(st.glow);
+    for(const b in st.bands){ map.removeLayer(st.bands[b].core); }
     map.removeLayer(st.tail); map.removeLayer(st.catchLayer); map.removeLayer(st.boat);
     if(st.dwellLayer) map.removeLayer(st.dwellLayer);
   }
@@ -397,9 +409,10 @@ const DATA = /*__PAYLOAD__*/null;
   // ---------- reveal engine ----------
   function resetDayReveal(st){
     for(const b in st.bands){ const bd=st.bands[b];
-      bd.segs=[]; bd.openBand=false; bd.dirty=false; bd.glow.setLatLngs([]); bd.core.setLatLngs([]); }
+      bd.segs=[]; bd.openBand=false; bd.dirty=false; bd.core.setLatLngs([]); }
+    st.glow.setLatLngs([]); st.glowPts=[]; st.glowDirty=false;
     st.tail.setLatLngs([]);
-    st.revIdx=0; st.lastLatLng=null; st.curBand=null;
+    st.revIdx=0; st.lastLatLng=null; st.curBand=null; st.arrowEl=null; st._lastCrs=null;
     st.catchLayer.clearLayers(); st.shown=new Set(); st.markers={};
     if(map.hasLayer(st.boat)) map.removeLayer(st.boat);
   }
@@ -411,6 +424,7 @@ const DATA = /*__PAYLOAD__*/null;
     } else bd.segs.push([ll]);
     for(const k in st.bands) st.bands[k].openBand=(k===b);
     bd.dirty=true; st.lastLatLng=ll; st.curBand=b;
+    st.glowPts.push(ll); st.glowDirty=true;   // feed the single shared glow
   }
   function catchKey(c){ return c.uuid || c.id || (c.t+'|'+c.lat+'|'+c.lon); }
   function showCatch(st,c,animate){
@@ -442,8 +456,9 @@ const DATA = /*__PAYLOAD__*/null;
       if(st.revIdx===undefined) resetDayReveal(st);
       const T=st.def.track;
       while(st.revIdx<T.length && T[st.revIdx].t<=newClock){ appendPoint(st,T[st.revIdx]); st.revIdx++; }
+      if(st.glowDirty){ st.glow.setLatLngs(st.glowPts); st.glowDirty=false; }
       for(const k in st.bands){ const bd=st.bands[k];
-        if(bd.dirty){ bd.glow.setLatLngs(bd.segs); bd.core.setLatLngs(bd.segs); bd.dirty=false; } }
+        if(bd.dirty){ bd.core.setLatLngs(bd.segs); bd.dirty=false; } }
       if(st.revIdx>0){
         const tail=T.slice(Math.max(0,st.revIdx-14),st.revIdx).map(p=>[p.lat,p.lon]);
         st.tail.setLatLngs(tail);
@@ -452,14 +467,18 @@ const DATA = /*__PAYLOAD__*/null;
         st.boat.setLatLng(st.lastLatLng);
         if(!map.hasLayer(st.boat)) st.boat.addTo(map);
         const k=Math.max(0,st.revIdx-1); const crs=T[k]&&T[k].c!=null?T[k].c:null;
-        if(crs!=null){ const el=st.boat.getElement&&st.boat.getElement();
-          const a=el&&el.querySelector('.arrow'); if(a) a.style.transform=`rotate(${crs}deg)`; }
+        if(crs!=null){
+          if(!st.arrowEl){ const el=st.boat.getElement&&st.boat.getElement(); st.arrowEl=el&&el.querySelector('.arrow'); }
+          if(st.arrowEl && (st._lastCrs==null || Math.abs(st._lastCrs-crs)>2)){
+            st.arrowEl.style.transform=`rotate(${crs}deg)`; st._lastCrs=crs; }
+        }
       }
       for(const c of st.def.catches){ if(c.t!=null && c.t<=newClock) showCatch(st,c,animate); }
     }
     lastClock=newClock; clock=newClock;
-    applyFollow();
-    updateClockUI();
+    const ld=leadDay();          // compute once, share with follow + clock UI
+    applyFollow(ld);
+    updateClockUI(ld);
   }
 
   // ---------- follow camera ----------
@@ -471,16 +490,19 @@ const DATA = /*__PAYLOAD__*/null;
       if(dist<bd){bd=dist;best=st;} }
     return best;
   };
-  function applyFollow(){
+  let _lastPanTs=-1e9;
+  function applyFollow(st){
     if(!follow || !playing || !started || _vt<beatUntil) return;
-    const st=leadDay(); if(!st||!st.lastLatLng) return;
+    if(!st) st=leadDay(); if(!st||!st.lastLatLng) return;
     const band = st.curBand || 'cruise';
     if(band!==followBand){
       // change zoom only on a band transition (animated), so tiles never thrash to black
       followBand=band;
       map.setView(st.lastLatLng, FOLLOWZOOM[band]||14, {animate:true, duration:0.9});
-    } else {
-      map.panTo(st.lastLatLng, {animate:false});   // just recenter each frame; tiles stay loaded
+      _lastPanTs=_vt;
+    } else if(_vt-_lastPanTs>=33){           // throttle recenter to ~30Hz (was every frame)
+      map.panTo(st.lastLatLng, {animate:false});
+      _lastPanTs=_vt;
     }
   }
   function setFollow(on){ follow=on; $('#btnFollow').classList.toggle('on',on); followBand=null;
@@ -520,7 +542,9 @@ const DATA = /*__PAYLOAD__*/null;
     lastFrame=null; requestAnimationFrame(frame); }
   function pause(){ playing=false; setPlayUI(); }
   function toggle(){ playing?pause():play(); }
-  function setPlayUI(){ $('#play').textContent=playing?'❚❚':'▶'; document.body.classList.toggle('paused',!playing); }
+  function setPlayUI(){ $('#play').textContent=playing?'❚❚':'▶';
+    document.body.classList.toggle('paused',!playing);
+    document.body.classList.toggle('playing',playing); }   // 'playing' drops backdrop blur/shimmer
 
   // ---------- header / HUD ----------
   $('#ttl').textContent=DATA.title;
@@ -652,36 +676,49 @@ const DATA = /*__PAYLOAD__*/null;
     const frac=+scrub.value/1000; seek(tMin+frac*SPAN,false); });
   scrub.addEventListener('change',()=>{ if(wasPlaying && clock<tMax) play(); });
 
+  // dawn/dusk look is stepped by hour bucket, so only touch the DOM when the bucket changes
+  const SKY=[['#0a1840','#03060f',.5,'saturate(.85) brightness(.8) contrast(1.05)'],
+             ['#ff9e5e','#2a3a6b',.42,'saturate(1.15) brightness(.98) sepia(.12)'],
+             ['#bfe0ff','#7fa8cf',.16,'saturate(1.05) brightness(1.02)'],
+             ['#ff8a3d','#7a2f5e',.4,'saturate(1.2) brightness(.97) sepia(.16)'],
+             ['#102050','#03060f',.5,'saturate(.85) brightness(.78) contrast(1.06)']];
+  let _skyBucket=-1;
   function skyTint(e){
     const dd=new Date(e*1000); const h=dd.getUTCHours()+dd.getUTCMinutes()/60;
-    let top,bot,op,filt;
-    if(h<5){ top='#0a1840';bot='#03060f';op=.5; filt='saturate(.85) brightness(.8) contrast(1.05)'; }
-    else if(h<8){ top='#ff9e5e';bot='#2a3a6b';op=.42; filt='saturate(1.15) brightness(.98) sepia(.12)'; }
-    else if(h<16){ top='#bfe0ff';bot='#7fa8cf';op=.16; filt='saturate(1.05) brightness(1.02)'; }
-    else if(h<20){ top='#ff8a3d';bot='#7a2f5e';op=.4; filt='saturate(1.2) brightness(.97) sepia(.16)'; }
-    else { top='#102050';bot='#03060f';op=.5; filt='saturate(.85) brightness(.78) contrast(1.06)'; }
-    const sky=$('#sky'); sky.style.background=`linear-gradient(180deg,${top},${bot})`; sky.style.opacity=op;
-    const pane=document.querySelector('.leaflet-tile-pane'); if(pane) pane.style.filter=filt;
+    const bkt = h<5?0 : h<8?1 : h<16?2 : h<20?3 : 4;
+    if(bkt===_skyBucket) return; _skyBucket=bkt;          // <-- skip the per-frame filter write
+    const c=SKY[bkt];
+    elSky.style.background=`linear-gradient(180deg,${c[0]},${c[1]})`; elSky.style.opacity=c[2];
+    if(elTilePane) elTilePane.style.filter=c[3];
   }
 
-  function updateClockUI(){
-    $('#tod').textContent=clockStr(clock);
-    const st=leadDay();
+  // per-frame UI: write only what changed; playhead via composited transform (no layout)
+  let _phW=0, _lTod='', _lDay='', _lTele='', _lScrub=-1, _scrubTs=-1e9;
+  function measurePhead(){ const host=elPhead&&elPhead.parentElement; _phW=host?host.clientWidth:0; }
+  function updateClockUI(st){
+    if(st===undefined) st=leadDay();
+    const tod=clockStr(clock);
+    if(tod!==_lTod){ elTod.textContent=tod; _lTod=tod; }
     let lbl='—';
     if(st){ lbl=st.def.label;
       if(st.def.stats.catches===0) lbl+=' · skunked 🚫';
       else if(st.def.bag!=null) lbl+=` · ${st.def.bag} lb bag`; }
-    $('#dayLabel').textContent=lbl;
-    // telemetry: speed/band/heading at the boat
+    if(lbl!==_lDay){ elDay.textContent=lbl; _lDay=lbl; }
     let tele='';
     if(st && st.revIdx>0){ const T=st.def.track; const p=T[Math.max(0,Math.min(T.length-1,st.revIdx-1))];
       if(p && p.s!=null){ const mph=(p.s*2.236936).toFixed(1);
         tele=`${mph} mph · ${BANDLABEL[bandOf(p.s)]}`+(p.c!=null?` · ${compass(p.c)} ${Math.round(p.c)}°`:''); } }
-    $('#tele').textContent=tele;
-    const pct=((clock-tMin)/SPAN)*100;
-    scrub.style.background=`linear-gradient(90deg,var(--accent) ${pct}%,rgba(255,255,255,.14) ${pct}%)`;
-    if(!scrub.matches(':active')) scrub.value=Math.round(pct*10);
-    const ph=$('#phead'); if(ph) ph.style.left=pct+'%';
+    if(tele!==_lTele){ elTele.textContent=tele; _lTele=tele; }
+    const pct=((clock-tMin)/SPAN)*100; const pr=Math.round(pct*10);
+    if(pr!==_lScrub){ _lScrub=pr;
+      // playhead is a composited transform -> cheap, update every change
+      if(elPhead){ if(!_phW) measurePhead(); elPhead.style.transform=`translateX(${(pct/100)*_phW}px)`; }
+      // the range-input writes force layout/style -> throttle to ~30Hz (imperceptible)
+      if(_vt-_scrubTs>=33){ _scrubTs=_vt;
+        scrub.style.background=`linear-gradient(90deg,var(--accent) ${pct}%,rgba(255,255,255,.14) ${pct}%)`;
+        if(!scrub.matches(':active')) scrub.value=pr;
+      }
+    }
     skyTint(clock);
   }
 
@@ -892,7 +929,7 @@ const DATA = /*__PAYLOAD__*/null;
   $('#titleOverlay').addEventListener('click',()=>skipTitle());
 
   // ---------- resize ----------
-  window.addEventListener('resize',()=>buildSpark());
+  window.addEventListener('resize',()=>{ buildSpark(); measurePhead(); });
 
   // ---------- go ----------
   function startPlay(){ if(started) return; started=true; hideOverlay('#titleOverlay');

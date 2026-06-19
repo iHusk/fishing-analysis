@@ -54,6 +54,21 @@ Open the resulting `.html` on wifi (map tiles load from the web; everything else
   clickable timeline marks, spacebar/arrow-key control. Popups show length/depth/water-temp/
   lure/spot/notes — all HTML-escaped.
 
+## Performance (benchmark + how to iterate)
+- **Benchmark:** `node tests/bench.js <generated.html> [speed=800] [seconds=12] [--headful] [--json]`
+  drives the replay in headless Chrome (puppeteer-core + local Chrome), blocks tile servers for
+  determinism, and reports per-frame interval stats (FPS, p50/p95/p99, % over 16.7/33ms), Chrome
+  main-thread counters (Layout/RecalcStyle per frame, JS heap), and render-pipeline time from a
+  devtools trace. Compare the SAME file before/after a change.
+- **Caveat:** automated Chrome isn't vsync-locked, so the bench measures MAIN-THREAD cost, not GPU
+  compositing. GPU patterns (backdrop-filter over a moving map) must be reasoned about + reduced.
+- **Loop moving forward:** change → `node tests/bench.js exports/.../replay_*.html` → confirm the
+  numbers drop + `tests/harness.js` still 10/10. Use the `replay-perf-audit` workflow to re-audit.
+- **Applied wins (this round):** canvas renderer (was SVG) + one shared glow/day → render pipeline
+  304ms→181ms, layouts/frame 0.86→0.20, main-thread FPS 140→260. GPU: dropped `backdrop-filter` +
+  caustics during active playback (restored on pause), 14px→10px blur, follow-cam panTo throttled
+  to 30Hz, per-frame DOM writes change-detected + playhead moved to a composited transform.
+
 ## Tests
 - `tests/make_fixtures.py` → synthetic 3-day weekend + edge cases under `/tmp/fixtures`.
 - `tests/harness.js` → stubs Leaflet/DOM, drives the playback engine, asserts every catch
