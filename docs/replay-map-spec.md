@@ -17,6 +17,15 @@ uv run --with pandas python replay_trip.py export_dir -o ~/Desktop/oahe.html -t 
 ```
 Open the resulting `.html` on wifi (map tiles load from the web; everything else is embedded).
 
+## Pending changes (post-compaction TODO)
+The replay webpage is in a good place but the owner has **a few tweaks to request** (not yet
+specified as of 2026-06-21). When resuming: ask what the changes are, then edit
+`replay_template.html` (and `replay_trip.py` if payload data is needed), regenerate the latest
+export (`exports/2026/20260620`), run `node tests/harness.js` (keep 10/10) + `node tests/bench.js`.
+Recent tuning knobs that may come up: `FOLLOW_ZOOM` (fixed follow zoom, default 14), the catch
+slow-mo beat durations, `body.playing` GPU tradeoff (panels go solid during playback), the
+crown tie-break (longest, ties → kept), `keepBuffer` (tile preload), dwell/heatmap thresholds.
+
 ## Data cleaning the loader does automatically (reported each run)
 - **Time zone:** drives ordering/gaps/clock off `timestamp_utc` and shows ONE consistent zone
   (**default Central / CDT** — Lake Oahe straddles CDT/MDT and the phone hops zones mid-trip,

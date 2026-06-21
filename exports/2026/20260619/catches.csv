@@ -1,0 +1,5 @@
+id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes
+1,5B26065F-0C95-4B7C-AF6A-D9A367779D16,2026-06-18 13:26:48,2026-06-18 19:26:48,2026,2026-06-18,2026-06,Brian,smallmouth bass,false,16.5,11,63.5,Purple,,Crawler,Mouth Of Cheyenne,44.757987,-100.758962,6.27127,95.6468,
+2,8467F14D-D849-408D-AE17-6DD0E27A821F,2026-06-19 07:41:13,2026-06-19 13:41:13,2026,2026-06-19,2026-06,Brent,drum,false,8,17,63.5,Bare,,Crawler,Mouth Of Cheyenne,44.790815,-100.782963,6.2351,166.398,
+3,ABBC96E0-60CB-4A0D-8E00-3B4C58FCC062,2026-06-19 09:35:37,2026-06-19 15:35:37,2026,2026-06-19,2026-06,Brent,catfish,false,17,28,63.5,Bare,,Crawler,Mouth Of Cheyenne,44.779966,-100.788940,12.4211,146.25,
+4,2C510B1D-6794-4605-AE72-2AF2BF912BB0,2026-06-19 10:17:02,2026-06-19 16:17:02,2026,2026-06-19,2026-06,Brian,walleye,true,17,25,60.5,White,,Crawler,Mouth Of Cheyenne,44.779315,-100.789403,6.90487,299.45,

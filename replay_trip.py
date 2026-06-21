@@ -587,7 +587,9 @@ def build_payload(data: Loaded, title: str) -> dict:
     # crown the single biggest measured fish of the whole trip (mutates the shared cpt dict)
     all_catches = [c for d in days for c in d["catches"]]
     measured = [c for c in all_catches if c["len"] is not None]
-    big = max(measured, key=lambda c: c["len"]) if measured else None
+    # crown the longest fish; break ties in favour of a KEPT fish (the trophy you bagged,
+    # not a released rough fish of the same length)
+    big = max(measured, key=lambda c: (c["len"], 1 if c["kept"] else 0)) if measured else None
     if big is not None:
         big["big"] = True
 

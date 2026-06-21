@@ -26,7 +26,11 @@ xcuserdata/
 # Scratch test exports (may contain personal GPS)
 test_export/
 
-# macOS
-.DS_Storenode_modules/
+# Node (puppeteer-core for tests/bench.js)
+node_modules/
 package-lock.json
 bench-results/
+
+# macOS
+.DS_Store
+**/.DS_Store
