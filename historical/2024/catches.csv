@@ -1,0 +1,32 @@
+id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes
+33,fc5347dc-f7d6-5638-9759-226fe11e5c93,2024-06-14 08:45:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,16.0,11.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+34,f7e7801c-a0d6-5b21-a99a-c551e52668d4,2024-06-14 08:50:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,17.5,9.5,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+35,ae82dfdf-44b8-5817-b8c6-f297ba8c9b11,2024-06-14 09:30:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,17.0,9.5,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+36,a233405d-7420-5b09-a961-fd58e2b83126,2024-06-14 09:31:00,,2024,hist-2024-06-14,2024-06,brian,walleye,true,17.5,9.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+37,813195f4-8d18-5d56-84b9-79890b4045b3,2024-06-14 10:05:00,,2024,hist-2024-06-14,2024-06,brian,walleye,true,16.0,11.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+38,5b8e0970-fd64-58f5-9ed2-a6f97593b03b,2024-06-14 10:06:00,,2024,hist-2024-06-14,2024-06,matt,walleye,true,18.25,11.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+39,68d4920f-8a6c-55e2-a0d3-dba38c62b0b0,2024-06-14 11:00:00,,2024,hist-2024-06-14,2024-06,matt,walleye,true,17.5,8.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+40,e90f30ba-c51a-5e4d-a99f-a9f86e8b5682,2024-06-14 11:01:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,17.0,6.5,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+41,58179ed0-426a-5cee-a726-d033f8feefea,2024-06-14 11:05:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,16.5,10.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+42,004b64a0-67de-5728-af09-603d2f3d2237,2024-06-14 11:40:00,,2024,hist-2024-06-14,2024-06,matt,walleye,true,16.0,12.5,,,,crawler,south side of bend,,,,,migrated:xlsx-Sheet1
+43,43e33571-0913-5b90-ac48-8f09043ccc56,2024-06-14 12:50:00,,2024,hist-2024-06-14,2024-06,matt,walleye,true,17.0,12.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+44,f5a1c929-cd0e-539b-9edf-5c64e31388ad,2024-06-14 13:30:00,,2024,hist-2024-06-14,2024-06,matt,walleye,true,17.5,12.5,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+45,ef88ba09-f80c-5b42-bbf3-2d58d183ac0b,2024-06-14 13:53:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,17.0,16.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+46,27dd6613-10ce-50b0-a4b7-0d1ac808d407,2024-06-14 14:20:00,,2024,hist-2024-06-14,2024-06,brent,walleye,true,16.0,8.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+47,fd5d80d4-4660-550b-a171-261832a4cd97,2024-06-14 14:23:00,,2024,hist-2024-06-14,2024-06,brian,walleye,true,19.0,7.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+48,e8f01516-869f-5146-b114-9a93eeb28bad,2024-06-15 09:10:00,,2024,hist-2024-06-15,2024-06,brian,perch,true,10.0,25.0,,,,crawler,north of bobs,,,,,migrated:xlsx-Sheet1
+49,f509f64c-30e3-5a48-ba94-006f28f62b7f,2024-06-15 11:12:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,15.5,11.0,,,,crawler,south of whitlock,,,,,migrated:xlsx-Sheet1
+50,df5154fd-c5a4-5b31-8ef8-4d18a9e1a02a,2024-06-15 12:21:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,17.0,11.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+51,12406426-442a-5fa4-be4e-934d92fd6561,2024-06-15 12:23:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,18.0,9.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+52,cbcf85e3-3ac0-5ba6-963c-306da28c6460,2024-06-15 12:29:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,18.5,13.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+53,0238de9b-5c44-5960-b41e-92d089898d1f,2024-06-15 12:35:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,17.5,10.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+54,0232e009-1dd4-53b2-ad91-3ce2d7215dc0,2024-06-15 12:37:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,13.0,8.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+55,0cabf050-0db7-59ee-9492-7c6277afb764,2024-06-15 12:56:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,14.0,12.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+56,03489f32-3980-53d8-93f6-0e779d559f8a,2024-06-15 13:02:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,16.0,11.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+57,8d4376c3-50bc-588d-b9b4-6ee5e1a0ec11,2024-06-15 13:22:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,14.0,10.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+58,49ca7282-495d-5e88-ac32-7b82d62fecc8,2024-06-15 13:25:00,,2024,hist-2024-06-15,2024-06,brent,walleye,true,14.0,10.5,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+59,95d47983-5861-5436-b2fc-3dab49fe1af2,2024-06-15 13:30:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,13.5,11.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+60,4992d9c9-32e9-5888-a0f8-6074bd4882c2,2024-06-15 13:45:00,,2024,hist-2024-06-15,2024-06,matt,walleye,true,16.25,16.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+61,553e12fa-7185-5426-8230-ec963b378c31,2024-06-15 14:05:00,,2024,hist-2024-06-15,2024-06,tyler,walleye,true,22.5,14.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+62,00a827ea-1441-5fdc-b74d-b5f0c6ec4fd0,2024-06-15 14:15:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,15.0,11.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1
+63,cc57d841-b93a-545f-b517-f30b5b57a4da,2024-06-15 14:35:00,,2024,hist-2024-06-15,2024-06,brian,walleye,true,16.0,7.0,,,,crawler,"north of south of whilock, east side",,,,,migrated:xlsx-Sheet1

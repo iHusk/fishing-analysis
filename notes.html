@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Notes Editor &mdash; fishing-analysis</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1c1c1c; --muted:#6b6b6b;
+          --line:#e2e2dd; --accent:#2563eb; --ok:#15803d; --err:#b91c1c; }
+  * { box-sizing: border-box; }
+  body { font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
+         color:var(--ink); background:var(--bg); margin:0; padding:2rem 1rem; }
+  main { max-width:54rem; margin:0 auto; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; }
+  .sub { color:var(--muted); margin:0 0 1.5rem; font-size:.95rem; }
+  .bar { display:flex; gap:.6rem; align-items:flex-end; flex-wrap:wrap;
+         margin-bottom:1.5rem; }
+  label { display:block; font-size:.8rem; font-weight:600; color:var(--muted);
+          text-transform:uppercase; letter-spacing:.03em; margin-bottom:.25rem; }
+  input, textarea { font:inherit; color:var(--ink); background:var(--card);
+         border:1px solid var(--line); border-radius:8px; padding:.55rem .7rem;
+         width:100%; }
+  input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  textarea { resize:vertical; min-height:5rem; }
+  .field { width:8rem; }
+  button { font:inherit; font-weight:600; cursor:pointer; border:1px solid var(--line);
+           background:var(--card); border-radius:8px; padding:.55rem 1rem; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:1.25rem; margin-bottom:1.25rem; }
+  .card h2 { font-size:1.05rem; margin:0 0 .9rem; }
+  .day { border-top:1px solid var(--line); padding-top:1rem; margin-top:1rem; }
+  .day:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  .day .key { font-weight:600; font-size:.95rem; }
+  .day .meta { color:var(--muted); font-size:.85rem; margin-left:.5rem; }
+  .addrow { display:flex; gap:.5rem; margin-top:1rem; }
+  .addrow input { flex:1; }
+  .status { font-size:.9rem; min-height:1.4em; margin-left:auto; align-self:center; }
+  .status.ok { color:var(--ok); }
+  .status.err { color:var(--err); }
+  .status.busy { color:var(--muted); }
+  .empty { color:var(--muted); font-style:italic; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Trip Notes Editor</h1>
+  <p class="sub">Edits the whole-trip review and per-day notes for one trip.
+     Saved to <code>exports/&lt;year&gt;/trip_notes.json</code> via the authoring server.</p>
+
+  <div class="bar">
+    <div class="field">
+      <label for="year">Year</label>
+      <input id="year" type="number" inputmode="numeric" value="2026" min="2000" max="2999">
+    </div>
+    <div class="field" style="width:9rem">
+      <label for="trip">Trip</label>
+      <input id="trip" type="text" placeholder="2026-06" value="2026-06">
+    </div>
+    <button id="load">Load</button>
+    <button id="save" class="primary">Save</button>
+    <span id="status" class="status" role="status" aria-live="polite"></span>
+  </div>
+
+  <section class="card">
+    <h2>Trip review</h2>
+    <label for="review" class="sr-only">Trip review</label>
+    <textarea id="review" placeholder="Free-text review for the whole trip&hellip;"></textarea>
+  </section>
+
+  <section class="card">
+    <h2>Per-day notes</h2>
+    <div id="days"></div>
+    <div class="addrow">
+      <input id="newKey" type="text" placeholder="weigh_session_id (e.g. 2026-06-19)">
+      <button id="addDay">Add day</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    year: $("year"), trip: $("trip"), review: $("review"), days: $("days"),
+    newKey: $("newKey"), status: $("status"),
+    load: $("load"), save: $("save"), addDay: $("addDay")
+  };
+
+  function setStatus(msg, kind) {
+    els.status.textContent = msg || "";
+    els.status.className = "status" + (kind ? " " + kind : "");
+  }
+
+  // In-memory model of per-day notes: { weigh_session_id: note }.
+  var days = {};
+
+  function renderDays() {
+    var keys = Object.keys(days).sort();
+    els.days.innerHTML = "";
+    if (keys.length === 0) {
+      var p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "No per-day notes yet. Add one below.";
+      els.days.appendChild(p);
+      return;
+    }
+    keys.forEach(function (key) {
+      var wrap = document.createElement("div");
+      wrap.className = "day";
+
+      var head = document.createElement("div");
+      var k = document.createElement("span");
+      k.className = "key";
+      k.textContent = key;
+      head.appendChild(k);
+      wrap.appendChild(head);
+
+      var ta = document.createElement("textarea");
+      ta.value = days[key] == null ? "" : String(days[key]);
+      ta.setAttribute("aria-label", "Note for " + key);
+      ta.addEventListener("input", function () { days[key] = ta.value; });
+      wrap.appendChild(ta);
+
+      els.days.appendChild(wrap);
+    });
+  }
+
+  function collectDays() {
+    // Snapshot textareas into the model (defensive; input handler already syncs).
+    return days;
+  }
+
+  els.addDay.addEventListener("click", function () {
+    var key = (els.newKey.value || "").trim();
+    if (!key) { setStatus("Enter a weigh_session_id first.", "err"); return; }
+    if (Object.prototype.hasOwnProperty.call(days, key)) {
+      setStatus("Day " + key + " already exists.", "err"); return;
+    }
+    days[key] = "";
+    els.newKey.value = "";
+    setStatus("");
+    renderDays();
+  });
+
+  els.newKey.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); els.addDay.click(); }
+  });
+
+  function load() {
+    var year = (els.year.value || "").trim();
+    if (!year) { setStatus("Enter a year.", "err"); return; }
+    setStatus("Loading…", "busy");
+    els.load.disabled = els.save.disabled = true;
+    fetch("/notes?year=" + encodeURIComponent(year), { headers: { "Accept": "application/json" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        data = data || {};
+        if (data.trip) els.trip.value = data.trip;
+        els.review.value = data.review == null ? "" : String(data.review);
+        days = (data.days && typeof data.days === "object") ? data.days : {};
+        renderDays();
+        setStatus("Loaded.", "ok");
+      })
+      .catch(function (err) { setStatus("Load failed: " + err.message, "err"); })
+      .finally(function () { els.load.disabled = els.save.disabled = false; });
+  }
+
+  function save() {
+    var trip = (els.trip.value || "").trim();
+    if (!trip) { setStatus("Enter a trip like 2026-06.", "err"); return; }
+    var body = {
+      trip: trip,
+      review: els.review.value === "" ? null : els.review.value,
+      days: collectDays()
+    };
+    setStatus("Saving…", "busy");
+    els.load.disabled = els.save.disabled = true;
+    fetch("/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(body)
+    })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) throw new Error(j.detail || ("HTTP " + r.status));
+          return j;
+        });
+      })
+      .then(function (j) { setStatus("Saved to " + j.path, "ok"); })
+      .catch(function (err) { setStatus("Save failed: " + err.message, "err"); })
+      .finally(function () { els.load.disabled = els.save.disabled = false; });
+  }
+
+  els.load.addEventListener("click", load);
+  els.save.addEventListener("click", save);
+
+  renderDays();
+  load();
+})();
+</script>
+</body>
+</html>

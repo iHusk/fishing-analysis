@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Fishing Areas Editor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css"/>
+<style>
+  :root{
+    --panel:rgba(12,22,34,.92); --panel-solid:#0e1b2a; --text:#e8eef5;
+    --muted:#9fb2c9; --accent:#3ea0ff; --danger:#ff5d6c; --ok:#34d399;
+    --border:rgba(255,255,255,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--text);background:#0b1a2b}
+  #map{position:absolute;inset:0;background:#0b1a2b}
+  .leaflet-container{background:#0b1a2b;font-family:inherit}
+  .leaflet-control-attribution{background:rgba(0,0,0,.4)!important;color:#7d8ea3!important}
+  .leaflet-control-attribution a{color:#9fb2c9!important}
+
+  #panel{
+    position:absolute;top:14px;left:14px;z-index:1000;width:300px;max-height:calc(100% - 28px);
+    display:flex;flex-direction:column;background:var(--panel);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.45);overflow:hidden;
+  }
+  #panel h1{margin:0;padding:14px 16px 10px;font-size:15px;font-weight:600;border-bottom:1px solid var(--border)}
+  #panel h1 small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:3px}
+  #list{overflow-y:auto;padding:8px;flex:1 1 auto;min-height:40px}
+  #list:empty::after{content:"No areas yet. Draw a polygon on the map.";display:block;color:var(--muted);font-size:12px;padding:14px 8px;text-align:center}
+  .row{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px}
+  .row:hover{background:rgba(255,255,255,.05)}
+  .row .sw{width:12px;height:12px;border-radius:3px;flex:0 0 auto;border:1px solid rgba(255,255,255,.4)}
+  .row input{flex:1 1 auto;min-width:0;background:rgba(255,255,255,.06);border:1px solid var(--border);
+    color:var(--text);border-radius:6px;padding:5px 7px;font-size:13px}
+  .row input:focus{outline:none;border-color:var(--accent)}
+  .row input.bad{border-color:var(--danger)}
+  .row button{flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--danger);
+    border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer}
+  .row button:hover{background:rgba(255,93,108,.15)}
+  #foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+  #save{flex:1 1 auto;background:var(--accent);border:none;color:#04233f;font-weight:700;
+    border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer}
+  #save:hover{filter:brightness(1.08)}
+  #save:disabled{opacity:.5;cursor:not-allowed}
+  #status{font-size:11px;color:var(--muted);min-height:14px;padding:0 12px 10px}
+  #status.ok{color:var(--ok)} #status.err{color:var(--danger)}
+  .hint{padding:0 16px 10px;font-size:11px;color:var(--muted);line-height:1.4}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>Fishing Areas Editor<small>Draw, name &amp; save polygons to areas.geojson</small></h1>
+  <div class="hint">Use the toolbar (top-right) to draw/edit/delete. Name every area before saving.</div>
+  <div id="list"></div>
+  <div id="foot"><button id="save">Save areas</button></div>
+  <div id="status"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+
+  // ---------- map + satellite basemap (reused from replay_template.html) ----------
+  const map = L.map('map',{zoomControl:false}).setView([44.5,-100.43],12);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {maxZoom:19,keepBuffer:12,attribution:'Tiles © Esri, Maxar, Earthstar Geographics'}
+  ).addTo(map);
+
+  // ---------- geoman draw/edit controls ----------
+  map.pm.addControls({
+    position:'topright',
+    drawCircle:false, drawCircleMarker:false, drawMarker:false,
+    drawPolyline:false, drawText:false, drawRectangle:true, drawPolygon:true,
+    editMode:true, dragMode:true, cutPolygon:false, removalMode:true, rotateMode:false,
+  });
+  map.pm.setGlobalOptions({ snappable:true, templineStyle:{color:'#3ea0ff'}, hintlineStyle:{color:'#3ea0ff',dashArray:[5,5]} });
+
+  const SHAPE_STYLE = {color:'#3ea0ff', weight:2, fillColor:'#3ea0ff', fillOpacity:.18};
+
+  // ---------- model: each layer carries its own name ----------
+  // We keep names on layer._areaName and re-render the side list whenever shapes change.
+  function colorFor(layer){ return (layer.options && layer.options.color) || '#3ea0ff'; }
+
+  function renderList(){
+    const list = $('#list');
+    list.innerHTML = '';
+    map.pm.getGeomanLayers().forEach((layer)=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      const sw = document.createElement('span');
+      sw.className = 'sw'; sw.style.background = colorFor(layer);
+      const input = document.createElement('input');
+      input.type = 'text'; input.placeholder = 'Area name…';
+      input.value = layer._areaName || '';
+      input.addEventListener('input', ()=>{
+        layer._areaName = input.value;
+        input.classList.toggle('bad', !input.value.trim());
+        updateSaveState();
+      });
+      input.addEventListener('focus', ()=>{
+        if(layer.setStyle) layer.setStyle({weight:4});
+      });
+      input.addEventListener('blur', ()=>{
+        if(layer.setStyle) layer.setStyle({weight:2});
+      });
+      input.classList.toggle('bad', !(layer._areaName||'').trim());
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.addEventListener('click', ()=>{ map.removeLayer(layer); renderList(); updateSaveState(); });
+      row.append(sw, input, del);
+      list.appendChild(row);
+    });
+    updateSaveState();
+  }
+
+  function updateSaveState(){
+    const layers = map.pm.getGeomanLayers();
+    const allNamed = layers.every(l => (l._areaName||'').trim());
+    $('#save').disabled = layers.length === 0 ? false : !allNamed;
+  }
+
+  function styleNewLayer(layer){
+    if(layer.setStyle) layer.setStyle(SHAPE_STYLE);
+  }
+
+  // newly drawn shapes
+  map.on('pm:create', (e)=>{
+    styleNewLayer(e.layer);
+    if(e.layer._areaName === undefined) e.layer._areaName = '';
+    // re-render when this specific shape is edited/removed too
+    e.layer.on('pm:remove', ()=>{ renderList(); });
+    renderList();
+    // focus the new shape's name input
+    setTimeout(()=>{ const inputs = $('#list').querySelectorAll('input'); const last=inputs[inputs.length-1]; if(last) last.focus(); }, 0);
+  });
+  map.on('pm:remove', ()=>{ renderList(); });
+
+  // ---------- load existing areas ----------
+  function setStatus(msg, kind){
+    const el = $('#status'); el.textContent = msg || '';
+    el.className = kind || '';
+  }
+
+  function loadFeature(feature){
+    const layer = L.geoJSON(feature, { style: ()=>SHAPE_STYLE });
+    // L.geoJSON wraps in a group; pull each child polygon into the map directly
+    layer.eachLayer((child)=>{
+      child._areaName = (feature.properties && feature.properties.name) || '';
+      child.options = Object.assign({}, child.options, SHAPE_STYLE);
+      if(child.setStyle) child.setStyle(SHAPE_STYLE);
+      child.addTo(map);
+      child.on('pm:remove', ()=>{ renderList(); });
+    });
+  }
+
+  async function loadAreas(){
+    setStatus('Loading existing areas…');
+    try{
+      const res = await fetch('/areas', {headers:{'Accept':'application/json'}});
+      if(!res.ok) throw new Error('GET /areas -> '+res.status);
+      const fc = await res.json();
+      const feats = (fc && Array.isArray(fc.features)) ? fc.features : [];
+      feats.forEach(loadFeature);
+      renderList();
+      setStatus(feats.length ? (feats.length+' area(s) loaded.') : 'No saved areas yet.', 'ok');
+    }catch(err){
+      setStatus('Could not load areas: '+err.message, 'err');
+      renderList();
+    }
+  }
+
+  // ---------- save ----------
+  function buildFeatureCollection(){
+    const features = [];
+    map.pm.getGeomanLayers().forEach((layer)=>{
+      if(typeof layer.toGeoJSON !== 'function') return;
+      const gj = layer.toGeoJSON();
+      gj.properties = Object.assign({}, gj.properties, { name: (layer._areaName||'').trim() });
+      features.push(gj);
+    });
+    return { type:'FeatureCollection', features };
+  }
+
+  $('#save').addEventListener('click', async ()=>{
+    const layers = map.pm.getGeomanLayers();
+    const unnamed = layers.filter(l => !(l._areaName||'').trim());
+    if(unnamed.length){
+      setStatus('Every area needs a name before saving.', 'err');
+      renderList();
+      return;
+    }
+    const fc = buildFeatureCollection();
+    setStatus('Saving…');
+    $('#save').disabled = true;
+    try{
+      const res = await fetch('/areas', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(fc),
+      });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error((data && data.detail) || ('POST /areas -> '+res.status));
+      setStatus('Saved '+(data.count!=null?data.count:fc.features.length)+' area(s).', 'ok');
+    }catch(err){
+      setStatus('Save failed: '+err.message, 'err');
+    }finally{
+      updateSaveState();
+    }
+  });
+
+  loadAreas();
+})();
+</script>
+</body>
+</html>

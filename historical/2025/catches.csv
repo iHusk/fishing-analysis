@@ -1,0 +1,12 @@
+id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes
+64,4596938f-d060-5fb9-9a0e-22d95c83d073,2025-06-14 08:52:00,,2025,hist-2025-06-14,2025-06,brian,walleye,true,14.25,10.0,,chartreuse,,crawler,swiftbird bay,,,,,migrated:xlsx-Sheet1
+65,a08391b3-e59a-5d12-91aa-abd095381d53,2025-06-14 14:00:00,,2025,hist-2025-06-14,2025-06,brian,walleye,true,14.5,8.0,,chartreuse,,crawler,buffalo bay,,,,,migrated:xlsx-Sheet1
+66,18783eb9-fcda-5e33-b97c-132489be76b8,2025-06-14 14:02:00,,2025,hist-2025-06-14,2025-06,tyler,walleye,true,14.0,11.0,,chartreuse,,crawler,buffalo bay,,,,,migrated:xlsx-Sheet1
+67,ebb432e5-894f-5b39-93e6-3a2f5337ec77,2025-06-14 14:18:00,,2025,hist-2025-06-14,2025-06,brent,walleye,true,16.25,8.0,,chartreuse,white,crawler,buffalo bay,,,,,migrated:xlsx-Sheet1
+68,3c1b082b-2412-5f44-ad12-bb4aa9928ab9,2025-06-14 14:52:00,,2025,hist-2025-06-14,2025-06,brent,walleye,true,20.5,11.5,,chartreuse,white,crawler,buffalo bay,,,,,migrated:xlsx-Sheet1
+69,d7b31803-4409-5715-92dd-5777d9d294ac,2025-06-14 16:07:00,,2025,hist-2025-06-14,2025-06,tyler,walleye,true,15.5,11.0,,chartreuse,white,crawler,buffalo bay,,,,,migrated:xlsx-Sheet1
+70,17abcbb5-50bb-5a5a-a291-63b7762ce911,2025-06-13 08:40:00,,2025,hist-2025-06-13,2025-06,brian,walleye,true,13.5,9.0,,red,white,crawler,"west edge of ""1 up from tall prarie chicken""",,,,,migrated:xlsx-Sheet1
+71,42600901-50dc-58c9-a4bd-7413477660f6,2025-06-13 09:43:00,,2025,hist-2025-06-13,2025-06,brent,walleye,true,13.75,11.0,,bare,,crawler,"west edge of ""1 up from tall prarie chicken""",,,,,migrated:xlsx-Sheet1
+72,89c44770-1a25-5540-a60b-c893f1cf42f5,2025-06-13 12:13:00,,2025,hist-2025-06-13,2025-06,brian,walleye,true,14.5,9.5,,red,gold,crawler,just east of pump house,,,,,migrated:xlsx-Sheet1
+73,caa72b5f-5321-5c4d-97ba-3cbbbaa1ba3c,2025-06-13 09:43:00,,2025,hist-2025-06-13,2025-06,brian,walleye,true,19.0,12.0,,chartreuse,,crawler,west side of pump house,,,,,migrated:xlsx-Sheet1
+74,d178afe8-712e-56a2-b609-b7736416e8ed,2025-06-13 09:43:00,,2025,hist-2025-06-13,2025-06,tyler,walleye,true,20.0,12.0,,gold,,crawler,west side of pump house,,,,,migrated:xlsx-Sheet1

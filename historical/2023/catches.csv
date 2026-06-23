@@ -1,0 +1,33 @@
+id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes
+1,3d514937-070e-5e19-a778-af81340e7705,2023-06-15 12:45:00,,2023,hist-2023-06-15,2023-06,tyler,walleye,true,14.0,9.5,,,,,,,,,,migrated:xlsx-Sheet1
+2,2d1d9bc7-8354-5e6c-92f7-ef35676603a3,2023-06-15 12:50:00,,2023,hist-2023-06-15,2023-06,brian,walleye,true,17.0,9.5,,,,,,,,,,migrated:xlsx-Sheet1
+3,ba6ded04-0be6-5580-b763-53921259f40f,2023-06-15 13:15:00,,2023,hist-2023-06-15,2023-06,tyler,walleye,true,15.5,9.5,,,,,,,,,,migrated:xlsx-Sheet1
+4,0bb4b6eb-43d9-51a1-8cbd-185fc5ca3833,2023-06-15 13:10:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,15.0,9.5,,,,,,,,,,migrated:xlsx-Sheet1
+5,99995b91-11d5-5e78-ae07-0021ff1861d4,2023-06-15 14:00:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,13.0,9.0,,,,,,,,,,migrated:xlsx-Sheet1
+6,eb7bae11-28a0-537e-bdb4-d34ce6d8c7f9,2023-06-15 14:00:00,,2023,hist-2023-06-15,2023-06,brian,walleye,true,15.0,9.0,,,,,,,,,,migrated:xlsx-Sheet1
+7,8f0bb96b-6085-56f1-a2da-67741a772634,2023-06-15 14:30:00,,2023,hist-2023-06-15,2023-06,tyler,walleye,true,16.0,9.0,,,,,,,,,,migrated:xlsx-Sheet1
+8,e0255e89-a7f2-5bb3-a480-a979e89fd679,2023-06-16 15:10:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,21.0,11.0,,,,,,,,,,migrated:xlsx-Sheet1
+9,2d2f8dab-a946-5132-86c4-6297e6238442,2023-06-16 17:15:00,,2023,hist-2023-06-15,2023-06,tyler,walleye,true,16.0,10.0,,,,,,,,,,migrated:xlsx-Sheet1
+10,4485654f-b241-5344-91d3-1553eb5353cc,2023-06-16 15:40:00,,2023,hist-2023-06-15,2023-06,brian,walleye,true,16.0,7.0,,,,,,,,,,migrated:xlsx-Sheet1
+11,266f7d3f-b290-5f9e-b43e-6eca13884a48,2023-06-16 16:45:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,13.0,7.0,,,,,,,,,,migrated:xlsx-Sheet1
+12,33bbdf47-2101-545c-8064-30a1d8126489,2023-06-16 16:45:00,,2023,hist-2023-06-15,2023-06,matt,walleye,true,16.0,7.0,,,,,,,,,,migrated:xlsx-Sheet1
+13,1c688a7c-d40f-5c13-9277-e81245ea050e,2023-06-16 17:00:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,15.0,11.0,,,,,,,,,,migrated:xlsx-Sheet1
+14,2fc9f2f0-6a1f-52a6-9544-802aaa1524d8,2023-06-16 14:45:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,14.0,9.0,,,,,,,,,,migrated:xlsx-Sheet1
+15,53d073d3-9fdc-5099-9502-25e849bcc872,2023-06-16 15:00:00,,2023,hist-2023-06-15,2023-06,brent,walleye,true,16.0,8.5,,,,,,,,,,migrated:xlsx-Sheet1
+16,949e7e9f-25a3-5ca4-a221-9edf94d4bc76,2023-06-16 17:45:00,,2023,hist-2023-06-15,2023-06,matt,walleye,true,14.0,12.0,,,,,,,,,,migrated:xlsx-Sheet1
+17,d70da095-0f54-594f-b0ab-3232d3863b59,2023-06-17 08:30:00,,2023,hist-2023-06-17,2023-06,tyler,walleye,true,17.0,10.0,,,,leech,pump house,,,,,migrated:xlsx-Sheet1
+18,7f217188-458c-59fc-8ce3-b1ecfef2f692,2023-06-17 08:43:00,,2023,hist-2023-06-17,2023-06,brent,walleye,true,17.75,9.0,,,,crawler,pump house,,,,,migrated:xlsx-Sheet1
+19,42952f56-0937-5b38-b6c0-5e8f0a4265bc,2023-06-17 10:50:00,,2023,hist-2023-06-17,2023-06,matt,walleye,true,16.5,13.0,,,,crawler,pump house,,,,,migrated:xlsx-Sheet1
+20,b8949f67-2fe4-5fed-ae70-8f6769dcf8c5,2023-06-17 11:39:00,,2023,hist-2023-06-17,2023-06,matt,walleye,true,18.75,9.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+21,229ab6b2-3cb4-5281-a0c0-aa6e0d751063,2023-06-17 12:03:00,,2023,hist-2023-06-17,2023-06,brent,walleye,true,15.0,9.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+22,d3649104-14f0-5620-8cf3-45b0b86a33fd,2023-06-17 12:30:00,,2023,hist-2023-06-17,2023-06,brian,walleye,true,14.5,10.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+23,56f6b364-da4f-5a99-8d08-6395bf5eed8c,2023-06-17 12:40:00,,2023,hist-2023-06-17,2023-06,brian,walleye,true,15.5,12.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+24,c4186aee-5479-57bd-8b3b-fde0d948a9ff,2023-06-17 13:00:00,,2023,hist-2023-06-17,2023-06,brian,walleye,true,14.5,12.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+25,20acd25d-0d8b-5658-9dfd-b89ce01bd143,2023-06-17 13:15:00,,2023,hist-2023-06-17,2023-06,tyler,walleye,true,14.5,12.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+26,2c9af300-29bf-5ea4-8404-c8bbb5a7ab8d,2023-06-17 13:25:00,,2023,hist-2023-06-17,2023-06,brian,walleye,true,16.5,11.5,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+27,51bb28d7-3a78-5edd-b1a6-520eea182146,2023-06-17 13:30:00,,2023,hist-2023-06-17,2023-06,brent,walleye,true,16.0,10.0,,,,crawler,tall prarie chicken,,,,,migrated:xlsx-Sheet1
+28,bc4e8d58-11c9-51d2-9c65-b4c5bd79c151,2023-06-17 14:00:00,,2023,hist-2023-06-17,2023-06,matt,walleye,true,15.5,20.0,,,,crawler,1 up tall prarie chicken,,,,,migrated:xlsx-Sheet1
+29,90e1a7a3-919f-5e8f-97fc-1eb0263a7ba0,2023-06-17 15:00:00,,2023,hist-2023-06-17,2023-06,brian,walleye,true,13.5,19.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+30,58b300f5-65d0-5410-9abf-96b0dbf9a93d,2023-06-17 15:45:00,,2023,hist-2023-06-17,2023-06,tyler,walleye,true,13.5,12.0,,,,leech,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+31,17db906d-c306-5d38-922a-ca6a3f15519f,2023-06-17 15:45:00,,2023,hist-2023-06-17,2023-06,brent,walleye,true,17.25,11.0,,,,crawler,mouth of cheyenne,,,,,migrated:xlsx-Sheet1
+32,a0deadb9-d99f-5d50-aef2-32b5a3bf4522,2023-06-17 16:25:00,,2023,hist-2023-06-17,2023-06,tyler,walleye,true,16.0,12.0,,,,leech,mouth of cheyenne,,,,,migrated:xlsx-Sheet1

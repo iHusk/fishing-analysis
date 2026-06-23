@@ -17,14 +17,51 @@ uv run --with pandas python replay_trip.py export_dir -o ~/Desktop/oahe.html -t 
 ```
 Open the resulting `.html` on wifi (map tiles load from the web; everything else is embedded).
 
-## Pending changes (post-compaction TODO)
-The replay webpage is in a good place but the owner has **a few tweaks to request** (not yet
-specified as of 2026-06-21). When resuming: ask what the changes are, then edit
-`replay_template.html` (and `replay_trip.py` if payload data is needed), regenerate the latest
-export (`exports/2026/20260620`), run `node tests/harness.js` (keep 10/10) + `node tests/bench.js`.
-Recent tuning knobs that may come up: `FOLLOW_ZOOM` (fixed follow zoom, default 14), the catch
-slow-mo beat durations, `body.playing` GPU tradeoff (panels go solid during playback), the
-crown tie-break (longest, ties → kept), `keepBuffer` (tile preload), dwell/heatmap thresholds.
+## v2 wave (shipped)
+The v2 wave landed on `replay_template.html` + `replay_trip.py`. Highlights:
+
+- **Lake-area labels.** `areas.py` reads `areas/areas.geojson` (8 named Oahe areas drawn in
+  the polygon editor); `replay_trip.area_label_points()` emits one area-weighted-centroid
+  label per area. The labels render on the **Labels toggle** (`.arealabel`, `#btnLabels`),
+  and catch popups carry the catch's area.
+- **Target-species emphasis (REPLAY-2).** `target_species` (multiselect, default
+  `["walleye"]`) + a manual **star** override (`stars` = catch UUIDs) come from
+  `replay_config.json` via `load_replay_config()`. Target/starred/biggest pins render
+  full-size + full-opacity; non-targets are dimmed and smaller (`.catch-pin.dim`,
+  `.catch-pin.big`). The crown (biggest) is chosen among targets + starred.
+- **Target-driven heatmap (REPLAY-3).** The hot-spot heat (`#btnHeat`) weights only
+  target/starred catches by default (`heatOnTarget()`); a `heatAll` mode shows every catch.
+- **Per-outing + master weekend plaques (REPLAY-1).** Outings are detected by gap/overnight
+  (floor = one per day); a small plaque animates in at each outing's end (catches, bag,
+  biggest, day note) and the end-card becomes the **master weekend plaque**. Playback
+  **gap-skips** idle/overnight gaps (`GAP_SKIP_SECONDS`) instead of scrubbing the dead night.
+- **Cross-day fade + weekend review (REPLAY-4).** While a later day plays, earlier days fade
+  to a low ambient opacity (`setDayFade`/`applyCrossDayFade`); the **weekend-review** state
+  shows all days together at a balanced opacity (`weekendReview`).
+- **Wrapped poster with satellite background.** The Wrapped/end-card poster (`#btnWrap`,
+  `#ecWrap`, `#wrapOverlay`, `#wrapImg`) has an optional **Map on/off** toggle (`#wrapMap`):
+  on, `paintSatTiles()` composites satellite tiles onto a canvas, mercator-aligned
+  (`lat2y()`) and padded to the poster bounds, and the **exported PNG honors the toggle**.
+  Verify it headless with `node tests/shot_wrapped.js <replay.html> /tmp/wrapped.png`
+  (the playback harness can't reach this overlay).
+- **Merged dwell blooms.** `_detect_dwell()` finds slow-troll dwell windows;
+  `_merge_dwell()` greedily merges near-identical centroids into one gold bloom sized by the
+  combined dwell seconds (`#btnDwell`), so a slow troll renders as one bloom, not a stack.
+
+### Replay-prep bundle (PIPE-1)
+`just ingest <day>` → `ingest.py` cleans the day (reusing `replay_trip.load_export`), then
+derives `build/<trip>/replay_bundle.json` carrying each catch's `area` (pure-Python
+point-in-polygon), the star list + target species from `replay_config.json`, and merged
+`trip_notes.json`. `replay_trip.py` uses the bundle as a **fast path** when present
+(`build/<trip>/replay_bundle.json`); raw CSVs stay authoritative, so a missing/broken bundle
+just falls back to cleaning from source. `build/` is gitignored.
+
+When editing the replay: change `replay_template.html` (and `replay_trip.py` for payload
+data), regenerate the latest export (`exports/2026/20260620`), run `node tests/harness.js`
+(keep it green), `node tests/shot_wrapped.js` for the poster, and `node tests/bench.js`.
+Tuning knobs: `FOLLOW_ZOOM` (default 14), catch slow-mo beat durations, `body.playing` GPU
+tradeoff, the crown tie-break (longest, ties → kept), `keepBuffer` (tile preload), and the
+dwell/heatmap thresholds.
 
 ## Data cleaning the loader does automatically (reported each run)
 - **Time zone:** drives ordering/gaps/clock off `timestamp_utc` and shows ONE consistent zone

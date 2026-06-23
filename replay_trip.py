@@ -41,6 +41,78 @@ except ModuleNotFoundError:  # pragma: no cover - friendly hint
         "    uv run --with pandas python replay_trip.py <export_dir>"
     )
 
+# WEB-3: pure-Python lake-area lookup (reuses the PIPE-1 areas.geojson helper).
+# Optional — if areas.py / areas.geojson aren't present, area labels just stay empty.
+try:
+    import areas as _areas
+except Exception:  # pragma: no cover - areas are an optional enrichment
+    _areas = None
+
+
+def _ring_centroid(ring: list):
+    """Area-weighted centroid of a single linear ring of [lon, lat] pairs.
+    Returns (lat, lon) or None if the ring is degenerate (zero area)."""
+    n = len(ring)
+    if n < 3:
+        return None
+    a = cx = cy = 0.0
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        cross = xj * yi - xi * yj
+        a += cross
+        cx += (xi + xj) * cross
+        cy += (yi + yj) * cross
+        j = i
+    if a == 0:
+        # Degenerate / collinear: fall back to the vertex average.
+        lon = sum(p[0] for p in ring) / n
+        lat = sum(p[1] for p in ring) / n
+        return (lat, lon)
+    a *= 0.5
+    cx /= (6 * a)  # lon
+    cy /= (6 * a)  # lat
+    return (cy, cx)
+
+
+def area_label_points(geojson_path=None) -> list[dict]:
+    """Return [{name, lat, lon}] — one representative interior point per named
+    area polygon in areas.geojson. Uses the largest ring's area-weighted centroid
+    for MultiPolygons. Returns [] on missing/empty/invalid geojson."""
+    if _areas is None:
+        return []
+    try:
+        path = str(geojson_path) if geojson_path is not None else str(_areas.GEOJSON_PATH)
+        feats = _areas._load(path)
+    except Exception:
+        return []
+    out = []
+    for name, gtype, coords in feats:
+        polys = [coords] if gtype == "Polygon" else list(coords)
+        best = None  # (abs_area, (lat, lon))
+        for poly in polys:
+            outer = poly[0] if poly else None
+            if not outer:
+                continue
+            c = _ring_centroid(outer)
+            if c is None:
+                continue
+            # rough planar area to pick the biggest part of a MultiPolygon
+            n = len(outer)
+            a2 = 0.0
+            j = n - 1
+            for i in range(n):
+                a2 += outer[j][0] * outer[i][1] - outer[i][0] * outer[j][1]
+                j = i
+            area = abs(a2)
+            if best is None or area > best[0]:
+                best = (area, c)
+        if best is not None:
+            out.append({"name": name, "lat": round(best[1][0], 7),
+                        "lon": round(best[1][1], 7)})
+    return out
+
 # --------------------------------------------------------------------------------------
 # Tunables
 # --------------------------------------------------------------------------------------
@@ -55,6 +127,9 @@ LENGTH_MAX_IN = 80.0
 SPIKE_JUMP_M = 2000.0         # a fix this far from the last good fix is a candidate teleport
 SPIKE_RETURN_LOOKAHEAD = 40   # ...and is a glitch if the track returns near the anchor this soon
 SEGMENT_GAP_MIN = 15.0        # a time gap longer than this splits the track into segments
+OUTING_PAUSE_MIN = 60.0       # REPLAY-1: a stationary/off-water pause this long splits a day's
+                              # track into separate outings (floor stays one outing per day)
+OUTING_MOVE_M = 120.0         # ...and the boat must have effectively not moved across the pause
 ORPHAN_MAX_FRAC = 0.30        # drop a catch-free segment only if it's under this fraction of pts
 HOME_TZ_OFFSET = -5.0         # default display zone = Central (CDT). Lake Oahe straddles CDT/MDT;
                               # we show one consistent clock. Override per-run with --tz-offset.
@@ -105,6 +180,64 @@ def emoji_for(species: str) -> str:
         if token in s:
             return emo
     return DEFAULT_EMOJI
+
+
+# REPLAY-2: target-species emphasis. The sidecar config lives next to this script.
+DEFAULT_TARGET_SPECIES = ["walleye"]
+CONFIG_PATH = Path(__file__).with_name("replay_config.json")
+
+
+def load_replay_config(path: Path = CONFIG_PATH) -> tuple[set[str], set[str]]:
+    """Load target_species (multiselect, default ['walleye']) + starred catch UUIDs.
+    Degrades gracefully: a missing/broken config defaults to walleye target, no stars."""
+    targets = {s.strip().lower() for s in DEFAULT_TARGET_SPECIES}
+    stars: set[str] = set()
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return targets, stars
+    ts = cfg.get("target_species")
+    if isinstance(ts, list):
+        cleaned = {str(s).strip().lower() for s in ts if str(s).strip()}
+        if cleaned:
+            targets = cleaned
+    st = cfg.get("stars")
+    if isinstance(st, list):
+        stars = {str(u).strip() for u in st if str(u).strip()}
+    return targets, stars
+
+
+def load_trip_notes(export_dir: Path) -> dict:
+    """DATA-2 (optional): load the post-trip review sidecar `trip_notes.json`.
+
+    Schema: { trip, review, days: { <weigh_session_id>: <note> } }. Looked up next to
+    the export and in its parent year folder (exports/<year>/trip_notes.json). Missing or
+    broken file -> {} (the replay just renders without review/sidecar day notes)."""
+    candidates = [export_dir / "trip_notes.json",
+                  export_dir.parent / "trip_notes.json"]
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            days = data.get("days")
+            return {
+                "review": str(data.get("review", "") or ""),
+                "days": {str(k): str(v) for k, v in days.items()} if isinstance(days, dict) else {},
+            }
+    return {}
+
+
+def is_target_species(species: str, targets: set[str]) -> bool:
+    """A catch is on-target if its species matches (exact or substring) any target term."""
+    s = (species or "").strip().lower()
+    if not s:
+        return False
+    for t in targets:
+        if t and (t == s or t in s or s in t):
+            return True
+    return False
 
 
 # --------------------------------------------------------------------------------------
@@ -450,16 +583,85 @@ def _detect_dwell(full: list[dict], min_seconds=120, radius_m=45.0):
         if dur >= min_seconds:
             seg = full[i:j]
             clusters.append({
-                "lat": round(sum(p["lat"] for p in seg) / len(seg), 6),
-                "lon": round(sum(p["lon"] for p in seg) / len(seg), 6),
+                "lat": sum(p["lat"] for p in seg) / len(seg),
+                "lon": sum(p["lon"] for p in seg) / len(seg),
                 "sec": int(dur),
             })
         i = max(j, i + 1)
-    return clusters
+    return _merge_dwell(clusters)
 
 
-def build_payload(data: Loaded, title: str) -> dict:
+def _merge_dwell(clusters: list[dict], merge_m=130.0):
+    """Raw dwell windows along a slow troll produce many near-identical centroids that
+    render as a stack of overlapping gold blooms. Greedily merge clusters whose centroids
+    fall within ~the bloom radius (merge_m) into one bloom: a time-weighted centroid sized
+    by the COMBINED dwell seconds. Repeats until no two blooms are within merge_m, so a
+    dense stack (~10-15 circles in one cove) collapses to a handful (1-3) of distinct spots."""
+    # seed each bloom with its weight (sec) so the centroid stays time-weighted on merge
+    blooms = [{"lat": c["lat"], "lon": c["lon"], "sec": c["sec"], "w": max(c["sec"], 1)}
+              for c in clusters]
+    changed = True
+    while changed and len(blooms) > 1:
+        changed = False
+        for a in range(len(blooms)):
+            if blooms[a] is None:
+                continue
+            for b in range(a + 1, len(blooms)):
+                if blooms[b] is None:
+                    continue
+                A, B = blooms[a], blooms[b]
+                if haversine_m(A["lat"], A["lon"], B["lat"], B["lon"]) <= merge_m:
+                    w = A["w"] + B["w"]
+                    A["lat"] = (A["lat"] * A["w"] + B["lat"] * B["w"]) / w
+                    A["lon"] = (A["lon"] * A["w"] + B["lon"] * B["w"]) / w
+                    A["sec"] += B["sec"]
+                    A["w"] = w
+                    blooms[b] = None
+                    changed = True
+        blooms = [x for x in blooms if x is not None]
+    return [{"lat": round(b["lat"], 6), "lon": round(b["lon"], 6), "sec": int(b["sec"])}
+            for b in blooms]
+
+
+def load_bundle(export_dir: Path) -> dict | None:
+    """FAST PATH (PIPE-1): if `just ingest` has derived a build/<trip>/replay_bundle.json
+    for this export, load it. The bundle is an OPTIMIZATION carrying pre-computed area
+    labels + the star list; raw CSVs stay authoritative, so a missing/broken bundle is a
+    no-op (we just render from CSV as before)."""
+    try:
+        repo = Path(__file__).resolve().parent
+        # match by the export's source path (what ingest.py recorded)
+        for bundle_path in (repo / "build").glob("*/replay_bundle.json"):
+            try:
+                b = json.loads(bundle_path.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                continue
+            if Path(b.get("source", "")).resolve() == export_dir.resolve():
+                return b
+    except OSError:
+        pass
+    return None
+
+
+def build_payload(data: Loaded, title: str, bundle: dict | None = None,
+                  target_species: set[str] | None = None,
+                  stars: set[str] | None = None,
+                  trip_notes: dict | None = None) -> dict:
     track, catches, weights = data.track, data.catches, data.weights
+    trip_notes = trip_notes or {}
+
+    # REPLAY-2: target species + star overrides (config defaults to walleye target).
+    targets = target_species if target_species is not None else {
+        s.strip().lower() for s in DEFAULT_TARGET_SPECIES}
+    star_uuids = set(stars) if stars else set()
+
+    # FAST PATH: index pre-computed per-catch area/star by UUID from the ingest bundle.
+    bundle_by_uuid = {}
+    if bundle:
+        for c in bundle.get("catches", []):
+            u = (c.get("uuid") or "").strip()
+            if u:
+                bundle_by_uuid[u] = c
 
     # group key: prefer weigh_session_id, else the calendar date of the timestamp
     def group_of(df: pd.DataFrame) -> pd.Series:
@@ -553,8 +755,22 @@ def build_payload(data: Loaded, title: str) -> dict:
                     "notes": (r.get("notes") or "").strip(),
                     "id": (r.get("id") or "").strip(),
                     "big": False,
+                    "isTarget": is_target_species(species, targets),
+                    "starred": cpt_uuid in star_uuids if (cpt_uuid := (r.get("uuid") or "").strip()) else False,
                 }
                 cpt.update(_catch_conditions(full, ts))   # boat speed/heading/trend at the hit
+                bc = bundle_by_uuid.get(cpt["uuid"])
+                if bc:                                     # fast-path: area label + star override
+                    if bc.get("area"):
+                        cpt["area"] = bc["area"]
+                    if bc.get("starred"):                  # bundle star list augments config stars
+                        cpt["starred"] = True
+                # WEB-3: if the bundle didn't label this catch, fall back to a live
+                # point-in-polygon lookup against areas.geojson (PIPE-1 helper).
+                if not cpt.get("area") and _areas is not None:
+                    area = _areas.assign_area(lat, lon)
+                    if area:
+                        cpt["area"] = area
                 cpts.append(cpt)
 
         # day-level bounds + label
@@ -568,25 +784,39 @@ def build_payload(data: Loaded, title: str) -> dict:
         if first_t is not None:
             label = datetime.fromtimestamp(first_t, tz=timezone.utc).strftime("%a %b %-d")
 
-        # bag weight for this day, if present
+        # bag weight + day note for this day, if present
         bag = None
+        day_note = ""
         if not weights.empty:
             wsid_col = weights.get("weigh_session_id")
             if wsid_col is not None:
                 wrow = weights[wsid_col.astype(str).str.strip() == gid]
                 if not wrow.empty:
                     bag = _num(wrow.iloc[0].get("daily_wt_lbs"))
+                    day_note = (wrow.iloc[0].get("notes") or "").strip()
+        # DATA-2 (optional): a trip_notes.json sidecar may carry richer per-day notes
+        # keyed by weigh_session_id; it wins over the app's csv note when present.
+        side = trip_notes.get("days", {}).get(gid) if trip_notes else None
+        if side and str(side).strip():
+            day_note = str(side).strip()
+
+        # REPLAY-1: split this day into on-water OUTINGS at long stationary/off-water
+        # pauses (no track movement for > OUTING_PAUSE_MIN). Floor = one outing per day.
+        day_outings = _detect_outings(full, cpts, gid, label, color, bag, day_note)
 
         days.append({
             "id": gid, "label": label, "color": color,
             "track": tpts, "catches": cpts, "bounds": bounds, "bag": bag,
+            "note": day_note, "outings": day_outings,
             "dwell": dwell,
             "stats": _day_stats(tpts, cpts),
         })
 
-    # crown the single biggest measured fish of the whole trip (mutates the shared cpt dict)
+    # crown the single biggest measured fish of the whole trip (mutates the shared cpt dict).
+    # REPLAY-2: only target species (or starred trophies) are eligible for the crown.
     all_catches = [c for d in days for c in d["catches"]]
-    measured = [c for c in all_catches if c["len"] is not None]
+    measured = [c for c in all_catches
+                if c["len"] is not None and (c.get("isTarget") or c.get("starred"))]
     # crown the longest fish; break ties in favour of a KEPT fish (the trophy you bagged,
     # not a released rough fish of the same length)
     big = max(measured, key=lambda c: (c["len"], 1 if c["kept"] else 0)) if measured else None
@@ -596,13 +826,36 @@ def build_payload(data: Loaded, title: str) -> dict:
     bags = [d["bag"] for d in days if d["bag"] is not None]
     stats = _trip_stats(days, total_distance, total_track_seconds, big,
                         round(sum(bags), 1) if bags else None)
+
+    # REPLAY-1: flatten every day's outings into one time-ordered list the front-end
+    # walks: at each outing's end it shows a small plaque + skips the dead gap to the
+    # next outing's start. The final outing's plaque is folded into the master end-card.
+    outings = [o for d in days for o in d["outings"] if o.get("end") is not None]
+    outings.sort(key=lambda o: o["end"])
+    for oi, o in enumerate(outings):
+        # link each outing to the start of the NEXT outing (cross-day) so overnight/dead
+        # gaps between outings get skipped, not just within-day pauses.
+        o["next"] = outings[oi + 1]["start"] if oi + 1 < len(outings) else None
+
+    # per-day breakdown for the master weekend plaque
+    day_breakdown = [{
+        "label": d["label"], "color": d["color"],
+        "catches": d["stats"]["catches"], "kept": d["stats"]["kept"],
+        "biggest": d["stats"]["biggest"], "bag": d["bag"],
+    } for d in days]
+
     payload = {
         "title": title,
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "days": days,
+        "outings": outings,
+        "areas": area_label_points(),
+        "dayBreakdown": day_breakdown,
+        "review": str(trip_notes.get("review", "") or "").strip(),
         "bounds": _bounds(all_lat, all_lon),
         "fishermen": [{"name": f, "color": fisher_color[f]} for f in fishermen],
         "speed": {"troll": TROLL_SPEED_MPS, "run": RUN_SPEED_MPS},
+        "targetSpecies": sorted(targets),
         "gapSkip": GAP_SKIP_SECONDS,
         "caption": _caption(stats, big, days),
         "tz": {
@@ -677,6 +930,74 @@ def _day_stats(tpts, cpts):
         "biggest": max(lengths) if lengths else None,
         "points": len(tpts),
     }
+
+
+def _outing_recap(label, color, segment_catches, bag, note, suffix=""):
+    """Build the small plaque payload for one outing (catches/biggest/note/bag)."""
+    lengths = [c["len"] for c in segment_catches if c["len"] is not None]
+    biggest = None
+    if lengths:
+        bc = max((c for c in segment_catches if c["len"] is not None),
+                 key=lambda c: c["len"])
+        biggest = {"len": bc["len"], "species": bc["species"], "fisher": bc["fisher"]}
+    return {
+        "label": label + suffix,
+        "color": color,
+        "catches": len(segment_catches),
+        "kept": sum(1 for c in segment_catches if c["kept"]),
+        "biggest": biggest,
+        "bag": bag,
+        "note": note,
+    }
+
+
+def _detect_outings(full, cpts, gid, label, color, bag, note):
+    """REPLAY-1: split one day's full (undecimated) track into on-water outings.
+
+    A new outing starts where the boat sits effectively still (moves < OUTING_MOVE_M)
+    across a time gap longer than OUTING_PAUSE_MIN — the dead lunch-ashore / off-water
+    pause we want to SKIP rather than scrub. With no such pause the day collapses to a
+    single outing (the one-outing-per-day floor). Each outing carries its end time (when
+    the plaque animates), the next outing's start time (so the dead gap can be skipped),
+    and a small recap (catches/biggest/bag/note). Catches are bucketed by time."""
+    if not full:
+        # no track — the whole day is one outing covering its catches
+        end_t = max((c["t"] for c in cpts), default=None)
+        start_t = min((c["t"] for c in cpts), default=None)
+        rec = _outing_recap(label, color, cpts, bag, note)
+        return [{"start": start_t, "end": end_t, "next": None, **rec}]
+
+    # find split indices: a long pause where the boat barely moved
+    splits = []
+    for i in range(1, len(full)):
+        dt = full[i]["t"] - full[i - 1]["t"]
+        if dt > OUTING_PAUSE_MIN * 60:
+            moved = haversine_m(full[i - 1]["lat"], full[i - 1]["lon"],
+                                full[i]["lat"], full[i]["lon"])
+            if moved < OUTING_MOVE_M:
+                splits.append(i)        # outing boundary BEFORE point i
+
+    bounds = [0] + splits + [len(full)]
+    segs = [(bounds[k], bounds[k + 1]) for k in range(len(bounds) - 1)]
+
+    outings = []
+    n_seg = len(segs)
+    for si, (a, b) in enumerate(segs):
+        seg = full[a:b]
+        s_start, s_end = seg[0]["t"], seg[-1]["t"]
+        # catches landed within this outing's time window (inclusive padding)
+        seg_catches = [c for c in cpts if c["t"] is not None
+                       and s_start - 60 <= c["t"] <= s_end + 60]
+        suffix = f" · outing {si + 1}" if n_seg > 1 else ""
+        # bag + note belong to the day; attach them to the LAST outing of the day so the
+        # day plaque (weigh-in) reads right, earlier same-day outings just recap catches.
+        is_last = si == n_seg - 1
+        rec = _outing_recap(label, color, seg_catches,
+                            bag if is_last else None,
+                            note if is_last else "", suffix)
+        nxt = segs[si + 1] and full[segs[si + 1][0]]["t"] if si + 1 < n_seg else None
+        outings.append({"start": s_start, "end": s_end, "next": nxt, **rec})
+    return outings
 
 
 def _trip_stats(days, distance_m, track_seconds, big, bag_total):
@@ -766,6 +1087,7 @@ def main(argv=None):
     if not root.exists():
         sys.exit(f"path not found: {root}")
 
+    bundle = None
     if args.all:
         dirs = find_export_dirs(root)
         if not dirs:
@@ -779,9 +1101,14 @@ def main(argv=None):
             sys.exit(f"no usable data in {root} (need catches.csv and/or track.csv)")
         default_title = root.name
         default_out = root / f"replay_{_slug(root.name)}.html"
+        bundle = load_bundle(root)   # fast path if `just ingest` ran; harmless if absent
 
     title = args.title or default_title
-    payload = build_payload(loaded, title)
+    targets, stars = load_replay_config()
+    trip_notes = load_trip_notes(root)
+    payload = build_payload(loaded, title, bundle=bundle,
+                            target_species=targets, stars=stars,
+                            trip_notes=trip_notes)
 
     if not payload["days"]:
         sys.exit("nothing to plot after quality filtering — check the export files.")

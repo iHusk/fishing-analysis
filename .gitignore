@@ -26,6 +26,9 @@ xcuserdata/
 # Scratch test exports (may contain personal GPS)
 test_export/
 
+# Derived bundles (INFRA-1). Do NOT ignore areas/ or trip_notes.json.
+build/
+
 # Node (puppeteer-core for tests/bench.js)
 node_modules/
 package-lock.json

@@ -82,6 +82,11 @@
   .legend .heatbar{height:8px;border-radius:4px;margin:4px 0 2px;
     background:linear-gradient(90deg,#1f6f8b,#5cffb1,#ffd24d,#ff4d4d)}
   .legend .heatcap{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+  .legend .heatfilter{font-size:10px;color:var(--muted);margin:6px 0 4px;line-height:1.3}
+  .legend .heattoggle{cursor:pointer;font-size:10px;font-weight:600;padding:3px 8px;
+    border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;
+    color:var(--fg);width:100%}
+  .legend .heattoggle.on{background:#ffd24d;color:#1a1a1a;border-color:#ffd24d}
   #heatLegend{display:none}
   .chip{cursor:pointer;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;
     border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--text);
@@ -133,6 +138,12 @@
       inset 0 1px 2px rgba(255,255,255,.25)}
   .catch-pin .badge.released{border-style:dashed;background:rgba(8,14,22,.55)}
   .catch-pin .emoji{transform:rotate(-45deg);font-size:15px;line-height:1}
+  /* REPLAY-2: off-target catches (not target species, not starred) read as quieter glyphs —
+     smaller + dimmer so the walleye-first story stays legible, but still visible/clickable. */
+  .catch-pin.dim{opacity:.5}
+  .catch-pin.dim .badge{width:20px;height:20px;border-width:1.5px;
+    box-shadow:0 2px 6px rgba(0,0,0,.5),0 0 6px var(--c,#fff)}
+  .catch-pin.dim .emoji{font-size:10px}
   .catch-pin.big .badge{width:40px;height:40px;border-width:3px;border-color:var(--gold);
     box-shadow:0 4px 16px rgba(0,0,0,.7),0 0 26px var(--gold),0 0 0 3px var(--d,transparent)}
   .catch-pin.big .emoji{font-size:19px}
@@ -188,6 +199,11 @@
     padding:8px 16px;font-size:13px;color:var(--text);opacity:0;transition:opacity .3s;
     pointer-events:none;max-width:80vw;text-align:center}
   .toast.show{opacity:1}
+  /* owner-drawn lake area names, shown with the 'labels' layer */
+  .arealabel{pointer-events:none;white-space:nowrap;text-align:center;
+    font-size:12px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.94);
+    text-transform:uppercase;
+    text-shadow:0 0 3px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.85),0 1px 2px rgba(0,0,0,.9)}
   .toast.big{border-color:var(--gold);box-shadow:0 0 24px rgba(255,210,77,.4);font-weight:700}
 
   /* ---- title card / end card / wrapped ---- */
@@ -226,6 +242,30 @@
   .ecbtn.primary{background:linear-gradient(145deg,var(--gold),#ff9f1c);color:#1a1300}
   .ecbtn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--stroke);color:var(--text)}
 
+  /* ---- per-outing plaque (REPLAY-1): small card that animates in at a day's end ---- */
+  #plaqueOverlay{background:radial-gradient(125% 125% at 50% 50%,transparent 46%,rgba(3,7,14,.55) 100%);
+    backdrop-filter:none;-webkit-backdrop-filter:none}
+  #plaqueOverlay.show{pointer-events:none}
+  .plaque{width:min(360px,82vw);text-align:center;padding:20px 22px 18px;
+    transform:translateY(14px) scale(.96);opacity:0;
+    transition:transform .5s cubic-bezier(.2,.7,.2,1),opacity .5s ease}
+  #plaqueOverlay.show .plaque{transform:translateY(0) scale(1);opacity:1}
+  .plaque .pday{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+  .plaque h3{margin:5px 0 12px;font-size:22px;font-weight:800}
+  .plaque .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 12px}
+  .plaque .pg .v{font-size:20px;font-weight:800}
+  .plaque .pg .v.gold{color:var(--gold)}
+  .plaque .pg .k{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-top:2px}
+  .plaque .pbig{color:var(--gold);font-size:13px;font-weight:600;margin:2px 0 8px}
+  .plaque .pnote{color:var(--text);font-size:13px;line-height:1.4;opacity:.9;
+    border-top:1px solid var(--stroke);padding-top:9px;margin-top:4px}
+  .endcard .breakdown{display:flex;flex-direction:column;gap:6px;margin:2px 0 16px;text-align:left}
+  .endcard .brow{display:flex;align-items:center;gap:8px;font-size:13px}
+  .endcard .brow .bdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .endcard .brow .bday{flex:1;color:var(--text)}
+  .endcard .brow .bmeta{color:var(--muted);font-variant-numeric:tabular-nums}
+  .endcard .review{color:var(--text);font-size:13px;line-height:1.45;opacity:.92;
+    border-top:1px solid var(--stroke);padding-top:12px;margin:0 0 16px;text-align:left}
   .wrapwrap{text-align:center}
   .wrapwrap .wclose{margin-top:14px}
   #wrapImg{max-height:78vh;max-width:90vw;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -292,10 +332,12 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay" id="titleOverlay"><div class="titlecard" id="titleCard"></div></div>
+<div class="overlay" id="plaqueOverlay"><div class="panel plaque" id="plaqueCard"></div></div>
 <div class="overlay" id="endOverlay"><div class="panel endcard" id="endCard"></div></div>
 <div class="overlay" id="wrapOverlay"><div class="wrapwrap">
   <img id="wrapImg" alt="Trip Wrapped poster"/>
   <div class="wclose"><button class="ecbtn ghost" id="wrapClose">Close</button>
+    <button class="ecbtn ghost" id="wrapMap">🛰 Map: Off</button>
     <button class="ecbtn primary" id="wrapSave">⬇ Save PNG</button></div>
 </div></div>
 
@@ -334,6 +376,10 @@ const DATA = /*__PAYLOAD__*/null;
     'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
     {maxZoom:20,subdomains:'abcd',opacity:.9});
   sat.addTo(map);
+  // owner-drawn area names — text labels shown alongside the basemap 'labels' tile layer.
+  const areaLabels=L.layerGroup((DATA.areas||[]).map(a=>
+    L.marker([a.lat,a.lon],{interactive:false,keyboard:false,zIndexOffset:-100,
+      icon:L.divIcon({className:'arealabel',html:esc(a.name),iconSize:null})})));
   let baseIsSat=true, labelsOn=false;
   $('#shimmer').classList.toggle('on', baseIsSat && !reduced);
   // cache per-frame clock-UI nodes (static; never recreated) + the tile pane (Leaflet makes it once)
@@ -375,7 +421,34 @@ const DATA = /*__PAYLOAD__*/null;
     return st;
   });
 
+  // REPLAY-4: per-day cross-day opacity. Each path layer remembers its *base* opacity so we
+  // can multiply it by a fade factor (1 = full strength, AMBIENT = faded earlier day). Catch
+  // pins + the boat are divIcons, so they fade via their element's CSS opacity.
+  function pathLayers(st){
+    const ls=[st.glow,st.tail];
+    for(const b in st.bands) ls.push(st.bands[b].core);
+    return ls;
+  }
+  for(const st of days){
+    for(const ly of pathLayers(st)){ if(ly.options) ly._baseOp=ly.options.opacity; }
+    st.fade=1;
+  }
+  const AMBIENT=0.22;        // earlier days dim to this while a later day plays
+  const REVIEW_FADE=0.7;     // weekend-review: all days together at a balanced opacity
+  function setDayFade(st, factor){
+    st.fade=factor;
+    for(const ly of pathLayers(st)){
+      const base=(ly._baseOp!=null?ly._baseOp:1);
+      if(ly.setStyle) ly.setStyle({opacity:base*factor});
+    }
+    // catch pins + boat: scale their element opacity (divIcons have no setStyle)
+    for(const k in st.markers){ const el=st.markers[k].getElement&&st.markers[k].getElement();
+      if(el&&el.style) el.style.opacity=factor; }
+    const bel=st.boat.getElement&&st.boat.getElement(); if(bel&&bel.style) bel.style.opacity=factor;
+  }
+
   function addDayLayers(st){
+    st.fade=1;            // re-added layers start at full strength; seek() re-applies the fade
     st.glow.addTo(map);   // glow underneath the band cores
     for(const b of ['unk','run','cruise','troll']){ st.bands[b].core.addTo(map); }
     st.tail.addTo(map); st.catchLayer.addTo(map);
@@ -411,7 +484,15 @@ const DATA = /*__PAYLOAD__*/null;
   let bigFlashed=false, toastTimer=null;
   // cinematic state
   let follow=!reduced, beatUntil=0, beatRequest=null, started=false, ended=false, establishing=false;
+  let weekendReview=false;   // REPLAY-4: the master-plaque "all days balanced" state
   const FOLLOW_ZOOM=14;   // fixed follow framing — never auto-zooms during playback (you can zoom manually)
+
+  // REPLAY-1: per-outing plaques. We walk DATA.outings in time order; when the clock
+  // reaches an outing's `end` (and it isn't the last one — the last folds into the
+  // end-card), we animate its plaque, hold, then skip the dead gap to `next`.
+  const OUTINGS=(DATA.outings||[]).filter(o=>o.next!=null && o.end!=null);
+  const PLAQUE_HOLD_MS=reduced?900:3000;   // how long the day plaque lingers before the skip
+  let outingIdx=0, plaqueUntil=0, plaqueSkipTo=null;
 
   // ---------- reveal engine ----------
   function resetDayReveal(st){
@@ -436,7 +517,11 @@ const DATA = /*__PAYLOAD__*/null;
   function catchKey(c){ return c.uuid || c.id || (c.t+'|'+c.lat+'|'+c.lon); }
   function showCatch(st,c,animate){
     const key=catchKey(c); if(st.shown.has(key)) return; st.shown.add(key);
-    const cls='catch-pin'+(animate?' pop':'')+(c.big?' big':'');
+    // REPLAY-2: emphasize target species + starred trophies + the crowned big fish; everything
+    // else (catfish/drum/perch) renders as a smaller/dimmer glyph. Undefined isTarget (old
+    // payloads) is treated as emphasized for backward compatibility.
+    const emphasized = c.big || c.starred || c.isTarget!==false;
+    const cls='catch-pin'+(animate?' pop':'')+(c.big?' big':'')+(emphasized?'':' dim');
     const dvar = multi ? `--d:${st.def.color};` : '';
     const m=L.marker([c.lat,c.lon],{zIndexOffset:c.big?900:800, icon:L.divIcon({className:'',
       iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-28],
@@ -445,6 +530,7 @@ const DATA = /*__PAYLOAD__*/null;
         `<div class="badge${c.kept?'':' released'}"><span class="emoji">${c.emoji}</span></div></div>`})});
     m.bindPopup(popupHTML(st.def,c),{closeButton:true,maxWidth:280});
     m.addTo(st.catchLayer); st.markers[key]=m;
+    if(st.fade!==1){ const el=m.getElement&&m.getElement(); if(el&&el.style) el.style.opacity=st.fade; }
     if(animate){
       sonarPing(st, c.lat, c.lon);
       if(playing) beatRequest={lat:c.lat, lon:c.lon, big:!!c.big};   // cinematic slow-mo beat
@@ -456,8 +542,19 @@ const DATA = /*__PAYLOAD__*/null;
     }
   }
 
+  function resetOutings(toClock){
+    // re-point the outing walker so plaques fire correctly after a scrub/replay; clear any
+    // in-flight plaque hold. outingIdx = first outing whose end is still ahead of the clock.
+    plaqueUntil=0; plaqueSkipTo=null; hideOverlay('#plaqueOverlay');
+    outingIdx=0;
+    while(outingIdx<OUTINGS.length && OUTINGS[outingIdx].end<=toClock) outingIdx++;
+  }
   function seek(newClock,animate){
-    if(newClock<lastClock){ days.forEach(st=>{ if(st.visible) resetDayReveal(st); }); lastClock=tMin; }
+    if(newClock<lastClock){ days.forEach(st=>{ if(st.visible) resetDayReveal(st); }); lastClock=tMin;
+      resetOutings(newClock); }
+    // a manual jump (scrub / fly-to / arrow keys) re-points the plaque walker to wherever
+    // the clock landed so plaques don't re-fire for already-passed outings.
+    else if(!animate) resetOutings(newClock);
     for(const st of days){
       if(!st.visible) continue;
       if(st.revIdx===undefined) resetDayReveal(st);
@@ -493,8 +590,24 @@ const DATA = /*__PAYLOAD__*/null;
     }
     lastClock=newClock; clock=newClock;
     const ld=leadDay();          // compute once, share with follow + clock UI
+    applyCrossDayFade(ld);
     applyFollow(ld);
     updateClockUI(ld);
+  }
+
+  // REPLAY-4: during playback the lead (currently-playing) day is full-opacity; EARLIER days
+  // fade to AMBIENT so they don't compete. weekend-review overrides everything to a balanced
+  // REVIEW_FADE for the all-days finale look.
+  function applyCrossDayFade(ld){
+    if(!multi) return;
+    for(const st of days){
+      if(!st.visible) continue;
+      let f;
+      if(weekendReview) f=REVIEW_FADE;
+      else if(ld && st!==ld && st.range && ld.range && st.range[1]<=ld.range[0]) f=AMBIENT;
+      else f=1;
+      if(st.fade!==f) setDayFade(st,f);
+    }
   }
 
   // ---------- follow camera ----------
@@ -527,12 +640,31 @@ const DATA = /*__PAYLOAD__*/null;
     _vt=ts;
     if(lastFrame==null) lastFrame=ts;
     let dt=(ts-lastFrame)/1000; lastFrame=ts;
+
+    // REPLAY-1: holding on an outing plaque — freeze the boat, then SKIP the dead gap.
+    if(plaqueUntil>0){
+      if(ts<plaqueUntil){ if(playing) requestAnimationFrame(frame); return; }
+      plaqueUntil=0; hideOverlay('#plaqueOverlay');
+      if(plaqueSkipTo!=null && plaqueSkipTo>clock){ clock=plaqueSkipTo; flashGap(); }
+      plaqueSkipTo=null; outingIdx++;
+      lastFrame=ts; if(playing) requestAnimationFrame(frame); return;
+    }
+
     let eff=speed;
     if(ts<beatUntil) eff=speed*0.06;            // slow-mo during a catch beat
     let nc=clock+dt*eff;
     const nextEv=eventTimes.find(t=>t>clock+0.001);
     if(ts>=beatUntil && nextEv!=null && nextEv-clock>DATA.gapSkip && nc<nextEv){ nc=nextEv; flashGap(); }
     if(nc>=tMax){ nc=tMax; }
+
+    // REPLAY-1: did we just reach the end of the current outing? clamp to it, reveal its
+    // catches, then raise the day plaque (the skip happens once the hold expires, above).
+    const cur=OUTINGS[outingIdx];
+    if(cur && ts>=beatUntil && clock<cur.end && nc>=cur.end){
+      nc=cur.end; seek(nc,true);
+      showPlaque(cur); plaqueUntil=ts+PLAQUE_HOLD_MS; plaqueSkipTo=cur.next;
+      if(playing) requestAnimationFrame(frame); return;
+    }
     seek(nc,true);
     // a catch may have requested a cinematic beat during seek() — slow-mo only (no zoom punch;
     // follow already keeps the catch near center, and a zoom mid-playback caused tile/path jank)
@@ -543,7 +675,8 @@ const DATA = /*__PAYLOAD__*/null;
     if(nc>=tMax && ts>=beatUntil){ playing=false; setPlayUI(); showEndcard(); }
     if(playing) requestAnimationFrame(frame);
   }
-  function play(){ hideOverlay('#endOverlay'); ended=false;
+  function play(){ hideOverlay('#endOverlay'); hideOverlay('#plaqueOverlay'); ended=false;
+    if(weekendReview){ weekendReview=false; days.forEach(st=>{ if(st.visible) setDayFade(st,1); }); }
     if(clock>=tMax){ bigFlashed=false; seek(tMin,false); } playing=true; setPlayUI();
     lastFrame=null; requestAnimationFrame(frame); }
   function pause(){ playing=false; setPlayUI(); }
@@ -589,7 +722,9 @@ const DATA = /*__PAYLOAD__*/null;
     lh+=`<div class="row"><span class="ln" style="background:${BANDCOL[b]}"></span>${BANDLABEL[b]}</div>`;
   if(multi) lh+='<p class="lg-title" style="margin-top:10px">Days (tap to toggle)</p><div class="days" id="dayChips"></div>';
   lh+='<div id="heatLegend"><p class="lg-title" style="margin-top:10px">Catch density</p>'+
-      '<div class="heatbar"></div><div class="heatcap"><span>fewer</span><span>more fish</span></div></div>';
+      '<div class="heatbar"></div><div class="heatcap"><span>fewer</span><span>more fish</span></div>'+
+      '<div class="heatfilter" id="heatFilter"></div>'+
+      '<button class="heattoggle" id="btnHeatAll">Show all species</button></div>';
   $('#legend').innerHTML=lh;
 
   if(multi){
@@ -738,21 +873,37 @@ const DATA = /*__PAYLOAD__*/null;
     $('#shimmer').classList.toggle('on', baseIsSat && !reduced);
     if(labelsOn) labels.bringToFront(); };
   $('#btnLabels').onclick=()=>{ labelsOn=!labelsOn; $('#btnLabels').classList.toggle('on',labelsOn);
-    if(labelsOn){ labels.addTo(map); labels.bringToFront(); } else map.removeLayer(labels); };
+    if(labelsOn){ labels.addTo(map); labels.bringToFront(); areaLabels.addTo(map); }
+    else { map.removeLayer(labels); map.removeLayer(areaLabels); } };
 
-  // heatmap
-  let heat=null;
+  // heatmap — REPLAY-3: weight only target (+ starred) catches by default; a toggle shows all.
+  // Reuse the REPLAY-2 isTarget/starred flags (undefined isTarget => emphasized, for old payloads).
+  let heat=null, heatAll=false;
+  function heatOnTarget(c){ return c.big || c.starred || c.isTarget!==false; }
   function heatPoints(){ const pts=[]; for(const st of days){ if(!st.visible) continue;
-    for(const c of st.def.catches) pts.push([c.lat,c.lon,0.55+(c.len?Math.min(c.len/40,1):0.3)]); } return pts; }
+    for(const c of st.def.catches){ if(!heatAll && !heatOnTarget(c)) continue;
+      pts.push([c.lat,c.lon,0.55+(c.len?Math.min(c.len/40,1):0.3)]); } } return pts; }
   function refreshHeat(){ if(heat){ map.removeLayer(heat); heat=null; }
     const pts=heatPoints(); if(!pts.length) return;
     heat=L.heatLayer(pts,{radius:34,blur:24,maxZoom:14,minOpacity:.45,
       gradient:{0.2:'#1f6f8b',0.45:'#5cffb1',0.7:'#ffd24d',1:'#ff4d4d'}}).addTo(map); }
+  function heatFilterText(){
+    const t=(DATA.targetSpecies||[]).map(esc).join(', ');
+    return heatAll ? 'All species' : (t ? `Target only: ${t}` : 'Target species only');
+  }
+  function syncHeatLegend(){ const el=$('#heatFilter'); if(el) el.textContent=heatFilterText();
+    const b=$('#btnHeatAll'); if(b){ b.classList.toggle('on',heatAll);
+      b.textContent=heatAll?'Show target only':'Show all species'; } }
   $('#btnHeat').onclick=()=>{
     if(heat){ map.removeLayer(heat); heat=null; $('#btnHeat').classList.remove('on');
       $('#heatLegend').style.display='none'; return; }
-    if(!heatPoints().length){ flash('No catches with GPS to map'); return; }
-    refreshHeat(); $('#btnHeat').classList.add('on'); $('#heatLegend').style.display='block';
+    if(!days.some(st=>st.visible && st.def.catches.length)){ flash('No catches with GPS to map'); return; }
+    syncHeatLegend(); refreshHeat(); $('#btnHeat').classList.add('on'); $('#heatLegend').style.display='block';
+    if(!heatPoints().length) flash('No target catches — toggle “All species”');
+  };
+  $('#btnHeatAll').onclick=()=>{
+    heatAll=!heatAll; syncHeatLegend();
+    if(heat){ refreshHeat(); if(!heatPoints().length) flash(heatAll?'No catches to map':'No target catches here'); }
   };
 
   // dwell "hot spots" — where the boat actually worked the water
@@ -762,9 +913,11 @@ const DATA = /*__PAYLOAD__*/null;
     const d=st.def.dwell||[]; if(!d.length){ st.dwellLayer=null; return; }
     const g=L.layerGroup();
     for(const s of d){
-      const mins=s.sec/60; const r=Math.min(34,8+mins*3);
-      L.circleMarker([s.lat,s.lon],{radius:r,color:'#ffd24d',weight:1,opacity:.5,
-        fillColor:'#ffd24d',fillOpacity:.12,interactive:true})
+      // merged blooms carry combined dwell time → size sublinearly so a long-worked
+      // hot spot reads bigger without ballooning; keep the soft gold bloom aesthetic.
+      const mins=s.sec/60; const r=Math.min(40,11+Math.sqrt(mins)*5);
+      L.circleMarker([s.lat,s.lon],{radius:r,color:'#ffd24d',weight:1.25,opacity:.55,
+        fillColor:'#ffd24d',fillOpacity:.14,interactive:true})
         .bindTooltip(`worked ${mins.toFixed(0)} min here`,{direction:'top'}).addTo(g);
     }
     g.addTo(map); st.dwellLayer=g;
@@ -811,7 +964,10 @@ const DATA = /*__PAYLOAD__*/null;
     const lures=[c.lure1,c.lure2].filter(Boolean).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
     if(lures) add('Lure', lures);
     add('Bait', c.bait?esc(c.bait):null);
-    add('Spot', c.loc?esc(c.loc):null);
+    // WEB-3: named lake area (point-in-polygon) when known; else fall back to the
+    // free-text spot / location name, else the raw coordinates.
+    add('Area', c.area?esc(c.area):(c.loc?esc(c.loc):`${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}`));
+    if(c.area) add('Spot', c.loc?esc(c.loc):null);
     if(c.notes) add('Notes', esc(c.notes));
     if(!c.kept) rows.push(`<tr><td class="k">Status</td><td class="rel">released ↩︎</td></tr>`);
     // conditions-at-the-catch
@@ -841,42 +997,89 @@ const DATA = /*__PAYLOAD__*/null;
       (DATA.caption?`<div class="cap">${esc(DATA.caption)}</div>`:'');
     showOverlay('#titleOverlay');
   }
+
+  // REPLAY-1: small day/outing plaque (catches, bag, biggest, a line of the day note).
+  function showPlaque(o){
+    const pg=(v,k,gold)=>`<div class="pg"><div class="v${gold?' gold':''}">${v}</div><div class="k">${esc(k)}</div></div>`;
+    let big='';
+    if(o.biggest){ big=`<div class="pbig">🏆 ${o.biggest.len?o.biggest.len+'″ ':''}`+
+      `${esc(cap(o.biggest.species))}${o.biggest.fisher?' — '+esc(o.biggest.fisher):''}</div>`; }
+    const note=(o.note||'').trim();
+    $('#plaqueCard').innerHTML=
+      `<div class="pday" style="color:${o.color}">${esc(o.label)}</div>`+
+      `<h3>That's the outing</h3>`+
+      `<div class="pgrid">`+
+        pg(o.catches,'Catches')+
+        pg(o.biggest&&o.biggest.len?o.biggest.len+'″':'—','Biggest',true)+
+        pg(o.bag!=null?o.bag+' lb':o.kept,o.bag!=null?'Bag':'Kept',o.bag!=null)+
+      `</div>`+big+
+      (note?`<div class="pnote">${esc(note)}</div>`:'');
+    showOverlay('#plaqueOverlay');
+  }
   function showEndcard(){
     if(ended) return; ended=true;
     follow=false; $('#btnFollow').classList.remove('on');
+    // REPLAY-4: the master weekend plaque enters the WEEKEND-REVIEW state — every day shown
+    // together at a balanced opacity (per-day color legend already lives in the legend/plaque).
+    if(multi){ weekendReview=true; days.forEach(st=>{ if(st.visible) setDayFade(st,REVIEW_FADE); }); }
     // pull back to the whole day's track behind the recap
     if(!reduced && DATA.bounds){
       try{ map.flyToBounds(L.latLngBounds(DATA.bounds),{padding:[70,70],maxZoom:15,duration:1.1}); }
       catch(e){ fitAll(); }
     } else fitAll();
     const g=(v,k,gold)=>`<div class="g"><div class="v${gold?' gold':''}">${v}</div><div class="k">${k}</div></div>`;
+    // REPLAY-1: master weekend plaque — weekend bag, per-day breakdown, trip-review note.
+    const bd=(DATA.dayBreakdown||[]);
+    let breakdown='';
+    if(multi && bd.length){
+      breakdown='<div class="breakdown">'+bd.map(d=>{
+        const bits=[`${d.catches} fish`];
+        if(d.bag!=null) bits.push(`${d.bag} lb`);
+        else if(d.kept) bits.push(`${d.kept} kept`);
+        if(d.biggest) bits.push(`${d.biggest}″`);
+        return `<div class="brow"><span class="bdot" style="background:${d.color}"></span>`+
+          `<span class="bday">${esc(d.label)}</span>`+
+          `<span class="bmeta">${esc(bits.join(' · '))}</span></div>`;
+      }).join('')+'</div>';
+    }
+    const review=(DATA.review||'').trim();
     $('#endCard').innerHTML=
       `<button class="ecclose" id="ecClose" title="Close (explore the map)">✕</button>`+
-      `<div class="kik">That's a wrap</div><h2>${esc(DATA.title)}</h2>`+
+      `<div class="kik">${multi?'Weekend recap':"That's a wrap"}</div><h2>${esc(DATA.title)}</h2>`+
       (DATA.caption?`<div class="cap">${esc(DATA.caption)}</div>`:'')+
       `<div class="grid">`+
         g(S.catches,'Catches')+g(S.biggest?S.biggest+'″':'—','Biggest',true)+
-        g(S.bagTotal!=null?S.bagTotal+' lb':S.kept,S.bagTotal!=null?'Bag':'Kept',S.bagTotal!=null)+
+        g(S.bagTotal!=null?S.bagTotal+' lb':S.kept,S.bagTotal!=null?(multi?'Weekend bag':'Bag'):'Kept',S.bagTotal!=null)+
         g(S.miles,'Miles')+g(S.hours,'Hours')+g(esc(S.topLure||'—'),'Top lure')+
-      `</div>`+
+      `</div>`+breakdown+
+      (review?`<div class="review">${esc(review)}</div>`:'')+
       `<div class="btns"><button class="ecbtn primary" id="ecReplay">↻ Replay</button>`+
       `<button class="ecbtn ghost" id="ecWrap">✨ Wrapped</button></div>`;
     showOverlay('#endOverlay');
     $('#ecReplay').onclick=()=>{ hideOverlay('#endOverlay'); bigFlashed=false; seek(tMin,false); setFollow(!reduced); play(); };
     $('#ecWrap').onclick=()=>{ hideOverlay('#endOverlay'); openWrapped(); };
-    $('#ecClose').onclick=()=>hideOverlay('#endOverlay');   // dismiss + freely explore the map
+    // dismiss + freely explore: drop the review fade so every day is fully visible to inspect
+    $('#ecClose').onclick=()=>{ hideOverlay('#endOverlay');
+      if(weekendReview){ weekendReview=false; days.forEach(st=>{ if(st.visible) setDayFade(st,1); }); } };
   }
 
   // ---------- Trip Wrapped poster (self-drawn SVG -> PNG, dependency-free) ----------
-  function wrappedSVG(){
-    const W=1080,H=1350,P=70;
-    const b=DATA.bounds; // [[s,w],[n,e]]
+  // poster track-box geometry (shared by SVG + tile compositor)
+  const WRAPBOX={W:1080,H:1350,P:70,bx:70,by:440,bw:1080-140,bh:560};
+  function wrappedSVG(satMode){
+    const W=WRAPBOX.W,H=WRAPBOX.H,P=WRAPBOX.P;
+    const b=posterBounds(); // padded, aspect-fitted [[s,w],[n,e]] (matches the tiles)
     // fit the whole trip track to a box
-    const bx=P, by=440, bw=W-2*P, bh=560;
+    const bx=WRAPBOX.bx, by=WRAPBOX.by, bw=WRAPBOX.bw, bh=WRAPBOX.bh;
     function proj(lat,lon){
       if(!b) return [W/2,by+bh/2];
       const s=b[0][0],w=b[0][1],nn=b[1][0],e=b[1][1];
-      const fx=(lon-w)/Math.max(1e-6,(e-w)), fy=(lat-s)/Math.max(1e-6,(nn-s));
+      // Web-Mercator Y so the track lines up with the satellite tiles (which are
+      // mercator); longitude is already linear in mercator X. The zoom cancels in
+      // the ratio, so any z works. Keeps the dark-mode look identical in practice.
+      const my=lat2y(lat,1), myN=lat2y(nn,1), myS=lat2y(s,1);
+      const fx=(lon-w)/Math.max(1e-6,(e-w));
+      const fy=(myS-my)/Math.max(1e-6,(myS-myN));   // 0 at south, 1 at north
       return [bx+fx*bw, by+bh-fy*bh];
     }
     let polys='';
@@ -895,32 +1098,111 @@ const DATA = /*__PAYLOAD__*/null;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`+
       `<defs><radialGradient id="bg" cx="50%" cy="30%" r="90%">`+
       `<stop offset="0%" stop-color="#0c1828"/><stop offset="100%" stop-color="#04070d"/></radialGradient></defs>`+
-      `<rect width="${W}" height="${H}" fill="url(#bg)"/>`+
+      // In sat mode the canvas already holds the satellite tiles in the track box;
+      // punch a hole in the poster background (evenodd) so those tiles show through
+      // instead of being painted over by this opaque gradient.
+      (satMode
+        ? `<path fill="url(#bg)" fill-rule="evenodd" d="M0 0H${W}V${H}H0Z M${bx} ${by}H${bx+bw}V${by+bh}H${bx}Z"/>`
+        : `<rect width="${W}" height="${H}" fill="url(#bg)"/>`)+
       `<text x="${W/2}" y="150" text-anchor="middle" font-size="34" fill="#36c5ff" font-family="Arial" letter-spacing="8">TRIP REPLAY</text>`+
       `<text x="${W/2}" y="225" text-anchor="middle" font-size="62" font-weight="800" fill="#eaf2ff" font-family="Arial">${escSvg(DATA.title)}</text>`+
       `<text x="${W/2}" y="285" text-anchor="middle" font-size="30" fill="#ffd24d" font-family="Arial">${escSvg(DATA.caption||'')}</text>`+
-      `<rect x="${bx-10}" y="${by-10}" width="${bw+20}" height="${bh+20}" rx="22" fill="#060c16" stroke="rgba(255,255,255,.08)"/>`+
+      `<rect x="${bx-10}" y="${by-10}" width="${bw+20}" height="${bh+20}" rx="22" fill="${satMode?'none':'#060c16'}" stroke="rgba(255,255,255,.08)"/>`+
       polys+pins+statsSvg+
       `<text x="${W/2}" y="1275" text-anchor="middle" font-size="22" fill="#7d8ea3" font-family="Arial">${escSvg((DATA.tz&&DATA.tz.label)||'')} · ${escSvg(DATA.generated||'')}</text>`+
       `</svg>`;
   }
   const escSvg=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  let wrapBlobUrl=null;
-  function openWrapped(){
-    const svg=wrappedSVG();
+  let wrapBlobUrl=null, wrapSat=false;
+  // --- satellite tile compositor (dependency-free): paint Esri World_Imagery
+  // tiles covering the track bounds into the poster's track box, on a canvas. ---
+  const SAT_URL='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
+  const lon2x=(lon,z)=>(lon+180)/360*Math.pow(2,z);
+  const lat2y=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z);};
+  const invMercY=(yn)=>{const n=Math.PI*(1-2*yn);return Math.atan(Math.sinh(n))*180/Math.PI;};
+  // Padded, box-aspect-fitted bounds SHARED by the poster track + the satellite
+  // tiles, so they (a) stay aligned, (b) aren't stretched non-uniformly, and
+  // (c) have breathing room around the track.
+  function posterBounds(){
+    const b=DATA.bounds; if(!b) return b;
+    const s=b[0][0],w=b[0][1],nn=b[1][0],e=b[1][1];
+    const mx=lon=>(lon+180)/360, my=lat=>lat2y(lat,0);          // normalized mercator (0..1)
+    let x0=mx(w),x1=mx(e),y0=my(nn),y1=my(s);                   // y0=north/top, y1=south/bottom
+    let cx=(x0+x1)/2, cy=(y0+y1)/2, Wm=(x1-x0), Hm=(y1-y0);
+    const PAD=0.14; Wm*=(1+2*PAD); Hm*=(1+2*PAD);               // zoom out a touch
+    const boxAR=WRAPBOX.bw/WRAPBOX.bh;
+    if(Wm/Hm < boxAR) Wm=Hm*boxAR; else Hm=Wm/boxAR;            // match the box aspect (no stretch)
+    const nx0=cx-Wm/2,nx1=cx+Wm/2,ny0=cy-Hm/2,ny1=cy+Hm/2;
+    return [[invMercY(ny1), nx0*360-180],[invMercY(ny0), nx1*360-180]];  // [[s,w],[n,e]]
+  }
+  function paintSatTiles(ctx,b){
+    // b=[[s,w],[n,e]]. choose a zoom where the bounds span a few tiles.
+    return new Promise(resolve=>{
+      try{
+        const s=b[0][0],w=b[0][1],nn=b[1][0],e=b[1][1];
+        let z=13;
+        for(z=18;z>=2;z--){
+          const tw=Math.abs(lon2x(e,z)-lon2x(w,z)), th=Math.abs(lat2y(s,z)-lat2y(nn,z));
+          if(tw<=8 && th<=8) break;   // allow more tiles -> sharper imagery
+        }
+        const X0=Math.floor(lon2x(w,z)), X1=Math.floor(lon2x(e,z));
+        const Y0=Math.floor(lat2y(nn,z)), Y1=Math.floor(lat2y(s,z));
+        // pixel coords (256px tiles) of the requested geographic bounds
+        const pxW=lon2x(w,z)*256, pxE=lon2x(e,z)*256;
+        const pyN=lat2y(nn,z)*256, pyS=lat2y(s,z)*256;
+        const spanX=pxE-pxW, spanY=pyS-pyN;
+        const bx=WRAPBOX.bx,by=WRAPBOX.by,bw=WRAPBOX.bw,bh=WRAPBOX.bh;
+        ctx.save(); ctx.beginPath();
+        // rounded-rect clip matching the box
+        const r=20,x=bx,y=by,ww=bw,hh=bh;
+        ctx.moveTo(x+r,y);ctx.arcTo(x+ww,y,x+ww,y+hh,r);ctx.arcTo(x+ww,y+hh,x,y+hh,r);
+        ctx.arcTo(x,y+hh,x,y,r);ctx.arcTo(x,y,x+ww,y,r);ctx.closePath();ctx.clip();
+        ctx.fillStyle='#060c16'; ctx.fillRect(bx,by,bw,bh); // fallback fill under any missing tile
+        const jobs=[];
+        for(let tx=X0;tx<=X1;tx++)for(let ty=Y0;ty<=Y1;ty++){
+          jobs.push(new Promise(res=>{
+            const im=new Image(); im.crossOrigin='anonymous';
+            im.onload=()=>{
+              try{
+                const dx=bx+((tx*256)-pxW)/spanX*bw;
+                const dy=by+((ty*256)-pyN)/spanY*bh;
+                const dw=256/spanX*bw, dh=256/spanY*bh;
+                ctx.drawImage(im,dx,dy,dw,dh);
+              }catch(_){}
+              res(true);
+            };
+            im.onerror=()=>res(false);
+            im.src=SAT_URL+z+'/'+ty+'/'+tx;
+          }));
+        }
+        Promise.all(jobs).then(()=>{ ctx.restore(); resolve(true); });
+      }catch(e){ try{ctx.restore();}catch(_){} resolve(false); }
+    });
+  }
+  function renderWrap(){
+    const svg=wrappedSVG(wrapSat);
     const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
     const img=new Image();
     img.onload=()=>{
-      const cv=document.createElement('canvas'); cv.width=1080; cv.height=1350;
-      const ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,1080,1350);
-      try{ cv.toBlob(bl=>{ if(wrapBlobUrl) URL.revokeObjectURL(wrapBlobUrl);
-        wrapBlobUrl=URL.createObjectURL(bl); $('#wrapImg').src=wrapBlobUrl; }, 'image/png'); }
-      catch(e){ $('#wrapImg').src=url; }
+      const cv=document.createElement('canvas'); cv.width=WRAPBOX.W; cv.height=WRAPBOX.H;
+      const ctx=cv.getContext('2d');
+      ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      if(wrapSat && DATA.bounds) paintSatTiles(ctx,posterBounds()).then(finish); else finish();
+      function finish(){
+        ctx.drawImage(img,0,0,WRAPBOX.W,WRAPBOX.H);
+        try{ cv.toBlob(bl=>{ if(wrapBlobUrl) URL.revokeObjectURL(wrapBlobUrl);
+          wrapBlobUrl=URL.createObjectURL(bl); $('#wrapImg').src=wrapBlobUrl; }, 'image/png'); }
+        catch(e){ $('#wrapImg').src=url; } // CORS-tainted canvas: show SVG (dark) instead
+      }
     };
     img.onerror=()=>{ $('#wrapImg').src=url; };
     img.src=url;
-    showOverlay('#wrapOverlay');
   }
+  function openWrapped(){ renderWrap(); showOverlay('#wrapOverlay'); }
+  $('#wrapMap').onclick=()=>{ wrapSat=!wrapSat;
+    $('#wrapMap').textContent=wrapSat?'🛰 Map: On':'🛰 Map: Off';
+    $('#wrapMap').classList.toggle('primary',wrapSat);
+    renderWrap(); };
   $('#btnWrap').onclick=openWrapped;
   $('#wrapClose').onclick=()=>hideOverlay('#wrapOverlay');
   $('#wrapSave').onclick=()=>{ const a=document.createElement('a');
