@@ -44,6 +44,20 @@ final class Store: ObservableObject {
     @Published var knownSpecies: [String] = Store.defaultSpecies
     @Published var knownLureColors: [String] = Store.defaultLureColors
 
+    /// Point-in-polygon index of the owner-drawn lake areas, loaded once at launch
+    /// from the bundled `areas.geojson`. Used to auto-name a catch's spot from its
+    /// frozen GPS fix. Empty (resolves nothing) if the resource is absent/malformed.
+    ///
+    /// NOTE: `areas.geojson` (app/AppSources/areas.geojson) must be added to the
+    /// Xcode target's "Copy Bundle Resources" build phase for this to find it on the
+    /// phone. See README-XCODE-SETUP.md.
+    let areaIndex: AreaIndex = {
+        if let url = Bundle.main.url(forResource: "areas", withExtension: "geojson") {
+            return AreaIndex(contentsOf: url)
+        }
+        return .empty
+    }()
+
     /// Sensible starting lists (Lake Oahe species + common walleye colors).
     static let defaultSpecies = ["walleye", "sauger", "perch", "northern pike",
                                  "smallmouth bass", "white bass", "crappie",

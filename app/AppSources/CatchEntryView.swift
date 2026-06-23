@@ -242,6 +242,17 @@ struct CatchEntryView: View {
         lure2 = store.lastLure2
         bait = store.lastBait
         locationName = store.lastLocationName
+
+        // Auto-name the spot from the frozen GPS fix using the owner-drawn lake areas,
+        // but only when we have no location yet — never clobber a carried-forward or
+        // user-typed value. The field stays fully editable below.
+        if locationName.trimmingCharacters(in: .whitespaces).isEmpty,
+           let fix = taggedFix {
+            if let name = store.areaIndex.areaName(lat: fix.coordinate.latitude,
+                                                   lon: fix.coordinate.longitude) {
+                locationName = name
+            }
+        }
     }
 
     private func save() {
