@@ -26,6 +26,11 @@ struct CatchEntryView: View {
 
     @State private var didSeed = false
 
+    /// GPS fix captured at the moment the form opened (the "Log Catch" tap) and
+    /// held for the lifetime of this entry, so the saved point doesn't drift as
+    /// the boat moves while you fill in the details.
+    @State private var taggedFix: CLLocation?
+
     private enum AddTarget { case species, lure1, lure2 }
     @State private var addTarget: AddTarget?
     @State private var newOptionText = ""
@@ -94,22 +99,16 @@ struct CatchEntryView: View {
 
     private var measurementSection: some View {
         Section("Measurements") {
-            Stepper(value: $lengthIn, in: 0...60, step: 0.25) {
-                HStack {
-                    Text("Length")
-                    Spacer()
-                    Text(String(format: "%g in", lengthIn))
-                        .font(.title3.bold().monospacedDigit())
-                }
-            }
-            Stepper(value: $depthFt, in: 0...300, step: 1) {
-                HStack {
-                    Text("Depth")
-                    Spacer()
-                    Text(String(format: "%g ft", depthFt))
-                        .font(.title3.bold().monospacedDigit())
-                }
-            }
+            RulerRow(title: "Length",
+                     value: $lengthIn,
+                     range: 0...60,
+                     step: 0.25,
+                     unit: "in")
+            RulerRow(title: "Depth",
+                     value: $depthFt,
+                     range: 0...300,
+                     step: 1,
+                     unit: "ft")
             HStack {
                 Text("Water temp")
                 Spacer()
@@ -204,14 +203,19 @@ struct CatchEntryView: View {
     private var gpsSection: some View {
         Section("GPS tag") {
             HStack {
-                Image(systemName: loc.current == nil ? "location.slash" : "location.fill")
-                    .foregroundStyle(loc.current == nil ? Color.secondary : Color.green)
-                if let c = loc.current {
-                    Text(String(format: "%.6f, %.6f  ±%.0f m",
-                                c.coordinate.latitude,
-                                c.coordinate.longitude,
-                                max(c.horizontalAccuracy, 0)))
-                        .font(.footnote.monospaced())
+                Image(systemName: taggedFix == nil ? "location.slash" : "location.fill")
+                    .foregroundStyle(taggedFix == nil ? Color.secondary : Color.green)
+                if let c = taggedFix {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(format: "%.6f, %.6f  ±%.0f m",
+                                    c.coordinate.latitude,
+                                    c.coordinate.longitude,
+                                    max(c.horizontalAccuracy, 0)))
+                            .font(.footnote.monospaced())
+                        Text("Tagged where you hit Log — held while you enter the catch")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     Text("No fix — will save without coordinates")
                         .font(.footnote)
@@ -226,6 +230,8 @@ struct CatchEntryView: View {
     private func seedFromCarryForward() {
         guard !didSeed else { return }
         didSeed = true
+        // Freeze the catch location at open time so it can't drift during entry.
+        taggedFix = loc.current
         fisherman = store.lastFisherman
         lengthIn = store.lastLength > 0 ? store.lastLength : 15.0
         depthFt = store.lastDepth > 0 ? store.lastDepth : 20.0
@@ -254,7 +260,7 @@ struct CatchEntryView: View {
             lure2: lure2.trimmingCharacters(in: .whitespaces),
             bait: bait.trimmingCharacters(in: .whitespaces),
             locationName: locationName.trimmingCharacters(in: .whitespaces),
-            loc: loc.current
+            loc: taggedFix
         )
         onSaved(newCatch)
         dismiss()

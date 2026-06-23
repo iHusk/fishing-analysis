@@ -94,6 +94,21 @@ See **ADR 0001** (`docs/adr/0001-weight-curve-estimation.md`) for the decision r
 
 ## Known data-quality issues
 
+- **Net-tare (bag-weighing convention changed in 2026):** 2023–2025 daily bags were weighed
+  **with the ~2 lb landing net on the scale**; 2026 onward is weighed **net-free**. Left
+  uncorrected this overstates 2023–25 wt/inch and makes 2026 look worse than it was. The
+  correction is **non-destructive** — source CSVs/xlsx are untouched; `analysis.py` carries
+  `NET_TARE_LBS_BY_YEAR = {2023: 2.0, 2024: 2.0, 2025: 2.0}`, subtracted **per weigh session**
+  from the bag before any measured/modeled wt/inch. Net-corrected wt/inch:
+  2023≈0.075, 2024≈0.087, 2025≈0.088, **2026≈0.101** (2026 is the healthiest year on record).
+- **Accumulating exports double-count:** the iOS app's dated export folders are supersets of
+  prior days, so a weigh session (e.g. 2026-06-19) appears in *both* the 06-19 and 06-20
+  folders. `load_history()` **dedups by catch** before any rollup — otherwise that session's
+  fish (and bag) are counted twice (this was the original cause of a spuriously-low 2026
+  modeled wt/inch). Run analysis off the LATEST folder; never `--all` across dated folders.
+- **2026 `day_inches` derived, not exported:** the app exports `daily_wt_lbs` but leaves
+  `day_inches` blank, so measured wt/inch (`bag ÷ day_inches`) is computed by summing the
+  **kept-walleye** lengths per weigh session in the loader.
 - **2024-06-15 weigh-day:** logged fish lengths sum to 240.75″ but the recorded
   `day_inches` is 250.75″ — a ~10″ discrepancy of **unknown cause** (a length typo on a
   logged fish, a wrong `day_inches` entry, or an unlogged fish are all possible). This

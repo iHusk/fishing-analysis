@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fishing Analytics &mdash; Lake Oahe Walleye</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root { --bg:#0e1116; --panel:#171c24; --ink:#e7edf3; --muted:#9aa7b4;
+           --line:#283342; --accent:#5bb4ff; --accent2:#ffce5b; --good:#6fd08c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+          font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:24px 28px 8px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  .sub { color:var(--muted); font-size:13px; }
+  main { padding:16px 28px 60px; max-width:1200px; }
+  .filters { display:flex; flex-wrap:wrap; gap:14px; margin:18px 0 8px;
+              background:var(--panel); border:1px solid var(--line);
+              border-radius:10px; padding:14px 16px; }
+  .filters label { display:flex; flex-direction:column; gap:4px; font-size:12px;
+                    color:var(--muted); }
+  select { background:#0d1218; color:var(--ink); border:1px solid var(--line);
+            border-radius:7px; padding:7px 9px; font-size:14px; min-width:140px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px; }
+  .card { background:var(--panel); border:1px solid var(--line);
+           border-radius:12px; padding:16px 18px; }
+  .card.full { grid-column:1 / -1; }
+  .card h2 { margin:0 0 2px; font-size:15px; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px;
+          margin-left:8px; vertical-align:middle; }
+  .tag.measured { background:rgba(111,208,140,.16); color:var(--good);
+                   border:1px solid rgba(111,208,140,.4); }
+  .tag.modeled { background:rgba(255,206,91,.14); color:var(--accent2);
+                  border:1px solid rgba(255,206,91,.4); }
+  .note { color:var(--muted); font-size:12px; margin:2px 0 12px; }
+  .chart-wrap { position:relative; height:260px; }
+  .kpis { display:flex; gap:18px; flex-wrap:wrap; margin:6px 0 2px; }
+  .kpi { background:#0d1218; border:1px solid var(--line); border-radius:9px;
+          padding:10px 14px; min-width:110px; }
+  .kpi .v { font-size:20px; font-weight:600; }
+  .kpi .l { font-size:11px; color:var(--muted); }
+  .empty { color:var(--muted); font-style:italic; padding:30px 0; text-align:center; }
+  .smalln { color:var(--accent2); font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  footer { color:var(--muted); font-size:12px; padding:0 28px 40px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fishing Analytics &mdash; Lake Oahe Walleye</h1>
+  <div class="sub">Self-contained &middot; data baked in &middot;
+    <span id="count-sub"></span></div>
+</header>
+<main>
+  <div class="filters">
+    <label>Year<select id="f-year"></select></label>
+    <label>Species<select id="f-species"></select></label>
+    <label>Fisherman<select id="f-fisher"></select></label>
+    <label>Status<select id="f-kept">
+      <option value="">All</option>
+      <option value="kept">Kept</option>
+      <option value="released">Released</option>
+    </select></label>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Weight per inch by year<span class="tag measured">measured (a)</span></h2>
+      <div class="note">Ground truth: measured daily bag &divide; total inches,
+        per year. Not affected by the filters.</div>
+      <div class="chart-wrap"><canvas id="c-measured"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Weight per inch by year<span class="tag modeled">modeled (b)</span></h2>
+      <div class="note">Modeled per-catch wt/inch from the calibrated power curve
+        W = a&middot;L<sup>b</sup>. <b>b assumed, not fitted</b>
+        (<span id="b-note"></span>). Walleye, kept only.</div>
+      <div class="chart-wrap"><canvas id="c-modeled"></canvas></div>
+    </div>
+
+    <div class="card full">
+      <div class="kpis" id="kpis"></div>
+    </div>
+
+    <div class="card">
+      <h2>Length distribution</h2>
+      <div class="note">Filtered catches, by 1-inch bins.</div>
+      <div class="chart-wrap"><canvas id="c-length"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Catch counts by species</h2>
+      <div class="note">Filtered catches.</div>
+      <div class="chart-wrap"><canvas id="c-species"></canvas></div>
+    </div>
+
+    <div class="card full">
+      <h2>Length vs. depth</h2>
+      <div class="note">Filtered catches. Uniform markers colored by year;
+        depth plotted downward.</div>
+      <div id="p-lendepth" style="height:420px;"></div>
+    </div>
+
+    <div class="card full">
+      <h2>Time of day &mdash; catches &amp; average length by hour</h2>
+      <div class="note">Filtered catches, 8 AM&ndash;8 PM with 12-hour tick labels.
+        Bars = catches per hour; gold line = avg length by hour (right axis).</div>
+      <div id="p-timeofday" style="height:440px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Depth distribution by year</h2>
+      <div class="note">Filtered catches. Violin per year (Plotly).</div>
+      <div id="p-violin-depth" style="height:400px;"></div>
+    </div>
+    <div class="card">
+      <h2>Length distribution by year</h2>
+      <div class="note">Filtered catches. Violin per year (Plotly).</div>
+      <div id="p-violin-length" style="height:400px;"></div>
+    </div>
+
+    <div class="card full">
+      <h2>Length histogram (Plotly)</h2>
+      <div class="note">Filtered catches, 1-inch bins.</div>
+      <div id="p-hist-length" style="height:340px;"></div>
+    </div>
+
+    <div class="card full">
+      <h2>Measured bag by weigh session (day / trip)
+        <span class="tag measured">measured (a)</span></h2>
+      <div class="note">From the weigh-in sheet. wt/inch shown where day inches
+        were recorded (some 2026 sessions have none &mdash; shown as &mdash;).</div>
+      <div id="bag-table"></div>
+    </div>
+  </div>
+</main>
+<footer>
+  Generated by build_analytics.py from historical, exports/2026.
+  Metric (a) is measured ground truth; metric (b) is a model whose exponent b is
+  assumed (literature default) until enough individual fish weights are logged to
+  fit it. Small-n years are flagged.
+</footer>
+
+<script id="payload" type="application/json">{"generated_roots": ["historical", "exports/2026"], "catches": [{"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 14.0, "depth": 9.5, "hour": 12, "min_since_8am": 285, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 17.0, "depth": 9.5, "hour": 12, "min_since_8am": 290, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 15.5, "depth": 9.5, "hour": 13, "min_since_8am": 315, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 15.0, "depth": 9.5, "hour": 13, "min_since_8am": 310, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 13.0, "depth": 9.0, "hour": 14, "min_since_8am": 360, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 15.0, "depth": 9.0, "hour": 14, "min_since_8am": 360, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 16.0, "depth": 9.0, "hour": 14, "min_since_8am": 390, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 21.0, "depth": 11.0, "hour": 15, "min_since_8am": 430, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 16.0, "depth": 10.0, "hour": 17, "min_since_8am": 555, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 16.0, "depth": 7.0, "hour": 15, "min_since_8am": 460, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 13.0, "depth": 7.0, "hour": 16, "min_since_8am": 525, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 16.0, "depth": 7.0, "hour": 16, "min_since_8am": 525, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 15.0, "depth": 11.0, "hour": 17, "min_since_8am": 540, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 14.0, "depth": 9.0, "hour": 14, "min_since_8am": 405, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.0, "depth": 8.5, "hour": 15, "min_since_8am": 420, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 14.0, "depth": 12.0, "hour": 17, "min_since_8am": 585, "session": "hist-2023-06-15", "location": null}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 17.0, "depth": 10.0, "hour": 8, "min_since_8am": 30, "session": "hist-2023-06-17", "location": "pump house"}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.75, "depth": 9.0, "hour": 8, "min_since_8am": 43, "session": "hist-2023-06-17", "location": "pump house"}, {"year": 2023, "trip": "2023-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 16.5, "depth": 13.0, "hour": 10, "min_since_8am": 170, "session": "hist-2023-06-17", "location": "pump house"}, {"year": 2023, "trip": "2023-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 18.75, "depth": 9.0, "hour": 11, "min_since_8am": 219, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 15.0, "depth": 9.0, "hour": 12, "min_since_8am": 243, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.5, "depth": 10.0, "hour": 12, "min_since_8am": 270, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 15.5, "depth": 12.0, "hour": 12, "min_since_8am": 280, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.5, "depth": 12.0, "hour": 13, "min_since_8am": 300, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 14.5, "depth": 12.0, "hour": 13, "min_since_8am": 315, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 16.5, "depth": 11.5, "hour": 13, "min_since_8am": 325, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.0, "depth": 10.0, "hour": 13, "min_since_8am": 330, "session": "hist-2023-06-17", "location": "tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 15.5, "depth": 20.0, "hour": 14, "min_since_8am": 360, "session": "hist-2023-06-17", "location": "1 up tall prarie chicken"}, {"year": 2023, "trip": "2023-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 13.5, "depth": 19.0, "hour": 15, "min_since_8am": 420, "session": "hist-2023-06-17", "location": "mouth of cheyenne"}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 13.5, "depth": 12.0, "hour": 15, "min_since_8am": 465, "session": "hist-2023-06-17", "location": "mouth of cheyenne"}, {"year": 2023, "trip": "2023-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.25, "depth": 11.0, "hour": 15, "min_since_8am": 465, "session": "hist-2023-06-17", "location": "mouth of cheyenne"}, {"year": 2023, "trip": "2023-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 16.0, "depth": 12.0, "hour": 16, "min_since_8am": 505, "session": "hist-2023-06-17", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.0, "depth": 11.0, "hour": 8, "min_since_8am": 45, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.5, "depth": 9.5, "hour": 8, "min_since_8am": 50, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.0, "depth": 9.5, "hour": 9, "min_since_8am": 90, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 17.5, "depth": 9.0, "hour": 9, "min_since_8am": 91, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 16.0, "depth": 11.0, "hour": 10, "min_since_8am": 125, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 18.25, "depth": 11.0, "hour": 10, "min_since_8am": 126, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 17.5, "depth": 8.0, "hour": 11, "min_since_8am": 180, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.0, "depth": 6.5, "hour": 11, "min_since_8am": 181, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.5, "depth": 10.0, "hour": 11, "min_since_8am": 185, "session": "hist-2024-06-14", "location": "1 up tall prarie chicken"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 16.0, "depth": 12.5, "hour": 11, "min_since_8am": 220, "session": "hist-2024-06-14", "location": "south side of bend"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 17.0, "depth": 12.0, "hour": 12, "min_since_8am": 290, "session": "hist-2024-06-14", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 17.5, "depth": 12.5, "hour": 13, "min_since_8am": 330, "session": "hist-2024-06-14", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 17.0, "depth": 16.0, "hour": 13, "min_since_8am": 353, "session": "hist-2024-06-14", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.0, "depth": 8.0, "hour": 14, "min_since_8am": 380, "session": "hist-2024-06-14", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 19.0, "depth": 7.0, "hour": 14, "min_since_8am": 383, "session": "hist-2024-06-14", "location": "mouth of cheyenne"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "perch", "kept": true, "length": 10.0, "depth": 25.0, "hour": 9, "min_since_8am": 70, "session": "hist-2024-06-15", "location": "north of bobs"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 15.5, "depth": 11.0, "hour": 11, "min_since_8am": 192, "session": "hist-2024-06-15", "location": "south of whitlock"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 17.0, "depth": 11.0, "hour": 12, "min_since_8am": 261, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 18.0, "depth": 9.5, "hour": 12, "min_since_8am": 263, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 18.5, "depth": 13.5, "hour": 12, "min_since_8am": 269, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 17.5, "depth": 10.5, "hour": 12, "min_since_8am": 275, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 13.0, "depth": 8.5, "hour": 12, "min_since_8am": 277, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.0, "depth": 12.0, "hour": 12, "min_since_8am": 296, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 16.0, "depth": 11.0, "hour": 13, "min_since_8am": 302, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.0, "depth": 10.5, "hour": 13, "min_since_8am": 322, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 14.0, "depth": 10.5, "hour": 13, "min_since_8am": 325, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 13.5, "depth": 11.0, "hour": 13, "min_since_8am": 330, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "matt", "species": "walleye", "kept": true, "length": 16.25, "depth": 16.0, "hour": 13, "min_since_8am": 345, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 22.5, "depth": 14.0, "hour": 14, "min_since_8am": 365, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 15.0, "depth": 11.0, "hour": 14, "min_since_8am": 375, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2024, "trip": "2024-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 16.0, "depth": 7.0, "hour": 14, "min_since_8am": 395, "session": "hist-2024-06-15", "location": "north of south of whilock, east side"}, {"year": 2025, "trip": "2025-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.25, "depth": 10.0, "hour": 8, "min_since_8am": 52, "session": "hist-2025-06-14", "location": "swiftbird bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.5, "depth": 8.0, "hour": 14, "min_since_8am": 360, "session": "hist-2025-06-14", "location": "buffalo bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 14.0, "depth": 11.0, "hour": 14, "min_since_8am": 362, "session": "hist-2025-06-14", "location": "buffalo bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 16.25, "depth": 8.0, "hour": 14, "min_since_8am": 378, "session": "hist-2025-06-14", "location": "buffalo bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 20.5, "depth": 11.5, "hour": 14, "min_since_8am": 412, "session": "hist-2025-06-14", "location": "buffalo bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 15.5, "depth": 11.0, "hour": 16, "min_since_8am": 487, "session": "hist-2025-06-14", "location": "buffalo bay"}, {"year": 2025, "trip": "2025-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 13.5, "depth": 9.0, "hour": 8, "min_since_8am": 40, "session": "hist-2025-06-13", "location": "west edge of \"1 up from tall prarie chicken\""}, {"year": 2025, "trip": "2025-06", "fisherman": "brent", "species": "walleye", "kept": true, "length": 13.75, "depth": 11.0, "hour": 9, "min_since_8am": 103, "session": "hist-2025-06-13", "location": "west edge of \"1 up from tall prarie chicken\""}, {"year": 2025, "trip": "2025-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 14.5, "depth": 9.5, "hour": 12, "min_since_8am": 253, "session": "hist-2025-06-13", "location": "just east of pump house"}, {"year": 2025, "trip": "2025-06", "fisherman": "brian", "species": "walleye", "kept": true, "length": 19.0, "depth": 12.0, "hour": 9, "min_since_8am": 103, "session": "hist-2025-06-13", "location": "west side of pump house"}, {"year": 2025, "trip": "2025-06", "fisherman": "tyler", "species": "walleye", "kept": true, "length": 20.0, "depth": 12.0, "hour": 9, "min_since_8am": 103, "session": "hist-2025-06-13", "location": "west side of pump house"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brian", "species": "smallmouth bass", "kept": false, "length": 16.5, "depth": 11.0, "hour": 13, "min_since_8am": 326, "session": "2026-06-18", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "drum", "kept": false, "length": 8.0, "depth": 17.0, "hour": 7, "min_since_8am": -19, "session": "2026-06-19", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "catfish", "kept": false, "length": 17.0, "depth": 28.0, "hour": 9, "min_since_8am": 95, "session": "2026-06-19", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brian", "species": "walleye", "kept": true, "length": 17.0, "depth": 25.0, "hour": 10, "min_since_8am": 137, "session": "2026-06-19", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Tyler", "species": "drum", "kept": false, "length": 11.5, "depth": 16.0, "hour": 6, "min_since_8am": -80, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "smallmouth bass", "kept": false, "length": 13.0, "depth": 11.0, "hour": 7, "min_since_8am": -6, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "smallmouth bass", "kept": false, "length": 11.0, "depth": 12.0, "hour": 8, "min_since_8am": 22, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "catfish", "kept": false, "length": 10.0, "depth": 14.0, "hour": 8, "min_since_8am": 42, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "walleye", "kept": true, "length": 16.0, "depth": 14.0, "hour": 8, "min_since_8am": 56, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Tyler", "species": "walleye", "kept": true, "length": 16.25, "depth": 14.0, "hour": 8, "min_since_8am": 56, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "perch", "kept": false, "length": 6.0, "depth": 10.0, "hour": 9, "min_since_8am": 76, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Tyler", "species": "perch", "kept": false, "length": 5.5, "depth": 13.0, "hour": 10, "min_since_8am": 140, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "catfish", "kept": false, "length": 10.5, "depth": 17.0, "hour": 12, "min_since_8am": 259, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Tyler", "species": "walleye", "kept": true, "length": 17.0, "depth": 9.0, "hour": 12, "min_since_8am": 268, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "perch", "kept": false, "length": 8.0, "depth": 12.0, "hour": 12, "min_since_8am": 282, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brian", "species": "catfish", "kept": false, "length": 10.0, "depth": 13.0, "hour": 13, "min_since_8am": 318, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}, {"year": 2026, "trip": "2026-06", "fisherman": "Brent", "species": "drum", "kept": false, "length": 7.5, "depth": 13.0, "hour": 13, "min_since_8am": 318, "session": "2026-06-20", "location": "Mouth Of Cheyenne"}], "headline": {"by_year": {"2023": {"wt_per_inch": 0.07478696741854636, "n_sessions": 2, "total_bag_lbs": 37.3, "total_inches": 498.75}, "2024": {"wt_per_inch": 0.08687068114511352, "n_sessions": 2, "total_bag_lbs": 44.0, "total_inches": 506.5}, "2025": {"wt_per_inch": 0.08813655761024182, "n_sessions": 2, "total_bag_lbs": 15.49, "total_inches": 175.75}, "2026": {"wt_per_inch": 0.10067924528301887, "n_sessions": 2, "total_bag_lbs": 6.67, "total_inches": 66.25}}, "sessions": [{"year": 2023, "session": "hist-2023-06-15", "trip": "2023-06", "weigh_date": "2023-06-15", "bag_lbs": 19.2, "day_inches": 246.5, "wt_per_inch": 0.07789046653144016}, {"year": 2023, "session": "hist-2023-06-17", "trip": "2023-06", "weigh_date": "2023-06-17", "bag_lbs": 18.1, "day_inches": 252.25, "wt_per_inch": 0.0717542120911794}, {"year": 2024, "session": "hist-2024-06-14", "trip": "2024-06", "weigh_date": "2024-06-14", "bag_lbs": 23.0, "day_inches": 255.75, "wt_per_inch": 0.08993157380254155}, {"year": 2024, "session": "hist-2024-06-15", "trip": "2024-06", "weigh_date": "2024-06-15", "bag_lbs": 21.0, "day_inches": 250.75, "wt_per_inch": 0.08374875373878365}, {"year": 2025, "session": "hist-2025-06-13", "trip": "2025-06", "weigh_date": "2025-06-13", "bag_lbs": 7.32, "day_inches": 80.75, "wt_per_inch": 0.09065015479876161}, {"year": 2025, "session": "hist-2025-06-14", "trip": "2025-06", "weigh_date": "2025-06-14", "bag_lbs": 8.17, "day_inches": 95.0, "wt_per_inch": 0.086}, {"year": 2026, "session": "2026-06-19", "trip": "2026-06", "weigh_date": "2026-06-19", "bag_lbs": 1.57, "day_inches": 17.0, "wt_per_inch": 0.0923529411764706}, {"year": 2026, "session": "2026-06-20", "trip": "2026-06", "weigh_date": "2026-06-20", "bag_lbs": 5.1, "day_inches": 49.25, "wt_per_inch": 0.10355329949238579}]}, "modeled": {"by_year": {"2023": {"wt_per_inch_mean": 0.07478696741854636, "n": 32}, "2024": {"wt_per_inch_mean": 0.08862034239677746, "n": 30}, "2025": {"wt_per_inch_mean": 0.08813655761024183, "n": 11}, "2026": {"wt_per_inch_mean": 0.10067924528301886, "n": 4}}, "points": [{"year": 2023, "length": 14.0, "weight_est": 0.8410707143725054, "wt_per_inch": 0.060076479598036095}, {"year": 2023, "length": 17.0, "weight_est": 1.559455289759826, "wt_per_inch": 0.09173266410351917}, {"year": 2023, "length": 15.5, "weight_est": 1.1625192634348998, "wt_per_inch": 0.0750012428022516}, {"year": 2023, "length": 15.0, "weight_est": 1.0474072161902312, "wt_per_inch": 0.06982714774601542}, {"year": 2023, "length": 13.0, "weight_est": 0.6644850559040344, "wt_per_inch": 0.05111423506954111}, {"year": 2023, "length": 15.0, "weight_est": 1.0474072161902312, "wt_per_inch": 0.06982714774601542}, {"year": 2023, "length": 16.0, "weight_est": 1.2860175718487772, "wt_per_inch": 0.08037609824054857}, {"year": 2023, "length": 21.0, "weight_est": 3.0535336840651084, "wt_per_inch": 0.1454063659078623}, {"year": 2023, "length": 16.0, "weight_est": 1.2860175718487772, "wt_per_inch": 0.08037609824054857}, {"year": 2023, "length": 16.0, "weight_est": 1.2860175718487772, "wt_per_inch": 0.08037609824054857}, {"year": 2023, "length": 13.0, "weight_est": 0.6644850559040344, "wt_per_inch": 0.05111423506954111}, {"year": 2023, "length": 16.0, "weight_est": 1.2860175718487772, "wt_per_inch": 0.08037609824054857}, {"year": 2023, "length": 15.0, "weight_est": 1.0474072161902312, "wt_per_inch": 0.06982714774601542}, {"year": 2023, "length": 14.0, "weight_est": 0.8410707143725054, "wt_per_inch": 0.060076479598036095}, {"year": 2023, "length": 16.0, "weight_est": 1.2860175718487772, "wt_per_inch": 0.08037609824054857}, {"year": 2023, "length": 14.0, "weight_est": 0.8410707143725054, "wt_per_inch": 0.060076479598036095}, {"year": 2023, "length": 17.0, "weight_est": 1.3965069411780866, "wt_per_inch": 0.08214746712812274}, {"year": 2023, "length": 17.75, "weight_est": 1.6020139930285835, "wt_per_inch": 0.09025430946639908}, {"year": 2023, "length": 16.5, "weight_est": 1.2700314373526704, "wt_per_inch": 0.0769716022637982}, {"year": 2023, "length": 18.75, "weight_est": 1.9070389961998235, "wt_per_inch": 0.10170874646399058}, {"year": 2023, "length": 15.0, "weight_est": 0.9379630549555219, "wt_per_inch": 0.06253087033036812}, {"year": 2023, "length": 14.5, "weight_est": 0.8421040882579722, "wt_per_inch": 0.05807614401779119}, {"year": 2023, "length": 15.5, "weight_est": 1.0410469805069607, "wt_per_inch": 0.06716432132302971}, {"year": 2023, "length": 14.5, "weight_est": 0.8421040882579722, "wt_per_inch": 0.05807614401779119}, {"year": 2023, "length": 14.5, "weight_est": 0.8421040882579722, "wt_per_inch": 0.05807614401779119}, {"year": 2023, "length": 16.5, "weight_est": 1.2700314373526704, "wt_per_inch": 0.0769716022637982}, {"year": 2023, "length": 16.0, "weight_est": 1.1516408821444315, "wt_per_inch": 0.07197755513402697}, {"year": 2023, "length": 15.5, "weight_est": 1.0410469805069607, "wt_per_inch": 0.06716432132302971}, {"year": 2023, "length": 13.5, "weight_est": 0.6709295382496637, "wt_per_inch": 0.049698484314789904}, {"year": 2023, "length": 13.5, "weight_est": 0.6709295382496637, "wt_per_inch": 0.049698484314789904}, {"year": 2023, "length": 17.25, "weight_est": 1.4628670733566154, "wt_per_inch": 0.08480388831052843}, {"year": 2023, "length": 16.0, "weight_est": 1.1516408821444315, "wt_per_inch": 0.07197755513402697}, {"year": 2024, "length": 16.0, "weight_est": 1.241975484661325, "wt_per_inch": 0.0776234677913328}, {"year": 2024, "length": 17.5, "weight_est": 1.6514767858583748, "wt_per_inch": 0.09437010204904998}, {"year": 2024, "length": 17.0, "weight_est": 1.5060488143430093, "wt_per_inch": 0.08859110672605937}, {"year": 2024, "length": 17.5, "weight_est": 1.6514767858583748, "wt_per_inch": 0.09437010204904998}, {"year": 2024, "length": 16.0, "weight_est": 1.241975484661325, "wt_per_inch": 0.0776234677913328}, {"year": 2024, "length": 18.25, "weight_est": 1.887241166650876, "wt_per_inch": 0.10341047488497951}, {"year": 2024, "length": 17.5, "weight_est": 1.6514767858583748, "wt_per_inch": 0.09437010204904998}, {"year": 2024, "length": 17.0, "weight_est": 1.5060488143430093, "wt_per_inch": 0.08859110672605937}, {"year": 2024, "length": 16.5, "weight_est": 1.3696525838888904, "wt_per_inch": 0.08300924750841761}, {"year": 2024, "length": 16.0, "weight_est": 1.241975484661325, "wt_per_inch": 0.0776234677913328}, {"year": 2024, "length": 17.0, "weight_est": 1.5060488143430093, "wt_per_inch": 0.08859110672605937}, {"year": 2024, "length": 17.5, "weight_est": 1.6514767858583748, "wt_per_inch": 0.09437010204904998}, {"year": 2024, "length": 17.0, "weight_est": 1.5060488143430093, "wt_per_inch": 0.08859110672605937}, {"year": 2024, "length": 16.0, "weight_est": 1.241975484661325, "wt_per_inch": 0.0776234677913328}, {"year": 2024, "length": 19.0, "weight_est": 2.145101910009405, "wt_per_inch": 0.11290010052681079}, {"year": 2024, "length": 15.5, "weight_est": 1.1595982407470868, "wt_per_inch": 0.0748127897256185}, {"year": 2024, "length": 17.0, "weight_est": 1.5555368993939243, "wt_per_inch": 0.09150217055258378}, {"year": 2024, "length": 18.0, "weight_est": 1.8656033539737644, "wt_per_inch": 0.10364463077632025}, {"year": 2024, "length": 18.5, "weight_est": 2.03544252628829, "wt_per_inch": 0.11002392033990757}, {"year": 2024, "length": 17.5, "weight_est": 1.7057435684884075, "wt_per_inch": 0.09747106105648043}, {"year": 2024, "length": 13.0, "weight_est": 0.6628154268621265, "wt_per_inch": 0.05098580206631742}, {"year": 2024, "length": 14.0, "weight_est": 0.8389573845413264, "wt_per_inch": 0.0599255274672376}, {"year": 2024, "length": 16.0, "weight_est": 1.2827862391539562, "wt_per_inch": 0.08017413994712226}, {"year": 2024, "length": 14.0, "weight_est": 0.8389573845413264, "wt_per_inch": 0.0599255274672376}, {"year": 2024, "length": 14.0, "weight_est": 0.8389573845413264, "wt_per_inch": 0.0599255274672376}, {"year": 2024, "length": 13.5, "weight_est": 0.747332951141837, "wt_per_inch": 0.05535799638087681}, {"year": 2024, "length": 16.25, "weight_est": 1.3476169019992439, "wt_per_inch": 0.08293027089226117}, {"year": 2024, "length": 22.5, "weight_est": 3.793090067537746, "wt_per_inch": 0.16858178077945538}, {"year": 2024, "length": 15.0, "weight_est": 1.0447754316356848, "wt_per_inch": 0.06965169544237898}, {"year": 2024, "length": 16.0, "weight_est": 1.2827862391539562, "wt_per_inch": 0.08017413994712226}, {"year": 2025, "length": 14.25, "weight_est": 0.9071994705613402, "wt_per_inch": 0.06366312074114668}, {"year": 2025, "length": 14.5, "weight_est": 0.9587861824880048, "wt_per_inch": 0.06612318499917275}, {"year": 2025, "length": 14.0, "weight_est": 0.8575484631197559, "wt_per_inch": 0.061253461651411135}, {"year": 2025, "length": 16.25, "weight_est": 1.3774797438793294, "wt_per_inch": 0.08476798423872796}, {"year": 2025, "length": 20.5, "weight_est": 2.8836915022117746, "wt_per_inch": 0.14066787815667192}, {"year": 2025, "length": 15.5, "weight_est": 1.1852946377397944, "wt_per_inch": 0.07647062178966416}, {"year": 2025, "length": 13.5, "weight_est": 0.749248750915914, "wt_per_inch": 0.055499907475252894}, {"year": 2025, "length": 13.75, "weight_est": 0.794268289324358, "wt_per_inch": 0.05776496649631695}, {"year": 2025, "length": 14.5, "weight_est": 0.9404049163113242, "wt_per_inch": 0.0648555114697465}, {"year": 2025, "length": 19.0, "weight_est": 2.2212686888989093, "wt_per_inch": 0.11690887836310049}, {"year": 2025, "length": 20.0, "weight_est": 2.6148093545494957, "wt_per_inch": 0.13074046772747477}, {"year": 2026, "length": 17.0, "weight_est": 1.57, "wt_per_inch": 0.0923529411764706}, {"year": 2026, "length": 16.0, "weight_est": 1.562900986711237, "wt_per_inch": 0.0976813116694523}, {"year": 2026, "length": 16.25, "weight_est": 1.641888353302315, "wt_per_inch": 0.10103928328014246}, {"year": 2026, "length": 17.0, "weight_est": 1.8952106599864476, "wt_per_inch": 0.1114829799992028}], "b": 3.18, "fitted": false}, "facets": {"years": [2023, 2024, 2025, 2026], "species": ["catfish", "drum", "perch", "smallmouth bass", "walleye"], "fishers": ["Brent", "Brian", "Tyler", "brent", "brian", "matt", "tyler"]}, "counts": {"catches": 91, "weigh_sessions": 8}}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('payload').textContent);
+const SMALL_N = 12; // flag years with fewer kept walleye than this
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function el(id) { return document.getElementById(id); }
+
+// ---- populate filter dropdowns -------------------------------------------
+function opt(v, label) { const o=document.createElement('option');
+  o.value=v; o.textContent=label; return o; }
+function fillSelect(sel, values, allLabel) {
+  sel.appendChild(opt('', allLabel));
+  values.forEach(v => sel.appendChild(opt(String(v), String(v))));
+}
+fillSelect(el('f-year'), DATA.facets.years, 'All years');
+fillSelect(el('f-species'), DATA.facets.species, 'All species');
+fillSelect(el('f-fisher'), DATA.facets.fishers, 'All fishermen');
+el('count-sub').textContent =
+  DATA.counts.catches + ' catches · ' + DATA.counts.weigh_sessions + ' weigh sessions';
+el('b-note').textContent = DATA.modeled.fitted
+  ? ('b = ' + DATA.modeled.b.toFixed(3) + ', fitted')
+  : ('b = ' + DATA.modeled.b.toFixed(3) + ', literature default');
+
+// ---- chart helpers --------------------------------------------------------
+Chart.defaults.color = '#9aa7b4';
+Chart.defaults.borderColor = '#283342';
+Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif';
+const charts = {};
+function draw(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(el(id), cfg);
+}
+function emptyState(id, msg) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  const c = el(id), ctx = c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.fillStyle = '#9aa7b4'; ctx.font = '13px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(msg, c.width/2, c.height/2);
+}
+
+// ---- (a) measured wt/inch by year (static, not filtered) ------------------
+function drawMeasured() {
+  const by = DATA.headline.by_year || {};
+  const years = Object.keys(by).sort();
+  if (!years.length) { emptyState('c-measured', 'No measured wt/inch available'); return; }
+  draw('c-measured', {
+    type:'bar',
+    data:{ labels:years, datasets:[{
+      label:'measured wt/inch', backgroundColor:'#6fd08c',
+      data: years.map(y => by[y].wt_per_inch) }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        afterLabel: (i)=> { const d=by[i.label];
+          return d.n_sessions+' sessions · '+d.total_bag_lbs.toFixed(1)
+            +' lbs / '+d.total_inches.toFixed(0)+' in'; } }} },
+      scales:{ y:{ title:{display:true,text:'lbs / inch'}, beginAtZero:true } } }
+  });
+}
+
+// ---- (b) modeled wt/inch by year (static; from walleye/kept model) --------
+function drawModeled() {
+  const by = DATA.modeled.by_year || {};
+  const years = Object.keys(by).sort();
+  if (!years.length) { emptyState('c-modeled', 'No modeled data available'); return; }
+  draw('c-modeled', {
+    type:'bar',
+    data:{ labels:years, datasets:[{
+      label:'modeled wt/inch', backgroundColor:'#ffce5b',
+      data: years.map(y => by[y].wt_per_inch_mean) }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        afterLabel: (i)=> { const d=by[i.label];
+          const flag = d.n < SMALL_N ? '  ⚠ small n' : '';
+          return 'n=' + d.n + flag; } }} },
+      scales:{ y:{ title:{display:true,text:'lbs / inch (modeled)'}, beginAtZero:true } } }
+  });
+}
+
+// ---- filtering ------------------------------------------------------------
+function currentFilter() {
+  return {
+    year: el('f-year').value,
+    species: el('f-species').value,
+    fisher: el('f-fisher').value,
+    kept: el('f-kept').value,
+  };
+}
+function applyFilter(f) {
+  return DATA.catches.filter(c => {
+    if (f.year && String(c.year) !== f.year) return false;
+    if (f.species && c.species !== f.species) return false;
+    if (f.fisher && c.fisherman !== f.fisher) return false;
+    if (f.kept === 'kept' && !c.kept) return false;
+    if (f.kept === 'released' && c.kept) return false;
+    return true;
+  });
+}
+
+function drawLength(rows) {
+  const lens = rows.map(r => r.length).filter(v => v !== null && !isNaN(v));
+  if (!lens.length) { emptyState('c-length', 'No length data for this filter'); return; }
+  const lo = Math.floor(Math.min(...lens)), hi = Math.ceil(Math.max(...lens));
+  const bins = {}; for (let b=lo; b<=hi; b++) bins[b]=0;
+  lens.forEach(v => { const b=Math.floor(v); bins[b]=(bins[b]||0)+1; });
+  const labels = Object.keys(bins).sort((a,b)=>a-b);
+  draw('c-length', {
+    type:'bar',
+    data:{ labels: labels.map(b=>b+'"'), datasets:[{
+      label:'catches', backgroundColor:'#5bb4ff',
+      data: labels.map(b=>bins[b]) }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ y:{ beginAtZero:true, title:{display:true,text:'count'} },
+                x:{ title:{display:true,text:'length (in)'} } } }
+  });
+}
+
+function drawSpecies(rows) {
+  if (!rows.length) { emptyState('c-species', 'No catches for this filter'); return; }
+  const counts = {};
+  rows.forEach(r => { const s = r.species || '(unknown)';
+    counts[s] = (counts[s]||0)+1; });
+  const labels = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  draw('c-species', {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'catches', backgroundColor:'#5bb4ff',
+      data: labels.map(s=>counts[s]) }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{ beginAtZero:true, title:{display:true,text:'count'} } } }
+  });
+}
+
+function drawKpis(rows) {
+  const n = rows.length;
+  const kept = rows.filter(r=>r.kept).length;
+  const lens = rows.map(r=>r.length).filter(v=>v!==null && !isNaN(v));
+  const avg = lens.length ? (lens.reduce((a,b)=>a+b,0)/lens.length) : null;
+  const mx = lens.length ? Math.max(...lens) : null;
+  // small-n flag using filtered year's modeled n if a single year is selected
+  const f = currentFilter();
+  let flag = '';
+  if (f.year && DATA.modeled.by_year[f.year]
+      && DATA.modeled.by_year[f.year].n < SMALL_N) {
+    flag = '<span class="smalln">⚠ small sample (n='
+      + DATA.modeled.by_year[f.year].n + ' kept walleye)</span>';
+  }
+  el('kpis').innerHTML =
+    kpi(n, 'catches (filtered)') +
+    kpi(kept + ' / ' + (n - kept), 'kept / released') +
+    kpi(avg!==null ? avg.toFixed(1)+'"' : '—', 'avg length') +
+    kpi(mx!==null ? mx.toFixed(1)+'"' : '—', 'max length') +
+    (flag ? '<div class="kpi"><div class="v">⚠</div><div class="l">'+flag+'</div></div>' : '');
+}
+function kpi(v, l) {
+  return '<div class="kpi"><div class="v">'+esc(v)+'</div><div class="l">'+esc(l)+'</div></div>';
+}
+
+function drawBagTable() {
+  const s = DATA.headline.sessions || [];
+  if (!s.length) { el('bag-table').innerHTML = '<div class="empty">No weigh sessions.</div>'; return; }
+  let h = '<table><thead><tr><th>Date</th><th>Trip</th><th>Bag (lbs)</th>'
+    + '<th>Day inches</th><th>wt/inch</th></tr></thead><tbody>';
+  s.slice().sort((a,b)=>a.weigh_date<b.weigh_date?-1:1).forEach(r => {
+    h += '<tr><td>'+esc(r.weigh_date)+'</td><td>'+esc(r.trip)+'</td>'
+      + '<td>'+(r.bag_lbs!==null?r.bag_lbs.toFixed(2):'—')+'</td>'
+      + '<td>'+(r.day_inches!==null?r.day_inches.toFixed(1):'—')+'</td>'
+      + '<td>'+(r.wt_per_inch!==null?r.wt_per_inch.toFixed(4):'—')+'</td></tr>';
+  });
+  h += '</tbody></table>';
+  el('bag-table').innerHTML = h;
+}
+
+// ---- Plotly plots ported from analysis.ipynb (respect the filters) --------
+const PLOTLY_LAYOUT = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{color:'#9aa7b4', family:'-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'},
+  margin:{l:55,r:20,t:20,b:50},
+};
+const PLOTLY_CFG = {responsive:true, displayModeBar:false};
+const PALETTE = ['#5bb4ff','#ffce5b','#6fd08c','#ff8a8a','#c89bff','#7fe3d4'];
+function yearColor(y, years) { return PALETTE[years.indexOf(y) % PALETTE.length]; }
+
+// depth is stored positive in the CSV; mirror the notebook and plot it downward.
+function depthDown(v) { return v === null ? null : -Math.abs(v); }
+
+// crisp categorical year palette tuned for the dark bg
+const YEAR_COLORS = {2023:'#4ea7fc', 2024:'#f5b301', 2025:'#34d399', 2026:'#f87171'};
+function lenDepthColor(y) { return YEAR_COLORS[y] || '#cbd5e1'; }
+
+function drawLenDepth(rows) {
+  const d = rows.filter(r => r.length !== null && r.depth !== null && !isNaN(r.length) && !isNaN(r.depth));
+  const div = el('p-lendepth');
+  if (!d.length) { Plotly.purge(div); div.innerHTML = '<div class="empty">No length/depth data for this filter</div>'; return; }
+  const years = [...new Set(d.map(r => r.year))].sort();
+  const traces = years.map(y => {
+    const s = d.filter(r => r.year === y);
+    return { x:s.map(r=>r.length), y:s.map(r=>depthDown(r.depth)), mode:'markers',
+      type:'scatter', name:String(y),
+      // uniform small markers w/ thin dark outline so points separate
+      marker:{ size:8, color:lenDepthColor(y), opacity:0.7,
+                line:{width:0.6, color:'rgba(0,0,0,0.45)'} },
+      customdata:s.map(r=>[r.species||'—', r.fisherman||r.fisher||'—']),
+      text:s.map(r=>r.length),
+      hovertemplate:String(y)+' · %{x}" · %{y:.0f} ft'
+        +'<br>%{customdata[0]} · %{customdata[1]}<extra></extra>' };
+  });
+  Plotly.react(div, traces, Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis:{title:'Length (inches)', gridcolor:'#283342'},
+    yaxis:{title:'Depth (feet)', gridcolor:'#283342'},
+    showlegend:true, legend:{orientation:'h'} }), PLOTLY_CFG);
+}
+
+function drawTimeOfDay(rows) {
+  const d = rows.filter(r => r.hour !== null && r.hour !== undefined);
+  const div = el('p-timeofday');
+  if (!d.length) { Plotly.purge(div); div.innerHTML = '<div class="empty">No timestamped catches for this filter</div>'; return; }
+  // aggregate per hour: count + avg length (8 AM..8 PM)
+  const agg = {};
+  d.forEach(r => { const h=r.hour; (agg[h] = agg[h] || {n:0, sum:0, ln:0});
+    agg[h].n++; if (r.length!==null && !isNaN(r.length)) { agg[h].sum+=r.length; agg[h].ln++; } });
+  const hours = []; for (let h=8; h<=20; h++) hours.push(h);
+  const fmt = h => (h%12||12) + (h<12 ? 'a':'p');
+  const labels = hours.map(fmt);
+  const counts = hours.map(h => agg[h] ? agg[h].n : 0);
+  const avgLen = hours.map(h => (agg[h] && agg[h].ln) ? agg[h].sum/agg[h].ln : null);
+  // tiny count labels atop bars (blank for empty hours)
+  const countText = counts.map(c => c ? String(c) : '');
+  // per-bar hover text: count caught and avg length
+  const barHover = hours.map(h => { const a=agg[h];
+    return a ? a.n+' caught · avg '+(a.ln ? (a.sum/a.ln).toFixed(1) : '—')+'"' : '0 caught'; });
+  // color each bar by that hour's avg length, bounded to the observed range so variation shows
+  const lenVals = avgLen.filter(v => v !== null && !isNaN(v));
+  const cmin = lenVals.length ? Math.floor(Math.min(...lenVals)) : 12;
+  const cmax = lenVals.length ? Math.ceil(Math.max(...lenVals)) : 18;
+  // empty hours have no avg length; pin them to cmin so the color array stays numeric
+  const barColors = avgLen.map(v => (v !== null && !isNaN(v)) ? v : cmin);
+  const bars = { x:labels, y:counts, type:'bar', name:'catches', yaxis:'y',
+    marker:{ color:barColors, colorscale:'Turbo', cmin:cmin, cmax:cmax,
+      colorbar:{ title:{text:'avg length (in)'}, x:1.12, thickness:12, len:0.85 } },
+    text:countText, textposition:'outside', textfont:{color:'#cbd5e1', size:11},
+    cliponaxis:false, hovertext:barHover, hovertemplate:'%{hovertext}<extra></extra>' };
+  const line = { x:labels, y:avgLen, type:'scatter', mode:'lines+markers',
+    name:'avg length', yaxis:'y2', connectgaps:true,
+    line:{color:'#f5b301', width:2.5}, marker:{color:'#f5b301', size:6},
+    hovertemplate:'avg %{y:.1f}"<extra></extra>' };
+  const maxc = Math.max(1, ...counts);
+  // explicit, padded, ascending secondary range from observed avg lengths
+  const avgVals = avgLen.filter(v => v !== null && !isNaN(v));
+  const y2lo = avgVals.length ? Math.floor(Math.min(...avgVals)) - 1 : 12;
+  const y2hi = avgVals.length ? Math.ceil(Math.max(...avgVals)) + 1 : 18;
+  Plotly.react(div, [bars, line], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis:{title:'Time of day (8 AM – 8 PM)', type:'category', tickangle:0},
+    yaxis:{title:'Catches', range:[0, maxc*1.25], gridcolor:'#283342'},
+    yaxis2:{title:'avg length (in)', overlaying:'y', side:'right', showgrid:false,
+             range:[y2lo, y2hi]},
+    showlegend:true, legend:{orientation:'h'} }), PLOTLY_CFG);
+}
+
+function drawViolin(divId, rows, valueFn, axisTitle, downward) {
+  const div = el(divId);
+  const d = rows.filter(r => { const v=valueFn(r); return v!==null && !isNaN(v); });
+  if (!d.length) { Plotly.purge(div); div.innerHTML = '<div class="empty">No data for this filter</div>'; return; }
+  const years = [...new Set(d.map(r => r.year))].sort();
+  const traces = years.map(y => {
+    const s = d.filter(r => r.year === y);
+    return { type:'violin', y:s.map(r => { const v=valueFn(r); return downward ? depthDown(v) : v; }),
+      x:s.map(()=>String(y)), name:String(y)+' (n='+s.length+')',
+      box:{visible:true}, meanline:{visible:true}, points:'all', pointpos:0,
+      line:{color:yearColor(y, years)} };
+  });
+  Plotly.react(div, traces, Object.assign({}, PLOTLY_LAYOUT, {
+    yaxis:{title:axisTitle, gridcolor:'#283342'}, xaxis:{title:'Year'},
+    violinmode:'group', showlegend:true, legend:{orientation:'h'} }), PLOTLY_CFG);
+}
+
+function drawHistLength(rows) {
+  const div = el('p-hist-length');
+  const lens = rows.map(r=>r.length).filter(v=>v!==null && !isNaN(v));
+  if (!lens.length) { Plotly.purge(div); div.innerHTML = '<div class="empty">No length data for this filter</div>'; return; }
+  Plotly.react(div, [{ x:lens, type:'histogram', xbins:{size:1},
+    marker:{color:'#5bb4ff'} }], Object.assign({}, PLOTLY_LAYOUT, {
+    xaxis:{title:'Length (inches)', gridcolor:'#283342'},
+    yaxis:{title:'Count', gridcolor:'#283342'}, bargap:0.04 }), PLOTLY_CFG);
+}
+
+function refreshFiltered() {
+  const rows = applyFilter(currentFilter());
+  drawLength(rows);
+  drawSpecies(rows);
+  drawKpis(rows);
+  drawLenDepth(rows);
+  drawTimeOfDay(rows);
+  drawViolin('p-violin-depth', rows, r=>r.depth, 'Depth (feet)', true);
+  drawViolin('p-violin-length', rows, r=>r.length, 'Length (inches)', false);
+  drawHistLength(rows);
+}
+
+['f-year','f-species','f-fisher','f-kept'].forEach(id =>
+  el(id).addEventListener('change', refreshFiltered));
+
+// initial render
+drawMeasured();
+drawModeled();
+drawBagTable();
+refreshFiltered();
+</script>
+</body>
+</html>

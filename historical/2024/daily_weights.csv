@@ -1,0 +1,3 @@
+weigh_session_id,weigh_date,trip,daily_wt_lbs,day_inches,daily_wt_per_inch,n_catches_logged,notes
+hist-2024-06-14,2024-06-14,2024-06,25.0,255.75,0.09775171065493646,15,
+hist-2024-06-15,2024-06-15,2024-06,23.0,250.75,0.09172482552342971,15,
