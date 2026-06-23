@@ -4,6 +4,9 @@ Tools and data for a personal Lake Oahe (SD) walleye trip: an **offline iPhone c
 logger**, a **data pipeline + weight model**, and an animated **trip replay map**. Public repo;
 the runnable iOS Xcode project lives in the private repo `iHusk/FishingLogger`.
 
+> **Next season — quick start:** picking this back up after a year away? Start with the
+> checklist playbook in **[`docs/next-season.md`](docs/next-season.md)**.
+
 ## What's here
 
 | Piece | Where | What it is |
