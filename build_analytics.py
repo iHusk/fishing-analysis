@@ -36,6 +36,13 @@ import pandas as pd
 # here -- we only consume the functions below.
 import analysis
 
+# WEB-3: pure-Python lake-area lookup (reuses the PIPE-1 areas.geojson helper).
+# Optional — if areas.py / areas.geojson aren't present, catches just have no area.
+try:
+    import areas as _areas
+except Exception:  # pragma: no cover - areas are an optional enrichment
+    _areas = None
+
 ROOTS = ("historical", os.path.join("exports", "2026"))
 OUT_HTML = "analytics.html"
 
@@ -43,7 +50,7 @@ OUT_HTML = "analytics.html"
 RAW_COLS = [
     "id", "year", "weigh_session_id", "trip", "fisherman", "species", "kept",
     "length_in", "depth_ft", "timestamp_local", "lure_color1", "lure_color2",
-    "bait", "location_name",
+    "bait", "location_name", "lat", "lon",
 ]
 
 
@@ -72,6 +79,8 @@ def load_raw_catches(roots=ROOTS):
 
     raw["length_in"] = _safe_num(raw.get("length_in"))
     raw["depth_ft"] = _safe_num(raw.get("depth_ft"))
+    raw["lat"] = _safe_num(raw.get("lat"))
+    raw["lon"] = _safe_num(raw.get("lon"))
     raw["year"] = _safe_num(raw.get("year")).astype("Int64")
     # Normalize kept to a clean bool.
     raw["kept_bool"] = raw.get("kept").map(
@@ -90,6 +99,11 @@ def build_catch_records(raw):
     for i, (_, r) in enumerate(raw.iterrows()):
         length = r["length_in"]
         t = ts.iloc[i] if i < len(ts) else pd.NaT
+        # WEB-3: point-in-polygon area label from areas.geojson (PIPE-1 helper),
+        # so analytics can filter/label catches by named lake area.
+        area = None
+        if _areas is not None and pd.notna(r.get("lat")) and pd.notna(r.get("lon")):
+            area = _areas.assign_area(r["lat"], r["lon"])
         recs.append({
             "year": int(r["year"]) if pd.notna(r["year"]) else None,
             "trip": _clean(r.get("trip")),
@@ -104,6 +118,7 @@ def build_catch_records(raw):
             "min_since_8am": int((t.hour - 8) * 60 + t.minute) if pd.notna(t) else None,
             "session": _clean(r.get("weigh_session_id")),
             "location": _clean(r.get("location_name")),
+            "area": area,
         })
     return recs
 
@@ -212,13 +227,15 @@ def build_payload():
     years = sorted({c["year"] for c in catches if c["year"] is not None})
     species = sorted({c["species"] for c in catches if c["species"]})
     fishers = sorted({c["fisherman"] for c in catches if c["fisherman"]})
+    area_list = sorted({c["area"] for c in catches if c["area"]})
 
     return {
         "generated_roots": list(ROOTS),
         "catches": catches,
         "headline": headline,            # (a) measured wt/inch
         "modeled": modeled,              # (b) modeled wt/inch (assumed, not fitted)
-        "facets": {"years": years, "species": species, "fishers": fishers},
+        "facets": {"years": years, "species": species, "fishers": fishers,
+                   "areas": area_list},
         "counts": {"catches": len(catches),
                    "weigh_sessions": len(headline.get("sessions", []))},
     }
@@ -286,6 +303,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <label>Year<select id="f-year"></select></label>
     <label>Species<select id="f-species"></select></label>
     <label>Fisherman<select id="f-fisher"></select></label>
+    <label>Area<select id="f-area"></select></label>
     <label>Status<select id="f-kept">
       <option value="">All</option>
       <option value="kept">Kept</option>
@@ -392,6 +410,7 @@ function fillSelect(sel, values, allLabel) {{
 fillSelect(el('f-year'), DATA.facets.years, 'All years');
 fillSelect(el('f-species'), DATA.facets.species, 'All species');
 fillSelect(el('f-fisher'), DATA.facets.fishers, 'All fishermen');
+fillSelect(el('f-area'), DATA.facets.areas || [], 'All areas');
 el('count-sub').textContent =
   DATA.counts.catches + ' catches · ' + DATA.counts.weigh_sessions + ' weigh sessions';
 el('b-note').textContent = DATA.modeled.fitted
@@ -460,6 +479,7 @@ function currentFilter() {{
     year: el('f-year').value,
     species: el('f-species').value,
     fisher: el('f-fisher').value,
+    area: el('f-area').value,
     kept: el('f-kept').value,
   }};
 }}
@@ -468,6 +488,7 @@ function applyFilter(f) {{
     if (f.year && String(c.year) !== f.year) return false;
     if (f.species && c.species !== f.species) return false;
     if (f.fisher && c.fisherman !== f.fisher) return false;
+    if (f.area && c.area !== f.area) return false;
     if (f.kept === 'kept' && !c.kept) return false;
     if (f.kept === 'released' && c.kept) return false;
     return true;
@@ -674,7 +695,7 @@ function refreshFiltered() {{
   drawHistLength(rows);
 }}
 
-['f-year','f-species','f-fisher','f-kept'].forEach(id =>
+['f-year','f-species','f-fisher','f-area','f-kept'].forEach(id =>
   el(id).addEventListener('change', refreshFiltered));
 
 // initial render

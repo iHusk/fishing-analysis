@@ -124,3 +124,7 @@ See **ADR 0001** (`docs/adr/0001-weight-curve-estimation.md`) for the decision r
   - `uv run --with plotly --with pandas --with openpyxl --with duckdb --with nbconvert --with ipykernel jupyter nbconvert --to notebook --execute --inplace analysis.ipynb`
 - `fishing-trip.png` is a single composite figure (the `cell-11` 2×2 dashboard), exported
   via kaleido at 1729×800. Not multi-page (PNG can't be).
+- **Interactive analytics:** `build_analytics.py` → `analytics.html` (self-contained,
+  Chart.js + Plotly) renders the measured vs. modeled weight-per-inch by year (and
+  length-vs-depth, time-of-day, depth/length violins, length histogram) with year/species/
+  fisherman/area/kept filters — driven by `load_history()` and the same calibrated curve.

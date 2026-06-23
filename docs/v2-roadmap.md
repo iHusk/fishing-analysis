@@ -1,8 +1,11 @@
 # v2 Roadmap — replay/app/analytics next wave
 
-**Status:** written to Linear (project *Fishing Logger*, team HayesHousehold / HAY) on 2026-06-21.
-Each `### ISSUE` below maps to one Linear issue; IDs in the table. Decisions were locked with the
-owner on 2026-06-21.
+**Status (2026-06-22): v2 wave SHIPPED.** Every issue below is **DONE** except **APP-3**
+(backlog — app-side `areas.geojson` ingestion). See the per-issue markers.
+
+**Provenance:** written to Linear (project *Fishing Logger*, team HayesHousehold / HAY) on
+2026-06-21. Each `### ISSUE` below maps to one Linear issue; IDs in the table. Decisions were
+locked with the owner on 2026-06-21.
 
 | ID | Issue | ID | Issue |
 |----|-------|----|-------|
@@ -61,7 +64,7 @@ TOOLS
 
 ## Issues
 
-### INFRA-1 — `justfile` + thin FastAPI authoring server scaffold
+### INFRA-1 — `justfile` + thin FastAPI authoring server scaffold — **DONE** (`justfile`, `server.py`)
 **Labels:** infra, web
 **Why:** Foundation for the authoring tools (areas/notes editors) and a one-command front door for
 every workflow.
@@ -74,7 +77,7 @@ every workflow.
 - Run via `just areas` / `just notes`; works fully offline (localhost only).
 **Depends on:** none. **Blocks:** WEB-2, DATA-2 (notes editor).
 
-### DATA-1 — Non-destructive migration of 3 historical seasons → new schema
+### DATA-1 — Non-destructive migration of 3 historical seasons → new schema — **DONE** (`scripts/migrate_history.py`, `analysis.load_history()`)
 **Labels:** data, analysis
 **Why:** "avg weight-per-inch across years" needs the prior seasons in the new clean schema.
 **Scope / acceptance:**
@@ -85,7 +88,7 @@ every workflow.
 - Sanity report: per-year catch counts + bag weights reconcile with the xlsx within tolerance.
 **Depends on:** none. **Blocks:** WEB-1.
 
-### DATA-2 — Notes model (day notes + whole-trip review sidecar)
+### DATA-2 — Notes model (day notes + whole-trip review sidecar) — **DONE** (`notes.html`, `docs/notes-schema.md`)
 **Labels:** data, web
 **Why:** Capture per-day conditions and a reflective trip review (e.g. "next year push north to
 Bob's / Bush's Landing") without bloating the app.
@@ -97,7 +100,7 @@ Bob's / Bush's Landing") without bloating the app.
   hand-editing JSON.
 **Depends on:** INFRA-1 (for the editor). **Blocks:** rendering in REPLAY-1 plaques + WEB-1.
 
-### PIPE-1 — Replay-prep pipeline (derive a clean replay bundle)
+### PIPE-1 — Replay-prep pipeline (derive a clean replay bundle) — **DONE** (`ingest.py` → `build/<trip>/replay_bundle.json`)
 **Labels:** data, replay
 **Why:** Decouple the replay front-end from raw CSV quirks; merge notes + area labels once.
 **Scope / acceptance:**
@@ -109,7 +112,7 @@ Bob's / Bush's Landing") without bloating the app.
 - Source files are inputs only; pipeline never writes back into `exports/.../*.csv`.
 **Depends on:** DATA-2, WEB-3 (area labels) — can land incrementally.
 
-### REPLAY-1 — Outing detection + per-outing plaques + master weekend plaque
+### REPLAY-1 — Outing detection + per-outing plaques + master weekend plaque — **DONE**
 **Labels:** replay
 **Why:** Today the replay "renders the night" (the dead overnight gap). Instead, segment the
 weekend into on-water outings, recap each, then a finale.
@@ -122,7 +125,7 @@ weekend into on-water outings, recap each, then a finale.
   per-day breakdown, trip-review note).
 **Depends on:** DATA-2 (for plaque note text). Touches `replay_template.html` + `replay_trip.py`.
 
-### REPLAY-2 — Target-species emphasis
+### REPLAY-2 — Target-species emphasis — **DONE** (`replay_config.json` target_species + stars)
 **Labels:** replay
 **Why:** Walleye is the point; catfish/drum/perch are noise on the map.
 **Scope / acceptance:**
@@ -134,7 +137,7 @@ weekend into on-water outings, recap each, then a finale.
 - Crown (biggest) logic respects target set: the trip "biggest" crowns among targets+starred.
 **Depends on:** PIPE-1 (star list) — can stub from a constant initially. Touches `replay_template.html`.
 
-### REPLAY-3 — Heatmap driven by target species
+### REPLAY-3 — Heatmap driven by target species — **DONE**
 **Labels:** replay
 **Why:** "Where do the walleye come from" — non-targets shouldn't dilute the heat.
 **Scope / acceptance:**
@@ -142,7 +145,7 @@ weekend into on-water outings, recap each, then a finale.
 - Legend notes the active species filter.
 **Depends on:** REPLAY-2 (shared target config).
 
-### REPLAY-4 — Cross-day opacity + weekend-review layering
+### REPLAY-4 — Cross-day opacity + weekend-review layering — **DONE**
 **Labels:** replay
 **Why:** When day 2 plays, day 1's track shouldn't compete at full strength; the weekend review
 needs a deliberate all-days look.
@@ -153,7 +156,7 @@ needs a deliberate all-days look.
   color legend (used by the master plaque).
 **Depends on:** REPLAY-1 (outing/day model). Touches `replay_template.html`.
 
-### WEB-1 — Analytics page (static, interactive filters)
+### WEB-1 — Analytics page (static, interactive filters) — **DONE** (`build_analytics.py` → `analytics.html`)
 **Labels:** analytics, web
 **Why:** Understand fish health/quality over time; headline metric = **avg weight-per-inch across
 years**.
@@ -164,7 +167,7 @@ years**.
   bag by day/trip. Degrades gracefully with sparse years.
 **Depends on:** DATA-1 (multi-year data).
 
-### WEB-2 — Lake-area polygon editor → `areas.geojson`
+### WEB-2 — Lake-area polygon editor → `areas.geojson` — **DONE** (`map-areas.html`; 8 named areas)
 **Labels:** web, maps
 **Why:** Name the regions of Oahe so catches/areas are human-readable everywhere.
 **Scope / acceptance:**
@@ -174,7 +177,7 @@ years**.
 - `just areas` opens it.
 **Depends on:** INFRA-1.
 
-### WEB-3 — Label catches by area in replay + analytics
+### WEB-3 — Label catches by area in replay + analytics — **DONE** (`areas.py` point-in-polygon)
 **Labels:** web, replay, analytics
 **Why:** Turn raw lat/lon into "Bob's Landing" across the views.
 **Scope / acceptance:**
@@ -182,7 +185,7 @@ years**.
 - Replay popups + analytics filters/labels use the area name when present.
 **Depends on:** WEB-2.
 
-### APP-1 — Freeze catch GPS at "Log Fish" tap
+### APP-1 — Freeze catch GPS at "Log Fish" tap — **DONE** (`app/AppSources/CatchEntryView.swift` `taggedFix`)
 **Labels:** app, ios
 **Why:** Right now `loc.current` keeps updating while the catch form is open
 (`CatchEntryView.swift:209`), so the saved point drifts as the boat moves during data entry.
@@ -193,7 +196,7 @@ years**.
 - Background track continues normally; only the *catch* coordinate is frozen.
 **Depends on:** none.
 
-### APP-2 — Drag-a-ruler length/depth input
+### APP-2 — Drag-a-ruler length/depth input — **DONE** (`app/AppSources/RulerInput.swift`)
 **Labels:** app, ios
 **Why:** The `Stepper` arrows (`CatchEntryView.swift:97,105`) are slow/fiddly with wet, cold hands.
 **Scope / acceptance:**
@@ -202,7 +205,7 @@ years**.
 - Keep carry-forward seeding; keep values within current bounds.
 **Depends on:** none.
 
-### APP-3 (later) — App ingests `areas.geojson` to auto-fill `location_name`
+### APP-3 (later) — App ingests `areas.geojson` to auto-fill `location_name` — **BACKLOG** (only remaining v2 item)
 **Labels:** app, ios, maps
 **Why:** Auto-name a catch's spot from the named lake areas (phase C of the lake-areas plan).
 **How the phone gets the polygons (no server on the water):**
