@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Wireframe 10 - Watch Compact</title>
+<style>
+  :root{
+    --ink:#f9fbf5;
+    --muted:#aebbb5;
+    --dim:#7d8c86;
+    --black:#030605;
+    --face:#08110f;
+    --line:rgba(232,246,232,.18);
+    --lime:#d4ff43;
+    --orange:#ff8d35;
+    --teal:#3fe3c5;
+    --red:#ff6d5f;
+    --amber:#ffd166;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#030505;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,Arial,sans-serif}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 0 34px}
+  .phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:48px;background:#020403;box-shadow:0 0 0 10px #101514,0 0 0 12px #2b3331,0 30px 88px rgba(0,0,0,.66)}
+  .notch{position:absolute;z-index:8;top:8px;left:50%;width:122px;height:32px;transform:translateX(-50%);border-radius:0 0 20px 20px;background:#020202}
+  .status{position:absolute;z-index:9;top:0;left:0;right:0;height:47px;display:flex;align-items:center;justify-content:space-between;padding:13px 28px 0;font-size:13px;font-weight:800;color:#eff8ef}
+  .screen{
+    position:absolute;inset:0;padding:52px 13px 13px;display:grid;grid-template-rows:54px 105px 1fr 74px 66px;gap:9px;overflow:hidden;
+    background:
+      radial-gradient(290px 230px at 50% 9%,rgba(63,227,197,.2),transparent 64%),
+      radial-gradient(210px 250px at 93% 36%,rgba(255,141,53,.14),transparent 64%),
+      linear-gradient(180deg,#102725,#07100f 52%,#020403);
+  }
+  .screen:before{content:"";position:absolute;inset:47px 0 0;opacity:.24;background:linear-gradient(90deg,transparent 0 49%,rgba(255,255,255,.16) 50%,transparent 51%),repeating-linear-gradient(180deg,rgba(255,255,255,.08) 0 1px,transparent 1px 38px);pointer-events:none}
+  .top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .kicker{font-size:10px;font-weight:950;letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}
+  h1{font-size:21px;line-height:1;margin:3px 0 0;letter-spacing:-.03em}
+  .gps{min-width:114px;padding:8px 9px;border:1px solid rgba(63,227,197,.35);border-radius:17px;background:rgba(3,11,10,.68);text-align:right;font-size:10px;line-height:1.15;color:var(--muted);font-weight:850;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+  .gps b{display:block;color:#eafffa;font-size:12px;margin-bottom:2px}
+  .topgrid{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .chip{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.045));padding:12px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+  .chip:after{content:"";position:absolute;right:9px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 18px rgba(212,255,67,.8)}
+  .chip small,.mini small,.gpsline small{display:block;font-size:8px;font-weight:1000;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+  .chip b{display:block;margin-top:7px;font-size:19px;line-height:.95;letter-spacing:-.03em;color:#fff}
+  .chip.keepchip b{color:#0b1307;background:var(--lime);display:block;width:100%;text-align:center;border-radius:999px;padding:6px 4px;font-size:15px}
+  .facewrap{position:relative;z-index:1;display:grid;place-items:center;min-height:0}
+  .face{
+    position:relative;width:345px;height:345px;border-radius:50%;background:
+      radial-gradient(circle at 50% 48%,#12201b 0 42%,#050908 63%,#020403 100%);
+    border:1px solid rgba(255,255,255,.2);
+    box-shadow:0 30px 70px rgba(0,0,0,.5),inset 0 0 0 10px rgba(255,255,255,.035),inset 0 0 70px rgba(0,0,0,.7);
+  }
+  .face:before{content:"";position:absolute;inset:13px;border-radius:50%;background:
+    conic-gradient(from -70deg,var(--lime) 0 113deg,rgba(63,227,197,.55) 113deg 151deg,rgba(255,255,255,.12) 151deg 360deg);
+    -webkit-mask:radial-gradient(circle,transparent 61%,#000 62%);
+    mask:radial-gradient(circle,transparent 61%,#000 62%);
+    filter:drop-shadow(0 0 12px rgba(212,255,67,.26))}
+  .face:after{content:"";position:absolute;inset:35px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:
+    repeating-conic-gradient(from -2deg,rgba(255,255,255,.3) 0 1deg,transparent 1deg 10deg);
+    -webkit-mask:radial-gradient(circle,transparent 72%,#000 73%);
+    mask:radial-gradient(circle,transparent 72%,#000 73%);
+    opacity:.72}
+  .center{position:absolute;z-index:2;left:50%;top:50%;width:190px;transform:translate(-50%,-50%);text-align:center}
+  .center small{display:block;font-size:11px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
+  .center .num{font-size:99px;font-weight:1000;line-height:.83;letter-spacing:-.1em;text-shadow:0 18px 34px rgba(0,0,0,.55)}
+  .center .unit{font-size:15px;font-weight:950;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;margin-top:5px}
+  .crown{position:absolute;z-index:3;right:-13px;top:137px;width:25px;height:72px;border-radius:0 17px 17px 0;background:linear-gradient(180deg,#dce5df,#69756f);box-shadow:inset 5px 0 8px rgba(0,0,0,.34)}
+  .comp{position:absolute;z-index:4;width:89px;min-height:57px;border-radius:22px;border:1px solid rgba(255,255,255,.18);background:rgba(5,11,10,.82);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;padding:8px 9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.13)}
+  .comp small{font-size:8px;font-weight:1000;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+  .comp b{display:block;font-size:19px;line-height:1;margin-top:3px;color:#fff;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .depth{left:21px;top:43px}.water{right:21px;top:43px}.lure1{left:21px;bottom:42px}.lure2{right:21px;bottom:42px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:5px;margin-right:5px;border:1px solid rgba(255,255,255,.36);vertical-align:-1px}.chart{background:var(--lime)}.orange{background:var(--orange)}
+  .dock{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .mini{overflow:hidden;border:1px solid var(--line);border-radius:21px;background:rgba(255,255,255,.07);padding:9px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.11)}
+  .mini b{display:block;margin-top:5px;font-size:14px;line-height:1.02;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gpsline{position:relative;z-index:1;display:grid;grid-template-columns:1fr 118px;gap:8px}
+  .gpsbox{border:1px solid rgba(63,227,197,.28);border-radius:22px;background:rgba(255,255,255,.065);padding:9px 11px;overflow:hidden}
+  .gpsbox b{display:block;margin-top:5px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .voice{border:1px solid rgba(255,209,102,.38);border-radius:22px;background:linear-gradient(180deg,rgba(255,209,102,.2),rgba(255,255,255,.06));display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:1000;text-transform:uppercase;letter-spacing:.06em;color:#fff2c4}
+  .actions{position:relative;z-index:1;display:grid;grid-template-columns:72px 1fr 72px;gap:9px}
+  button{border:0;border-radius:23px;font:inherit;font-weight:950}
+  .side{border:1px solid var(--line);background:rgba(255,255,255,.08);color:#d8e7de;font-size:12px}
+  .log{background:linear-gradient(180deg,#f0ff78,#bdf238);color:#091309;box-shadow:0 16px 34px rgba(189,242,56,.28);font-size:20px;letter-spacing:-.02em}
+  .log span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:rgba(9,19,9,.68)}
+  .rationale{width:390px;margin-top:14px;border:1px solid #263434;border-radius:18px;background:#101819;color:#cbd9d2;padding:14px;font-size:12px;line-height:1.45}
+  .rationale h2{margin:0 0 7px;color:#fff;font-size:16px}.rationale p{margin:6px 0}.rationale b{color:var(--lime)}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="status"><span>7:18</span><span>LTE 100%</span></div>
+    <div class="screen">
+      <header class="top">
+        <div>
+          <div class="kicker">10 / wearable-scale logger</div>
+          <h1>Watch Compact</h1>
+        </div>
+        <div class="gps"><b>GPS frozen</b>North Flat<br>+/- 4 m</div>
+      </header>
+
+      <section class="topgrid" aria-label="Primary catch fields">
+        <div class="chip"><small>Angler</small><b>Tyler</b></div>
+        <div class="chip"><small>Species</small><b>walleye</b></div>
+        <div class="chip keepchip"><small>Kept / released</small><b>Kept</b></div>
+      </section>
+
+      <section class="facewrap" aria-label="Instrument face catch controls">
+        <div class="face">
+          <div class="crown" aria-hidden="true"></div>
+          <div class="comp depth"><small>Depth</small><b>22 ft</b></div>
+          <div class="comp water"><small>Water</small><b>64 F</b></div>
+          <div class="comp lure1"><small>Lure 1</small><b><i class="dot chart"></i>Chartreuse</b></div>
+          <div class="comp lure2"><small>Lure 2</small><b><i class="dot orange"></i>Orange</b></div>
+          <div class="center">
+            <small>Length</small>
+            <div class="num">18.5</div>
+            <div class="unit">inches</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dock" aria-label="Secondary catch fields">
+        <div class="mini"><small>Bait</small><b>Crawler</b></div>
+        <div class="mini"><small>Location</small><b>North Flat</b></div>
+        <div class="mini"><small>Notes</small><b>No notes</b></div>
+      </section>
+
+      <section class="gpsline" aria-label="GPS and voice controls">
+        <div class="gpsbox"><small>GPS tag</small><b>44.4568, -100.3457 / +/- 4 m / frozen</b></div>
+        <div class="voice">Voice<br>ready</div>
+      </section>
+
+      <nav class="actions" aria-label="Watch compact actions">
+        <button class="side">-</button>
+        <button class="log"><span>press to save</span>Log catch</button>
+        <button class="side">+</button>
+      </nav>
+    </div>
+  </main>
+
+  <section class="rationale">
+    <h2>Watch Compact Rationale</h2>
+    <p><b>Instrument face:</b> length is the dominant numeral, with depth, water, and lure colors as watch-style complications.</p>
+    <p><b>Glanceability:</b> all fields are visible at once, using large contrast and short labels for rough-water checks.</p>
+    <p><b>Wearable logic:</b> plus/minus and the side crown imply two-button BLE control while the phone version stays premium and tappable.</p>
+  </section>
+</body>
+</html>

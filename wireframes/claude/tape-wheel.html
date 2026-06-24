@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FishingLogger — Tape Wheel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0f12;
+    --bg-2:#101319;
+    --panel:#13171d;
+    --panel-2:#171c23;
+    --line:#222932;
+    --line-soft:#1b2128;
+    --ink:#f4f7fa;
+    --muted:#8a949e;
+    --faint:#5c6670;
+    /* refined warm-amber instrument accent */
+    --accent:#ffb547;
+    --accent-2:#ffce7a;
+    --accent-dim:#c9863a;
+    --accent-ink:#1a1206;
+    --accent-glow:rgba(255,181,71,.5);
+    --accent-soft:rgba(255,181,71,.12);
+    --cyan:#39d3c4;
+    --released:#46a6ff;
+    --released-glow:rgba(70,166,255,.5);
+    --released-soft:rgba(70,166,255,.14);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -8%, #15191f 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Sora",sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:26px 0 34px;
+    min-height:100%;
+    -webkit-user-select:none;user-select:none;
+  }
+
+  /* ---------- iPhone frame ---------- */
+  .phone{
+    width:390px;
+    height:844px;
+    flex:0 0 844px;
+    position:relative;
+    border-radius:56px;
+    background:#000;
+    box-shadow:
+      0 0 0 12px #16191e,
+      0 0 0 14px #2a2f37,
+      0 40px 90px rgba(0,0,0,.62);
+  }
+
+  .notch{
+    position:absolute;
+    z-index:6;
+    top:11px;
+    left:50%;
+    width:124px;
+    height:34px;
+    transform:translateX(-50%);
+    border-radius:20px;
+    background:#000;
+  }
+
+  /* ---------- Screen: EXACTLY 390x844, never scrolls ---------- */
+  .screen{
+    position:absolute;
+    inset:0;
+    width:390px;
+    height:844px;
+    border-radius:56px;
+    overflow:hidden;            /* clips rounded corners only; content is exactly 844 tall */
+    background:
+      radial-gradient(520px 300px at 50% 32%, rgba(255,181,71,.05), transparent 70%),
+      linear-gradient(180deg,#0f1318 0%, #0b0d11 100%);
+    display:flex;
+    flex-direction:column;
+  }
+
+  .statusbar{
+    flex:0 0 44px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 30px 0 34px;
+    font-size:14px;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+  .statusbar .right{display:flex;gap:7px;align-items:center;}
+  .signal{width:18px;height:11px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;align-items:end;}
+  .signal i{display:block;width:3px;border-radius:1px;background:var(--ink);}
+  .signal i:nth-child(1){height:4px;}
+  .signal i:nth-child(2){height:6px;}
+  .signal i:nth-child(3){height:9px;}
+  .signal i:nth-child(4){height:11px;}
+  .battery{width:24px;height:12px;border:1.6px solid var(--ink);border-radius:3px;position:relative;}
+  .battery:before{content:"";position:absolute;right:-4px;top:3px;width:2px;height:6px;border-radius:2px;background:var(--ink);}
+  .battery:after{content:"";position:absolute;left:2px;top:2px;bottom:2px;width:15px;border-radius:1px;background:var(--accent);}
+
+  /* ---------- Header ---------- */
+  .topbar{
+    flex:0 0 46px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 22px;
+  }
+  .topbar .lead{display:flex;align-items:center;gap:12px;}
+  .x{
+    width:34px;height:34px;border-radius:12px;
+    border:1px solid var(--line);background:var(--panel);
+    display:grid;place-items:center;color:var(--muted);
+  }
+  .x svg{width:15px;height:15px;}
+  .title{font-size:18px;font-weight:700;letter-spacing:-.2px;}
+  .gpsnote{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 13px;border-radius:999px;
+    border:1px solid rgba(57,211,196,.28);
+    background:rgba(57,211,196,.06);
+  }
+  .gpsnote .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);flex:0 0 6px;}
+  .gpsnote b{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.1px;}
+
+  /* ---------- TOP: angler + species together ---------- */
+  .topcluster{
+    flex:0 0 auto;
+    margin:2px 18px 0;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+  }
+  .angler{
+    display:grid;
+    grid-template-columns:repeat(3,1fr) 46px;
+    gap:6px;
+    padding:6px;
+    border-radius:18px;
+    background:var(--panel);
+    border:1px solid var(--line);
+  }
+  .angler .seg{
+    height:40px;border-radius:13px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-weight:600;font-size:15px;
+    border:1px solid transparent;
+  }
+  .angler .seg.on{
+    color:var(--accent-ink);
+    background:linear-gradient(180deg,var(--accent-2),var(--accent));
+    box-shadow:0 6px 16px var(--accent-soft);
+  }
+  .angler .add{
+    height:40px;border-radius:13px;
+    display:grid;place-items:center;
+    border:1px dashed var(--line);
+    color:var(--muted);
+  }
+  .angler .add svg{width:18px;height:18px;}
+
+  /* species big — top, sits with angler */
+  .species{
+    height:54px;border-radius:18px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    display:flex;align-items:center;gap:13px;
+    padding:0 16px;
+  }
+  .species .ico{width:38px;height:26px;flex:0 0 38px;display:grid;place-items:center;}
+  .species .ico svg{width:38px;height:26px;}
+  .species .tx{display:flex;flex-direction:column;line-height:1.05;}
+  .species .tx small{font-family:"DM Mono",monospace;font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--faint);}
+  .species .tx b{font-size:20px;font-weight:700;letter-spacing:-.3px;}
+  .species .caret{margin-left:auto;color:var(--faint);}
+  .species .caret svg{width:15px;height:15px;}
+
+  /* ---------- HERO: Tape Wheel (length) ---------- */
+  .hero{
+    flex:0 0 auto;
+    margin:14px 0 0;
+    position:relative;
+  }
+
+  .eyebrow{
+    text-align:center;
+    font-family:"DM Mono",monospace;
+    font-size:10px;font-weight:500;letter-spacing:2.6px;
+    text-transform:uppercase;color:var(--faint);
+  }
+
+  .readout{
+    margin-top:0;
+    display:flex;align-items:baseline;justify-content:center;gap:8px;
+  }
+  .readout .val{
+    font-size:74px;line-height:.9;font-weight:700;letter-spacing:-2.5px;
+    font-variant-numeric:tabular-nums;
+    color:#fff;
+    text-shadow:0 2px 30px rgba(255,181,71,.14);
+  }
+  .readout .val em{font-style:normal;color:var(--accent);}
+  .readout .unit{
+    font-size:20px;font-weight:600;color:var(--muted);
+    transform:translateY(-6px);
+  }
+
+  /* tape ribbon */
+  .tape-wrap{
+    position:relative;
+    height:86px;
+    margin-top:4px;
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+            mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+    overflow:hidden;            /* internal tape clip — allowed */
+    touch-action:none;
+    cursor:grab;
+  }
+  .tape-wrap:active{cursor:grabbing;}
+
+  /* the sliding tape; 1 inch = 96px (so 0.25" = 24px). JS sets translateX. */
+  .tape{
+    position:absolute;
+    top:22px;
+    left:50%;
+    height:62px;
+    width:6200px;
+    will-change:transform;
+  }
+  .tape .row{position:absolute;left:0;right:0;bottom:0;}
+  /* MAJOR: a tall tick at every whole inch (96px) */
+  .tape .major{
+    height:62px;
+    background:repeating-linear-gradient(90deg,
+      rgba(255,255,255,.85) 0 2px, transparent 2px 96px);
+  }
+  /* MINOR: a short tick at every 0.25" (24px). Major overlays the whole-inch slot. */
+  .tape .minor{
+    height:26px;
+    background:repeating-linear-gradient(90deg,
+      rgba(255,255,255,.26) 0 1.4px, transparent 1.4px 24px);
+  }
+
+  /* inch numerals under the major ticks — VERY LIGHT, whole inches only */
+  .tape .nums{
+    position:absolute;
+    top:66px;left:0;height:18px;width:6200px;
+  }
+  .tape .nums b{
+    position:absolute;
+    transform:translateX(-50%);
+    font-family:"DM Mono",monospace;
+    font-size:11px;font-weight:400;color:rgba(255,255,255,.30);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* fixed center indicator (shared by both tapes) */
+  .indicator{
+    position:absolute;top:14px;bottom:30px;left:50%;
+    transform:translateX(-50%);
+    width:3px;
+    background:linear-gradient(180deg,var(--accent),rgba(255,181,71,.25));
+    border-radius:3px;
+    box-shadow:0 0 14px var(--accent-glow), 0 0 3px rgba(255,181,71,.9);
+    z-index:3;
+  }
+  .indicator:before,.indicator:after{
+    content:"";position:absolute;left:50%;transform:translateX(-50%);
+    border-left:7px solid transparent;border-right:7px solid transparent;
+  }
+  .indicator:before{top:-9px;border-top:9px solid var(--accent);}
+  .indicator:after{bottom:-9px;border-bottom:9px solid var(--accent);}
+
+  /* ---------- DEPTH: sibling tape ---------- */
+  .depth-hero{
+    flex:0 0 auto;
+    margin:10px 0 0;
+    position:relative;
+  }
+  .depth-hero .readout .val{font-size:52px;letter-spacing:-1.5px;}
+  .depth-hero .readout .unit{font-size:16px;transform:translateY(-4px);}
+  /* DEPTH: 1 ft = 48px, so 0.5 ft = 24px. */
+  .depth-hero .tape-wrap{height:62px;margin-top:2px;}
+  .depth-hero .tape{top:18px;height:48px;width:8640px;}
+  /* MAJOR: tall tick at every whole foot (48px) */
+  .depth-hero .tape .major{
+    height:48px;
+    background:repeating-linear-gradient(90deg,
+      rgba(255,255,255,.80) 0 2px, transparent 2px 48px);
+  }
+  /* MINOR: short tick at every 0.5 ft (24px) */
+  .depth-hero .tape .minor{
+    height:22px;
+    background:repeating-linear-gradient(90deg,
+      rgba(255,255,255,.24) 0 1.4px, transparent 1.4px 24px);
+  }
+  .depth-hero .tape .nums{top:52px;}
+  .depth-hero .tape .nums b{font-size:11px;font-weight:400;color:rgba(255,255,255,.30);}
+  .depth-hero .indicator{top:10px;bottom:26px;}
+
+  /* ---------- Tertiary quiet rows ---------- */
+  .quietstack{
+    flex:0 0 auto;
+    margin:14px 18px 0;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+  }
+
+  /* a generic quiet collapsed row: label left, value right */
+  .qrow{
+    border-radius:16px;border:1px solid var(--line);background:var(--panel);
+    min-height:50px;
+    display:flex;align-items:center;
+    padding:0 15px;
+    position:relative;
+  }
+  .qrow .qlab{
+    font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.9px;
+    text-transform:uppercase;color:var(--faint);
+  }
+  .qrow .qval{
+    margin-left:auto;display:flex;align-items:center;gap:9px;
+    font-size:16px;font-weight:600;color:var(--ink);
+  }
+  .qrow .qval .swatch{width:20px;height:20px;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}
+  .qrow .qval .plus{
+    width:26px;height:26px;border-radius:9px;display:grid;place-items:center;
+    border:1px dashed var(--line);color:var(--muted);
+  }
+  .qrow .qval .plus svg{width:14px;height:14px;}
+  .qrow .qval .more{
+    width:20px;height:20px;border-radius:7px;display:grid;place-items:center;
+    font-family:"DM Mono",monospace;font-size:10px;color:var(--accent-dim);
+    background:var(--accent-soft);
+  }
+  .qrow .qval .caret{color:var(--faint);display:grid;place-items:center;}
+  .qrow .qval .caret svg{width:14px;height:14px;}
+
+  /* expanded panel: a popover that opens UPWARD, overlaying the tapes —
+     it never reflows the layout, so the default flow + swipe bar stay put */
+  .qhead{display:flex;align-items:center;width:100%;}
+  .qexpand{
+    display:none;
+    position:absolute;left:0;right:0;bottom:calc(100% + 8px);
+    border-radius:16px;border:1px solid var(--line);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    box-shadow:0 -18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,181,71,.06);
+    padding:13px 14px 14px;
+    z-index:9;
+  }
+  .qexpand:after{
+    content:"";position:absolute;left:24px;bottom:-7px;width:13px;height:13px;
+    background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    transform:rotate(45deg);
+  }
+  .qrow.open{border-color:var(--accent-dim);}
+  .qrow.open .qexpand{display:block;animation:pop .14s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .poplab{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.9px;text-transform:uppercase;color:var(--faint);}
+
+  /* --- Lure color rail (revealed) --- */
+  .rail{
+    margin-top:9px;
+    display:flex;gap:9px;overflow-x:hidden;padding:1px;
+  }
+  .rail .col{
+    flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;width:40px;
+  }
+  .rail .col .dot{
+    width:34px;height:34px;border-radius:11px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);
+    position:relative;
+  }
+  .rail .col.sel .dot{box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 0 0 2px var(--accent),0 0 12px var(--accent-glow);}
+  .rail .col.sel .dot:after{
+    content:"";position:absolute;inset:0;border-radius:11px;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5L20 6'/></svg>") center/16px no-repeat;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
+  .rail .col span{font-family:"DM Mono",monospace;font-size:8px;letter-spacing:.2px;color:var(--muted);white-space:nowrap;}
+  .rail .col.sel span{color:var(--ink);}
+
+  /* named walleye swatch fills */
+  .c-chartreuse{background:#cfff3c;}
+  .c-purple{background:#7b5cff;}
+  .c-white{background:#eef2f6;}
+  .c-firetiger{background:linear-gradient(135deg,#7fe04a 0 38%,#ffb13b 38% 70%,#e0431f 70%);}
+  .c-orange{background:#ff7a1a;}
+  .c-glow{background:radial-gradient(circle at 50% 40%,#eafff0,#9affc6 70%);}
+  .c-gold{background:linear-gradient(135deg,#ffd76a,#caa23a);}
+  .c-black{background:#1c2128;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
+
+  /* --- Bait picker (radio list, revealed) --- */
+  .baitpick{margin-top:9px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .baitopt{
+    height:42px;border-radius:12px;border:1px solid var(--line-soft);background:var(--panel-2);
+    display:flex;align-items:center;gap:9px;padding:0 12px;
+    color:var(--muted);font-weight:600;font-size:14px;
+  }
+  .baitopt svg{width:16px;height:16px;flex:0 0 16px;}
+  .baitopt.on{
+    color:var(--accent-ink);border-color:transparent;
+    background:linear-gradient(180deg,var(--accent-2),var(--accent));
+    box-shadow:0 5px 14px var(--accent-soft);
+  }
+
+  /* --- Water temp slider (revealed) --- */
+  .tempslider{margin-top:11px;}
+  .tslab{display:flex;justify-content:space-between;font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.5px;color:var(--faint);margin-bottom:12px;}
+  .ttrack{
+    position:relative;height:18px;border-radius:999px;
+    background:linear-gradient(90deg,#2f6fb0,#39d3c4 55%,var(--accent) 100%);
+    opacity:.85;touch-action:none;cursor:grab;
+  }
+  .ttrack:active{cursor:grabbing;}
+  .tknob{
+    position:absolute;top:50%;width:30px;height:30px;border-radius:50%;
+    transform:translate(-50%,-50%);
+    background:linear-gradient(180deg,#fff,#e6ecf2);
+    box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 0 3px var(--panel);
+    display:grid;place-items:center;
+    font-size:11px;font-weight:700;color:#0d0f12;font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- Swipe Save bar (disposition + save in one) ---------- */
+  .savebar{
+    flex:1 1 auto;
+    display:flex;
+    align-items:flex-end;
+    padding:14px 18px 18px;
+  }
+  .swipe{
+    position:relative;width:100%;height:66px;border-radius:20px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    overflow:hidden;
+    touch-action:none;
+  }
+  /* directional fills behind the knob */
+  .swipe .fill{
+    position:absolute;top:0;bottom:0;width:50%;opacity:0;transition:opacity .12s;
+    display:flex;align-items:center;
+  }
+  .swipe .fill.keep{
+    right:0;justify-content:flex-end;padding-right:22px;
+    background:linear-gradient(90deg,transparent,var(--accent-soft));
+  }
+  .swipe .fill.release{
+    left:0;justify-content:flex-start;padding-left:22px;
+    background:linear-gradient(90deg,var(--released-soft),transparent);
+  }
+  .swipe .fill b{font-size:15px;font-weight:800;letter-spacing:-.2px;}
+  .swipe .fill.keep b{color:var(--accent);}
+  .swipe .fill.release b{color:var(--released);}
+
+  /* end hints */
+  .swipe .hint{
+    position:absolute;top:50%;transform:translateY(-50%);
+    font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--faint);
+    display:flex;align-items:center;gap:6px;pointer-events:none;
+  }
+  .swipe .hint.l{left:18px;}
+  .swipe .hint.r{right:18px;}
+  .swipe .hint svg{width:13px;height:13px;}
+  .swipe .hint.r{color:var(--accent-dim);}
+
+  /* the draggable knob/grip, default biased toward keep */
+  .knob{
+    position:absolute;top:6px;height:54px;width:120px;
+    left:calc(50% - 60px);
+    border-radius:15px;
+    background:linear-gradient(180deg,var(--accent-2),var(--accent));
+    color:var(--accent-ink);
+    box-shadow:0 10px 26px var(--accent-soft);
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    cursor:grab;will-change:left;
+    z-index:2;
+  }
+  .knob:active{cursor:grabbing;}
+  .knob .grip{display:flex;gap:3px;}
+  .knob .grip i{width:2px;height:18px;border-radius:2px;background:rgba(26,18,6,.4);}
+  .knob b{font-size:15px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;}
+  .knob.release{
+    background:linear-gradient(180deg,#7cc2ff,var(--released));
+    color:#06121f;
+    box-shadow:0 10px 26px var(--released-soft);
+  }
+  .knob.release .grip i{background:rgba(6,18,31,.4);}
+
+  /* ---------- Caption under frame ---------- */
+  .caption{
+    font-family:"DM Mono",monospace;
+    font-size:12px;letter-spacing:1.2px;text-transform:uppercase;
+    color:#7d8893;
+  }
+  .caption b{color:var(--accent);}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="FishingLogger Log Catch — Tape Wheel">
+    <div class="notch"></div>
+
+    <div class="screen">
+      <!-- status bar -->
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="right">
+          <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span style="font-size:12px;font-weight:600">5G</span>
+          <span class="battery" aria-hidden="true"></span>
+        </span>
+      </div>
+
+      <!-- header -->
+      <header class="topbar">
+        <div class="lead">
+          <div class="x" aria-label="cancel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </div>
+          <div class="title">Log Catch</div>
+        </div>
+        <div class="gpsnote" aria-label="Location North Flat">
+          <span class="dot"></span>
+          <b>North Flat</b>
+        </div>
+      </header>
+
+      <!-- TOP cluster: angler + species -->
+      <div class="topcluster">
+        <div class="angler" role="tablist" aria-label="Angler">
+          <div class="seg on">Tyler</div>
+          <div class="seg">Brian</div>
+          <div class="seg">Brent</div>
+          <div class="add" aria-label="add angler">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </div>
+
+        <div class="species" id="species" aria-label="Species walleye — tap to change">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 60 30" fill="none">
+              <path d="M8 15 C16 4, 40 4, 52 15 C40 26, 16 26, 8 15 Z" fill="#2a221a" stroke="#5a4a32" stroke-width="1.4"/>
+              <path d="M2 15 L11 9 L11 21 Z" fill="#33291d"/>
+              <circle cx="44" cy="13" r="2" fill="var(--accent)"/>
+            </svg>
+          </span>
+          <span class="tx"><small>species</small><b>Walleye</b></span>
+          <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+        </div>
+      </div>
+
+      <!-- HERO tape wheel: LENGTH (loved) -->
+      <section class="hero" aria-label="Length tape — 18.5 inches">
+        <div class="eyebrow">Length</div>
+        <div class="readout">
+          <span class="val" id="lenVal">18<em>.5</em></span>
+          <span class="unit">in</span>
+        </div>
+        <div class="tape-wrap" id="lenWrap">
+          <div class="indicator" aria-hidden="true"></div>
+          <div class="tape" id="lenTape" aria-hidden="true">
+            <div class="row minor"></div>
+            <div class="row major"></div>
+            <div class="nums" id="numsLen"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HERO tape wheel: DEPTH (sibling) -->
+      <section class="hero depth-hero" aria-label="Depth tape — 22 feet">
+        <div class="eyebrow">Depth</div>
+        <div class="readout">
+          <span class="val" id="depthVal">22</span>
+          <span class="unit">ft</span>
+        </div>
+        <div class="tape-wrap" id="depthWrap">
+          <div class="indicator" aria-hidden="true"></div>
+          <div class="tape" id="depthTape" aria-hidden="true">
+            <div class="row minor"></div>
+            <div class="row major"></div>
+            <div class="nums" id="numsDepth"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tertiary quiet rows: lure color, bait, water temp -->
+      <div class="quietstack">
+
+        <!-- LURE COLOR — only Color 1 by default; rail hidden until tapped -->
+        <div class="qrow" id="lureRow" aria-label="Lure color">
+          <div class="qhead">
+            <span class="qlab">Lure color</span>
+            <span class="qval">
+              <span class="swatch c-chartreuse" id="lureSwatch" aria-hidden="true"></span>
+              <span id="lureName">Chartreuse</span>
+              <span class="plus" id="lureAdd" aria-label="add color">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+            </span>
+          </div>
+          <div class="qexpand">
+            <span class="poplab">Choose color</span>
+            <div class="rail" aria-label="Choose lure color">
+              <div class="col sel" data-color="c-chartreuse" data-name="Chartreuse"><span class="dot c-chartreuse"></span><span>Chartreuse</span></div>
+              <div class="col" data-color="c-purple" data-name="Purple"><span class="dot c-purple"></span><span>Purple</span></div>
+              <div class="col" data-color="c-white" data-name="White"><span class="dot c-white"></span><span>White</span></div>
+              <div class="col" data-color="c-firetiger" data-name="Firetiger"><span class="dot c-firetiger"></span><span>Firetgr</span></div>
+              <div class="col" data-color="c-orange" data-name="Orange"><span class="dot c-orange"></span><span>Orange</span></div>
+              <div class="col" data-color="c-glow" data-name="Glow"><span class="dot c-glow"></span><span>Glow</span></div>
+              <div class="col" data-color="c-gold" data-name="Gold"><span class="dot c-gold"></span><span>Gold</span></div>
+              <div class="col" data-color="c-black" data-name="Black"><span class="dot c-black"></span><span>Black</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BAIT — only Crawler by default; picker on tap -->
+        <div class="qrow" id="baitRow" aria-label="Bait">
+          <div class="qhead">
+            <span class="qlab">Bait</span>
+            <span class="qval">
+              <span id="baitName">Crawler</span>
+              <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+            </span>
+          </div>
+          <div class="qexpand">
+            <span class="poplab">Choose bait</span>
+            <div class="baitpick" aria-label="Choose bait">
+              <div class="baitopt on" data-bait="Crawler">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12c3-3 5 3 8 0s5-3 8 0"/></svg>Crawler
+              </div>
+              <div class="baitopt" data-bait="Minnow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12c4-5 11-5 15 0-4 5-11 5-15 0Z"/><path d="M18 12l3-2v4l-3-2Z" fill="currentColor"/></svg>Minnow
+              </div>
+              <div class="baitopt" data-bait="Lure">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="11" cy="12" rx="7" ry="4"/><path d="M18 12l4-2v4l-4-2Z" fill="currentColor"/><circle cx="8" cy="12" r="1.1" fill="currentColor"/></svg>Lure
+              </div>
+              <div class="baitopt" data-bait="Jig">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 4v9a4 4 0 1 0 4 4"/><circle cx="9" cy="4" r="1.4" fill="currentColor"/></svg>Jig
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WATER TEMP — value only by default; drag slider on tap -->
+        <div class="qrow" id="tempRow" aria-label="Water temp">
+          <div class="qhead">
+            <span class="qlab">Water temp</span>
+            <span class="qval">
+              <span id="tempName">64°</span>
+              <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+            </span>
+          </div>
+          <div class="qexpand">
+            <div class="tempslider">
+              <div class="tslab"><span>40°</span><span>Drag to set</span><span>85°</span></div>
+              <div class="ttrack" id="tTrack">
+                <div class="tknob" id="tKnob">64°</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SWIPE save bar: drag right = Keep & Log, left = Release & Log -->
+      <div class="savebar">
+        <div class="swipe" id="swipe" aria-label="Swipe right to keep and log, left to release and log">
+          <div class="fill release"><b>Release &amp; Log</b></div>
+          <div class="fill keep"><b>Keep &amp; Log</b></div>
+          <div class="hint l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>Release
+          </div>
+          <div class="hint r">
+            Keep<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 6l6 6-6 6"/></svg>
+          </div>
+          <div class="knob" id="knob">
+            <span class="grip" aria-hidden="true"><i></i><i></i></span>
+            <b id="knobLabel">Keep &amp; Log</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="caption">TAPE WHEEL — <b>scroll to the inch</b></div>
+
+  <script>
+  (function(){
+    "use strict";
+
+    /* ---------- Tape numerals: VERY LIGHT, on the whole-unit majors only ---------- */
+    // LENGTH: a light numeral at every whole inch (1 inch = 96px)
+    var nl = document.getElementById('numsLen');
+    for(var i=0;i<=64;i++){
+      var b=document.createElement('b'); b.textContent=i; b.style.left=(i*96)+'px'; nl.appendChild(b);
+    }
+    // DEPTH: a light numeral on a clean, even cadence — every whole foot (1 ft = 48px)
+    var nd = document.getElementById('numsDepth');
+    for(var f=0;f<=180;f++){
+      var d=document.createElement('b'); d.textContent=f; d.style.left=(f*48)+'px'; nd.appendChild(d);
+    }
+
+    /* ---------- Draggable momentum tapes ---------- */
+    function makeTape(opts){
+      var wrap=document.getElementById(opts.wrap);
+      var tape=document.getElementById(opts.tape);
+      var valEl=document.getElementById(opts.val);
+      var ppu=opts.pxPerUnit;          // px per unit
+      var min=opts.min, max=opts.max;
+      var value=opts.value;            // current value in units
+      var offset=-value*ppu;           // tape translateX
+      var dragging=false, lastX=0, vel=0, raf=null, startVal=0;
+
+      function clampOffset(o){
+        var loMax=-min*ppu, hiMax=-max*ppu;     // offset decreases as value increases
+        if(o>loMax)o=loMax; if(o<hiMax)o=hiMax; return o;
+      }
+      function render(){
+        tape.style.transform='translateX('+offset+'px)';
+        var v=-offset/ppu;
+        valEl.innerHTML=opts.fmt(v);
+      }
+      function setOffset(o){ offset=clampOffset(o); render(); }
+
+      function down(x){ dragging=true; lastX=x; vel=0; if(raf){cancelAnimationFrame(raf);raf=null;} }
+      function move(x){ if(!dragging)return; var dx=x-lastX; lastX=x; vel=dx; setOffset(offset+dx); }
+      function up(){
+        if(!dragging)return; dragging=false;
+        // momentum
+        function glide(){
+          vel*=0.93; setOffset(offset+vel);
+          if(Math.abs(vel)>0.4){ raf=requestAnimationFrame(glide); }
+          else { snap(); }
+        }
+        if(Math.abs(vel)>1.2){ raf=requestAnimationFrame(glide); } else { snap(); }
+      }
+      function snap(){
+        var v=-offset/ppu;
+        v=Math.round(v/opts.step)*opts.step;
+        v=Math.max(min,Math.min(max,v));
+        // ease to snapped
+        var target=-v*ppu, t0=null;
+        function ease(ts){
+          if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/160);
+          offset=offset+(target-offset)*(p<1?0.35:1);
+          render();
+          if(p<1){ raf=requestAnimationFrame(ease); }
+          else { offset=target; render(); }
+        }
+        raf=requestAnimationFrame(ease);
+      }
+
+      wrap.addEventListener('pointerdown',function(e){ wrap.setPointerCapture(e.pointerId); down(e.clientX); });
+      wrap.addEventListener('pointermove',function(e){ move(e.clientX); });
+      wrap.addEventListener('pointerup',up);
+      wrap.addEventListener('pointercancel',up);
+
+      render();
+    }
+
+    makeTape({
+      wrap:'lenWrap', tape:'lenTape', val:'lenVal',
+      pxPerUnit:96, min:6, max:40, value:18.5, step:0.25,
+      fmt:function(v){
+        // snap to quarter inches so the readout NEVER shows odd decimals
+        var q=Math.round(v*4)/4;
+        var whole=Math.floor(q+1e-6);
+        var frac=Math.round((q-whole)*100);   // 0, 25, 50, 75
+        if(frac===0) return whole+'<em></em>';
+        // strip trailing zero on .50 -> .5
+        var fs=(frac%10===0)?String(frac/10):String(frac);
+        return whole+'<em>.'+fs+'</em>';
+      }
+    });
+    makeTape({
+      wrap:'depthWrap', tape:'depthTape', val:'depthVal',
+      pxPerUnit:48, min:0, max:90, value:22, step:0.5,
+      fmt:function(v){
+        // snap to half feet; show "22" or "12.5"
+        var h=Math.round(v*2)/2;
+        var whole=Math.floor(h+1e-6);
+        return (h-whole>=0.5) ? (whole+'.5') : String(whole);
+      }
+    });
+
+    /* ---------- Progressive disclosure rows ---------- */
+    function closeAll(except){
+      ['lureRow','baitRow','tempRow'].forEach(function(id){
+        if(id!==except) document.getElementById(id).classList.remove('open');
+      });
+    }
+
+    // LURE color
+    var lureRow=document.getElementById('lureRow');
+    var lureSwatch=document.getElementById('lureSwatch');
+    var lureName=document.getElementById('lureName');
+    var lureAdd=document.getElementById('lureAdd');
+    lureRow.querySelector('.qhead').addEventListener('click',function(e){
+      if(e.target.closest('#lureAdd')) return;   // plus handled separately
+      var willOpen=!lureRow.classList.contains('open');
+      closeAll('lureRow');
+      lureRow.classList.toggle('open',willOpen);
+    });
+    lureRow.querySelectorAll('.rail .col').forEach(function(col){
+      col.addEventListener('click',function(){
+        lureRow.querySelectorAll('.rail .col').forEach(function(c){c.classList.remove('sel');});
+        col.classList.add('sel');
+        lureSwatch.className='swatch '+col.getAttribute('data-color');
+        lureName.textContent=col.getAttribute('data-name');
+        setTimeout(function(){ lureRow.classList.remove('open'); },180);
+      });
+    });
+    lureAdd.addEventListener('click',function(e){
+      e.stopPropagation();
+      // "+" adds another color slot: append a quiet second swatch
+      if(lureRow.querySelector('.swatch2')) return;
+      var s=document.createElement('span');
+      s.className='swatch swatch2 c-purple';
+      s.style.marginLeft='-3px';
+      lureName.textContent='Chartreuse + Purple';
+      lureAdd.parentNode.insertBefore(s,lureAdd);
+    });
+
+    // BAIT
+    var baitRow=document.getElementById('baitRow');
+    var baitName=document.getElementById('baitName');
+    baitRow.querySelector('.qhead').addEventListener('click',function(){
+      var willOpen=!baitRow.classList.contains('open');
+      closeAll('baitRow');
+      baitRow.classList.toggle('open',willOpen);
+    });
+    baitRow.querySelectorAll('.baitopt').forEach(function(opt){
+      opt.addEventListener('click',function(){
+        baitRow.querySelectorAll('.baitopt').forEach(function(o){o.classList.remove('on');});
+        opt.classList.add('on');
+        baitName.textContent=opt.getAttribute('data-bait');
+        setTimeout(function(){ baitRow.classList.remove('open'); },160);
+      });
+    });
+
+    // WATER TEMP slider
+    var tempRow=document.getElementById('tempRow');
+    var tempName=document.getElementById('tempName');
+    var tTrack=document.getElementById('tTrack');
+    var tKnob=document.getElementById('tKnob');
+    var tMin=40, tMax=85, tVal=64;
+    tempRow.querySelector('.qhead').addEventListener('click',function(){
+      var willOpen=!tempRow.classList.contains('open');
+      closeAll('tempRow');
+      tempRow.classList.toggle('open',willOpen);
+      if(willOpen) setTimeout(placeKnob,0);
+    });
+    function placeKnob(){
+      var w=tTrack.clientWidth||300;
+      var p=(tVal-tMin)/(tMax-tMin);
+      tKnob.style.left=(p*w)+'px';
+    }
+    function tempFromX(clientX){
+      var r=tTrack.getBoundingClientRect();
+      var p=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+      tVal=Math.round(tMin+p*(tMax-tMin));
+      tKnob.style.left=(p*r.width)+'px';
+      tKnob.textContent=tVal+'°';
+      tempName.textContent=tVal+'°';
+    }
+    var tDrag=false;
+    tTrack.addEventListener('pointerdown',function(e){ tDrag=true; tTrack.setPointerCapture(e.pointerId); tempFromX(e.clientX); });
+    tTrack.addEventListener('pointermove',function(e){ if(tDrag) tempFromX(e.clientX); });
+    function tEnd(){ if(tDrag){ tDrag=false; setTimeout(function(){ tempRow.classList.remove('open'); },300); } }
+    tTrack.addEventListener('pointerup',tEnd);
+    tTrack.addEventListener('pointercancel',tEnd);
+
+    /* ---------- Swipe Save bar (disposition + save) ---------- */
+    var swipe=document.getElementById('swipe');
+    var knob=document.getElementById('knob');
+    var knobLabel=document.getElementById('knobLabel');
+    var fillKeep=swipe.querySelector('.fill.keep');
+    var fillRel=swipe.querySelector('.fill.release');
+    var disposition='kept';
+    var sDrag=false, sStartX=0, sBase=0, sW=0, kW=120;
+
+    function center(){ return (sW-kW)/2; }
+    function setKnobX(x){
+      var min=4, max=sW-kW-4;
+      x=Math.max(min,Math.min(max,x));
+      knob.style.left=x+'px';
+      var mid=center();
+      var prog=(x-mid)/(max-mid);   // +1 fully right (keep), -1 fully left (release)
+      if(x>=mid){
+        knob.classList.remove('release');
+        knobLabel.innerHTML='Keep &amp; Log';
+        fillKeep.style.opacity=Math.max(0,Math.min(1,prog)).toFixed(2);
+        fillRel.style.opacity=0;
+      } else {
+        knob.classList.add('release');
+        knobLabel.innerHTML='Release &amp; Log';
+        var pr=(mid-x)/(mid-min);
+        fillRel.style.opacity=Math.max(0,Math.min(1,pr)).toFixed(2);
+        fillKeep.style.opacity=0;
+      }
+    }
+    function layout(){ sW=swipe.clientWidth; setKnobX(center()); }
+    function commit(dir){
+      disposition = dir>0 ? 'kept' : 'released';
+      var min=4, max=sW-kW-4;
+      var target = dir>0 ? max : min;
+      // animate to end then flash
+      var t0=null, from=parseFloat(knob.style.left)||center();
+      function go(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/150);
+        setKnobX(from+(target-from)*p);
+        if(p<1) requestAnimationFrame(go);
+        else {
+          knobLabel.innerHTML = dir>0 ? 'Kept ✓' : 'Released ✓';
+          setTimeout(function(){ layout(); },650);  // reset back to center for demo
+        }
+      }
+      requestAnimationFrame(go);
+    }
+    knob.addEventListener('pointerdown',function(e){
+      sDrag=true; sStartX=e.clientX; sBase=parseFloat(knob.style.left)||center();
+      knob.setPointerCapture(e.pointerId);
+    });
+    knob.addEventListener('pointermove',function(e){
+      if(!sDrag)return; setKnobX(sBase+(e.clientX-sStartX));
+    });
+    function sUp(){
+      if(!sDrag)return; sDrag=false;
+      var x=parseFloat(knob.style.left)||center();
+      var min=4, max=sW-kW-4, mid=center();
+      var threshold=(max-mid)*0.55;
+      if(x>=mid+threshold) commit(1);
+      else if(x<=mid-threshold) commit(-1);
+      else { // snap back to center
+        var from=x, t0=null;
+        function back(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/140);
+          setKnobX(from+(mid-from)*p); if(p<1) requestAnimationFrame(back); }
+        requestAnimationFrame(back);
+      }
+    }
+    knob.addEventListener('pointerup',sUp);
+    knob.addEventListener('pointercancel',sUp);
+
+    window.addEventListener('load',layout);
+    layout();
+
+    /* ---------- Self-check: no scroll/overflow in default state ---------- */
+    window.addEventListener('load',function(){
+      var s=document.querySelector('.screen');
+      if(s && s.scrollHeight!==s.clientHeight){
+        console.warn('SCROLL OVERFLOW', s.scrollHeight, 'vs', s.clientHeight);
+      } else {
+        console.log('OK no overflow', s.clientHeight);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

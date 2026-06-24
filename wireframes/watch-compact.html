@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger - Watch-style compact glance</title>
+<style>
+  :root{
+    --bg:#051019;
+    --ink:#f5fbff;
+    --muted:#8fb3c9;
+    --soft:#57798f;
+    --line:#25506a;
+    --panel:#0b2232;
+    --panel-2:#0f3147;
+    --panel-3:#123e59;
+    --cyan:#4ed9ff;
+    --green:#26e69a;
+    --lime:#d7ff28;
+    --purple:#9c62f0;
+    --amber:#ffbd4a;
+    --danger:#ff6c6c;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    min-height:100%;
+    background:#171b21;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+    padding:28px 0 44px;
+  }
+
+  .phone{
+    width:390px;
+    height:844px;
+    position:relative;
+    overflow:hidden;
+    border-radius:54px;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(78,217,255,.16), transparent 32%),
+      linear-gradient(180deg,#071a28 0%,#041019 72%);
+    box-shadow:
+      0 0 0 10px #080a0d,
+      0 0 0 12px #2a3038,
+      0 28px 76px rgba(0,0,0,.62);
+  }
+  .notch{
+    position:absolute;
+    z-index:5;
+    top:0;
+    left:50%;
+    width:148px;
+    height:31px;
+    transform:translateX(-50%);
+    border-radius:0 0 18px 18px;
+    background:#000;
+  }
+  .status{
+    position:absolute;
+    z-index:4;
+    top:0;
+    left:0;
+    right:0;
+    height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 27px;
+    font-size:13px;
+    font-weight:700;
+    color:#eff9ff;
+  }
+  .status .right{font-size:12px;letter-spacing:.01em;color:#c6dce8}
+
+  .screen{
+    position:absolute;
+    inset:0;
+    display:grid;
+    grid-template-rows:44px 58px 430px 78px 74px 64px;
+    gap:8px;
+    padding:44px 12px 12px;
+  }
+
+  .topline{
+    height:44px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:center;
+    gap:8px;
+  }
+  .trip{
+    min-width:0;
+  }
+  .trip .eyebrow{
+    color:var(--green);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+  }
+  .trip .title{
+    margin-top:2px;
+    font-size:21px;
+    font-weight:900;
+    line-height:1;
+    letter-spacing:.01em;
+  }
+  .gps-pill{
+    height:34px;
+    border:1px solid rgba(38,230,154,.54);
+    border-radius:17px;
+    background:rgba(38,230,154,.11);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:0 10px;
+    color:#bfffe5;
+    font-size:11px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+  .gps-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 10px rgba(38,230,154,.85);
+  }
+
+  .identity{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .id-card{
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:18px;
+    background:linear-gradient(180deg,rgba(18,62,89,.92),rgba(9,30,45,.96));
+    display:grid;
+    grid-template-columns:38px 1fr auto;
+    align-items:center;
+    gap:9px;
+    padding:8px 10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .avatar{
+    width:38px;
+    height:38px;
+    border-radius:13px;
+    background:linear-gradient(135deg,#42ffc2,#148b68);
+    color:#031b14;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:1000;
+    font-size:17px;
+  }
+  .avatar.fish{
+    color:#eaf7ff;
+    background:
+      radial-gradient(circle at 61% 43%,#effaff 0 2px,transparent 3px),
+      linear-gradient(135deg,#4ed9ff,#176996);
+  }
+  .avatar.fish:before{
+    content:"";
+    width:23px;
+    height:13px;
+    border-radius:70% 50% 50% 70%;
+    background:#d9eef9;
+    clip-path:polygon(0 50%,22% 12%,74% 18%,100% 50%,74% 82%,22% 88%);
+  }
+  .label{
+    color:var(--muted);
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+  .value{
+    margin-top:2px;
+    color:var(--ink);
+    font-size:17px;
+    font-weight:900;
+    line-height:1.05;
+  }
+  .chev{color:var(--muted);font-size:18px;font-weight:900}
+
+  .watch{
+    position:relative;
+    border-radius:32px;
+    background:
+      linear-gradient(180deg,rgba(5,16,25,.08),rgba(5,16,25,.66)),
+      radial-gradient(circle at 50% 50%,rgba(14,46,68,.98) 0 44%,rgba(6,18,28,.98) 45% 100%);
+    overflow:hidden;
+    border:1px solid rgba(37,80,106,.55);
+    box-shadow:inset 0 0 42px rgba(0,0,0,.42);
+  }
+  .crown{
+    position:absolute;
+    top:58px;
+    right:-5px;
+    width:18px;
+    height:96px;
+    border-radius:10px 0 0 10px;
+    background:linear-gradient(180deg,#9ed8f5,#315b73);
+    box-shadow:inset 5px 0 9px rgba(255,255,255,.2);
+  }
+  .rotary-copy{
+    position:absolute;
+    top:155px;
+    right:9px;
+    color:var(--muted);
+    font-size:9px;
+    font-weight:900;
+    text-transform:uppercase;
+    writing-mode:vertical-rl;
+    letter-spacing:.1em;
+  }
+  .ring{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:326px;
+    height:326px;
+    transform:translate(-50%,-50%);
+  }
+  .tick{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:2px;
+    height:13px;
+    margin-left:-1px;
+    margin-top:-159px;
+    transform-origin:1px 159px;
+    border-radius:2px;
+    background:#315b73;
+    opacity:.9;
+  }
+  .tick:nth-child(1){transform:rotate(0deg)}
+  .tick:nth-child(2){transform:rotate(30deg)}
+  .tick:nth-child(3){transform:rotate(60deg)}
+  .tick:nth-child(4){transform:rotate(90deg)}
+  .tick:nth-child(5){transform:rotate(120deg)}
+  .tick:nth-child(6){transform:rotate(150deg)}
+  .tick:nth-child(7){transform:rotate(180deg)}
+  .tick:nth-child(8){transform:rotate(210deg)}
+  .tick:nth-child(9){transform:rotate(240deg)}
+  .tick:nth-child(10){transform:rotate(270deg)}
+  .tick:nth-child(11){transform:rotate(300deg)}
+  .tick:nth-child(12){transform:rotate(330deg)}
+  .dial-svg{
+    position:absolute;
+    inset:0;
+  }
+  .satellite{
+    position:absolute;
+    min-width:78px;
+    max-width:112px;
+    min-height:58px;
+    border:1px solid rgba(78,217,255,.25);
+    border-radius:17px;
+    background:rgba(9,30,45,.9);
+    box-shadow:0 8px 18px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.05);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    padding:7px 8px;
+    text-align:center;
+  }
+  .satellite .bigline{
+    margin-top:3px;
+    font-size:23px;
+    font-weight:1000;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  .satellite small{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+  }
+  .satellite.depth{left:12px;top:36px}
+  .satellite.temp{right:30px;top:36px}
+  .satellite.lure{left:12px;bottom:34px;align-items:flex-start;text-align:left;min-width:126px}
+  .satellite.bait{right:30px;bottom:34px;align-items:flex-start;text-align:left;min-width:112px}
+
+  .swatches{
+    width:100%;
+    display:grid;
+    grid-template-columns:20px 1fr;
+    gap:4px 7px;
+    align-items:center;
+    margin-top:6px;
+  }
+  .swatch{
+    width:20px;
+    height:20px;
+    border-radius:7px;
+    border:1px solid rgba(255,255,255,.36);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28);
+  }
+  .swatch.lime{background:var(--lime)}
+  .swatch.purple{background:var(--purple)}
+  .swatch-label{
+    min-width:0;
+    color:#eff9ff;
+    font-size:12px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  .center{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:214px;
+    transform:translate(-50%,-50%);
+    text-align:center;
+  }
+  .center .mode{
+    color:var(--cyan);
+    font-size:11px;
+    font-weight:1000;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+  }
+  .length{
+    margin-top:0;
+    font-size:108px;
+    font-weight:1000;
+    line-height:.84;
+    letter-spacing:-.035em;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 12px 28px rgba(0,0,0,.34);
+  }
+  .length .decimal{
+    font-size:39px;
+    color:#b9d8e9;
+    letter-spacing:-.02em;
+  }
+  .unit{
+    margin-top:4px;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:800;
+  }
+  .quarter{
+    width:164px;
+    height:38px;
+    margin:11px auto 0;
+    border:1px solid var(--line);
+    border-radius:20px;
+    background:#071c2a;
+    display:grid;
+    grid-template-columns:40px 1fr 40px;
+    align-items:center;
+    overflow:hidden;
+  }
+  .quarter .button{
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#dff5ff;
+    background:var(--panel-3);
+    font-size:23px;
+    font-weight:1000;
+  }
+  .quarter .step{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:900;
+  }
+  .keep-release{
+    width:202px;
+    height:44px;
+    margin:9px auto 0;
+    padding:4px;
+    border:1px solid rgba(38,230,154,.45);
+    border-radius:22px;
+    background:#071c2a;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+  }
+  .kr-choice{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:17px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:1000;
+  }
+  .kr-choice.on{
+    color:#031b14;
+    background:var(--green);
+    box-shadow:0 0 20px rgba(38,230,154,.32);
+  }
+
+  .location-row{
+    display:grid;
+    grid-template-columns:1.04fr .96fr;
+    gap:8px;
+  }
+  .tile{
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:18px;
+    background:rgba(9,30,45,.94);
+    padding:10px 11px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .tile .value{
+    font-size:16px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .gps-lines{
+    margin-top:4px;
+    color:#bdd4e1;
+    font-size:11px;
+    line-height:1.25;
+    font-variant-numeric:tabular-nums;
+  }
+  .gps-lines strong{color:var(--green)}
+
+  .bottom-fields{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .notes{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .notes .affordance{
+    margin-top:5px;
+    color:#cde7f5;
+    font-size:14px;
+    font-weight:900;
+  }
+  .defaults{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .default-row{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:5px;
+    color:#dceef7;
+    font-size:12px;
+    font-weight:800;
+  }
+  .default-row span:first-child{color:var(--muted);font-weight:900}
+
+  .action-row{
+    display:grid;
+    grid-template-columns:54px 54px 1fr;
+    gap:8px;
+  }
+  .dock{
+    border:1px dashed rgba(143,179,201,.55);
+    border-radius:18px;
+    background:rgba(9,30,45,.82);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    color:#d3e9f6;
+  }
+  .dock-mark{
+    width:21px;
+    height:21px;
+    position:relative;
+  }
+  .dock-mark.voice{
+    border:3px solid #d3e9f6;
+    border-top-width:7px;
+    border-radius:11px;
+  }
+  .dock-mark.voice:after{
+    content:"";
+    position:absolute;
+    left:7px;
+    bottom:-9px;
+    width:3px;
+    height:8px;
+    border-radius:2px;
+    background:#d3e9f6;
+  }
+  .dock-mark.ble:before,
+  .dock-mark.ble:after{
+    content:"";
+    position:absolute;
+    top:2px;
+    left:8px;
+    width:9px;
+    height:16px;
+    border:2px solid #d3e9f6;
+    border-left:0;
+    transform:skewY(-34deg);
+  }
+  .dock-mark.ble:after{
+    transform:scaleY(-1) skewY(-34deg);
+  }
+  .dock span{
+    color:var(--muted);
+    font-size:9px;
+    font-weight:1000;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+  }
+  .save{
+    border:0;
+    border-radius:20px;
+    background:linear-gradient(180deg,#32f0ad,#12b97f);
+    color:#031b14;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:1000;
+    box-shadow:0 10px 24px rgba(18,185,127,.38);
+  }
+  .save span{
+    margin-top:2px;
+    font-size:11px;
+    font-weight:900;
+    opacity:.68;
+  }
+
+  .rationale{
+    width:390px;
+    border:1px solid #2b3945;
+    border-radius:14px;
+    background:#0f151c;
+    color:#cfdae2;
+    padding:12px 14px 13px;
+    font-size:12.5px;
+    line-height:1.42;
+  }
+  .rationale h2{
+    color:#f3f8fb;
+    font-size:14px;
+    line-height:1.2;
+    margin-bottom:7px;
+  }
+  .rationale p{margin-top:5px}
+  .rationale b{color:#f5fbff}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="FishingLogger watch-style compact glance mockup">
+    <div class="notch"></div>
+    <div class="status">
+      <span>9:41</span>
+      <span class="right">Oahe Trip 6 - 100%</span>
+    </div>
+
+    <section class="screen">
+      <header class="topline">
+        <div class="trip">
+          <div class="eyebrow">Catch frozen at tap</div>
+          <div class="title">Log Catch #12</div>
+        </div>
+        <div class="gps-pill"><span class="gps-dot"></span>GPS TAG LOCKED</div>
+      </header>
+
+      <section class="identity" aria-label="Tier one identity fields">
+        <div class="id-card">
+          <div class="avatar">T</div>
+          <div>
+            <div class="label">Angler</div>
+            <div class="value">Tyler</div>
+          </div>
+          <div class="chev">v</div>
+        </div>
+        <div class="id-card">
+          <div class="avatar fish"></div>
+          <div>
+            <div class="label">Species</div>
+            <div class="value">Walleye</div>
+          </div>
+          <div class="chev">v</div>
+        </div>
+      </section>
+
+      <section class="watch" aria-label="Rotary length watch face">
+        <div class="crown"></div>
+        <div class="rotary-copy">Rotary length</div>
+        <div class="ring" aria-hidden="true">
+          <svg class="dial-svg" viewBox="0 0 326 326">
+            <circle cx="163" cy="163" r="154" fill="none" stroke="#12344b" stroke-width="14"/>
+            <circle cx="163" cy="163" r="154" fill="none" stroke="#4ed9ff" stroke-width="14" stroke-linecap="round" stroke-dasharray="968" stroke-dashoffset="670" transform="rotate(-90 163 163)"/>
+            <circle cx="163" cy="9" r="8" fill="#26e69a" stroke="#051019" stroke-width="3"/>
+          </svg>
+          <div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div>
+          <div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div>
+          <div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div>
+        </div>
+
+        <div class="satellite depth">
+          <div class="label">Depth</div>
+          <div class="bigline">22<small> ft</small></div>
+        </div>
+        <div class="satellite temp">
+          <div class="label">Water temp</div>
+          <div class="bigline">64<small>&deg;F</small></div>
+        </div>
+        <div class="satellite lure">
+          <div class="label">Lure colors</div>
+          <div class="swatches">
+            <span class="swatch lime"></span><span class="swatch-label">1 Chartreuse</span>
+            <span class="swatch purple"></span><span class="swatch-label">2 Purple</span>
+          </div>
+        </div>
+        <div class="satellite bait">
+          <div class="label">Bait</div>
+          <div class="bigline" style="font-size:18px">Crawler</div>
+        </div>
+
+        <div class="center">
+          <div class="mode">Length</div>
+          <div class="length">18<span class="decimal">.5</span></div>
+          <div class="unit">inches</div>
+          <div class="quarter">
+            <div class="button">-</div>
+            <div class="step">0.25 in steps</div>
+            <div class="button">+</div>
+          </div>
+          <div class="keep-release">
+            <div class="kr-choice on">KEPT</div>
+            <div class="kr-choice">RELEASED</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="location-row" aria-label="Location and GPS fields">
+        <div class="tile">
+          <div class="label">Location name</div>
+          <div class="value">North Flat</div>
+          <div class="gps-lines">Editable lake area from frozen point</div>
+        </div>
+        <div class="tile">
+          <div class="label">GPS tag</div>
+          <div class="value">Auto frozen</div>
+          <div class="gps-lines">44.45679, -100.34568<br><strong>+/- 4 m</strong> accuracy</div>
+        </div>
+      </section>
+
+      <section class="bottom-fields" aria-label="Notes and defaults fields">
+        <div class="tile notes">
+          <div class="label">Notes</div>
+          <div class="affordance">Tap to add note</div>
+        </div>
+        <div class="tile defaults">
+          <div class="label">Tyler defaults</div>
+          <div class="default-row"><span>Lure</span><b>chartreuse/purple</b></div>
+          <div class="default-row"><span>Bait</span><b>crawler</b></div>
+        </div>
+      </section>
+
+      <section class="action-row" aria-label="Future inputs and save action">
+        <div class="dock"><div class="dock-mark voice"></div><span>Voice</span></div>
+        <div class="dock"><div class="dock-mark ble"></div><span>BLE</span></div>
+        <button class="save">SAVE CATCH<span>one thumb tap</span></button>
+      </section>
+    </section>
+  </main>
+
+  <aside class="rationale">
+    <h2>Rationale - Watch-style compact glance</h2>
+    <p><b>Paradigm:</b> a blown-up watch complication, built tiny first: huge length numerals, edge complications, and a side crown for rotary length.</p>
+    <p><b>How it works:</b> Tyler's defaults prefill walleye, lure colors, bait, depth, and North Flat; adjust length with the crown or quarter-inch paddles, then save.</p>
+    <p><b>No-scroll strategy:</b> all fields fit in six fixed rows inside the 390x844 phone; optional notes/GPS are compact bottom tiles.</p>
+    <p><b>Outside-box angle:</b> the screen behaves more like a rugged glanceable instrument than a form, with BLE and voice docks already reserved.</p>
+    <p><b>Risks:</b> very dense labels may need real-device glare testing, and rotary length needs a native gesture prototype to prove glove accuracy.</p>
+  </aside>
+</body>
+</html>

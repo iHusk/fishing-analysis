@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger — INSTRUMENT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=Saira+Condensed:wght@600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --amber:#ffb300;
+    --amber-dim:#7a5710;
+    --cyan:#3fe0c5;
+    --cyan-dim:#1c5950;
+    --ink:#eef6f3;
+    --muted:#7d938c;
+    --line:#1c2b27;
+    --bezel-hi:#3a4540;
+    --bezel-lo:#0d1413;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#04090a;color:var(--ink)}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:28px 0 40px;
+    font-family:"Spline Sans Mono",ui-monospace,monospace;
+  }
+
+  /* ---------- iPhone frame ---------- */
+  .phone{
+    width:390px;height:844px;
+    position:relative;
+    border-radius:56px;
+    background:#000;
+    box-shadow:
+      0 0 0 2px #15201d,
+      0 0 0 13px #20292a,
+      0 0 0 15px #3a4346,
+      0 34px 90px rgba(0,0,0,.7);
+  }
+  .notch{
+    position:absolute;z-index:9;top:0;left:50%;
+    width:128px;height:33px;transform:translateX(-50%);
+    background:#000;border-radius:0 0 21px 21px;
+  }
+  .status{
+    position:absolute;z-index:8;top:0;left:0;right:0;height:54px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 30px 0;
+    font:600 14px "Spline Sans Mono",monospace;
+    color:var(--ink);letter-spacing:.04em;
+  }
+  .status .right{display:flex;gap:7px;align-items:center;opacity:.92}
+
+  /* ---------- the app screen — EXACTLY 390x844, no scroll ---------- */
+  .screen{
+    position:absolute;inset:0;
+    width:390px;height:844px;
+    border-radius:56px;
+    overflow:hidden;
+    background:
+      radial-gradient(125% 90% at 50% 30%, #0a1a17 0%, #06100e 55%, #040b0a 100%);
+    display:flex;
+    flex-direction:column;
+  }
+  /* engine-turned guilloché + grain + vignette layers */
+  .screen::before{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+    background:
+      repeating-radial-gradient(circle at 50% 300px,
+        rgba(255,255,255,.018) 0px,
+        rgba(255,255,255,.018) 1px,
+        transparent 1px, transparent 7px);
+    opacity:.7;
+  }
+  .screen::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:7;
+    background:
+      radial-gradient(120% 80% at 50% 38%, transparent 55%, rgba(0,0,0,.55) 100%);
+    mix-blend-mode:multiply;
+  }
+  .grain{
+    position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.045;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .app{
+    position:relative;z-index:2;
+    display:flex;flex-direction:column;
+    height:100%;
+    padding:62px 22px 0;
+  }
+
+  /* ---------- top rail: angler + area ---------- */
+  .rail{
+    display:flex;align-items:center;justify-content:space-between;
+    height:34px;flex:0 0 auto;
+  }
+  .pill{
+    display:flex;align-items:center;gap:8px;
+    height:34px;padding:0 13px;
+    border-radius:18px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.018);
+    font:600 13px "Spline Sans Mono",monospace;
+    color:var(--ink);letter-spacing:.02em;
+  }
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan)}
+  .pill .k{color:var(--muted);font-weight:500}
+  .pill svg{opacity:.6}
+
+  /* ---------- field selector (re-points dial) ---------- */
+  .seg{
+    margin:16px auto 0;flex:0 0 auto;
+    display:flex;gap:4px;padding:4px;
+    width:240px;
+    border-radius:14px;
+    background:rgba(0,0,0,.4);
+    border:1px solid var(--line);
+  }
+  .seg button{
+    flex:1;height:40px;border:0;border-radius:10px;background:transparent;
+    color:var(--muted);
+    font:700 13px "Saira Condensed","Spline Sans Mono",sans-serif;
+    letter-spacing:.14em;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  .seg button .u{font:500 10px "Spline Sans Mono",monospace;letter-spacing:.06em;opacity:.7}
+  .seg button[aria-selected="true"]{
+    background:linear-gradient(180deg,#1d2a26,#121c19);
+    color:var(--amber);
+    box-shadow:inset 0 0 0 1px rgba(255,179,0,.35), 0 2px 8px rgba(0,0,0,.4);
+  }
+  .seg button[aria-selected="true"] .u{color:var(--amber);opacity:.85}
+
+  /* ---------- THE GAUGE (dominant element) ---------- */
+  .gaugewrap{
+    flex:0 0 auto;
+    display:flex;justify-content:center;
+    margin-top:18px;
+  }
+  .gauge{
+    position:relative;width:298px;height:298px;border-radius:50%;
+    /* machined bezel ring */
+    background:
+      conic-gradient(from 210deg,
+        #3a4540 0deg, #11181600 40deg,
+        #0d1413 130deg, #2c3531 180deg,
+        #0d1413 230deg, #3a4540 300deg,
+        #11181600 330deg, #3a4540 360deg);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.06),
+      0 -1px 0 rgba(0,0,0,.6),
+      inset 0 2px 4px rgba(255,255,255,.10),
+      inset 0 -3px 6px rgba(0,0,0,.7),
+      0 18px 40px rgba(0,0,0,.55);
+    padding:13px;
+  }
+  .dialface{
+    position:relative;width:100%;height:100%;border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 40%, #0c1a17 0%, #07110f 60%, #050d0c 100%);
+    box-shadow:
+      inset 0 3px 10px rgba(0,0,0,.8),
+      inset 0 0 0 1px rgba(255,255,255,.03);
+    overflow:hidden;
+  }
+  .ticksvg{position:absolute;inset:0;width:100%;height:100%;
+    transform:rotate(-90deg)}
+  .ticksvg .ring-bg{stroke:#16221f;stroke-width:3}
+  /* power-on sweep of progress arc */
+  .ticksvg .ring-arc{
+    stroke:var(--amber);stroke-width:4;stroke-linecap:round;
+    filter:drop-shadow(0 0 6px rgba(255,179,0,.55));
+    stroke-dasharray:760;
+    stroke-dashoffset:760;
+    animation:sweep 1.5s cubic-bezier(.2,.7,.2,1) .25s forwards;
+  }
+  @keyframes sweep{to{stroke-dashoffset:283}} /* lands ~ value */
+
+  .center{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .scaletag{
+    font:600 11px "Spline Sans Mono",monospace;
+    color:var(--muted);letter-spacing:.32em;
+    margin-bottom:-4px;
+  }
+  .hero{
+    display:flex;align-items:flex-start;justify-content:center;
+    line-height:.82;
+  }
+  .heronum{
+    font-family:"Saira Condensed",sans-serif;font-weight:800;
+    font-size:138px;letter-spacing:-.02em;
+    color:var(--amber);
+    text-shadow:0 0 28px rgba(255,179,0,.32), 0 2px 0 rgba(0,0,0,.5);
+    font-variant-numeric:tabular-nums;
+  }
+  .herofrac{
+    font-family:"Saira Condensed",sans-serif;font-weight:700;
+    font-size:54px;color:var(--amber);opacity:.95;
+    margin-top:14px;letter-spacing:-.02em;
+  }
+  .herounit{
+    font:700 19px "Saira",sans-serif;letter-spacing:.3em;
+    color:var(--ink);opacity:.65;margin-top:8px;
+  }
+
+  /* +/- nudge buttons flanking the gauge */
+  .nudge{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:54px;height:54px;border-radius:50%;
+    border:1px solid var(--line);
+    background:rgba(8,16,14,.85);
+    color:var(--amber);
+    display:flex;align-items:center;justify-content:center;
+    font:700 30px "Saira",sans-serif;
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.06),0 4px 12px rgba(0,0,0,.5);
+  }
+  .nudge.minus{left:-4px}
+  .nudge.plus{right:-4px}
+
+  /* ---------- two big controls: species + kept switch ---------- */
+  .controls{
+    flex:0 0 auto;
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    margin-top:22px;
+  }
+  .ctl{
+    height:72px;border-radius:18px;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(0,0,0,.18));
+    display:flex;align-items:center;
+    padding:0 16px;gap:13px;
+  }
+  .ctl .lab{font:500 10px "Spline Sans Mono",monospace;letter-spacing:.18em;
+    color:var(--muted)}
+  .species .txt{display:flex;flex-direction:column;gap:3px}
+  .species .name{font:700 19px "Saira Condensed",sans-serif;letter-spacing:.04em;
+    color:var(--ink)}
+  .species svg{flex:0 0 auto}
+
+  /* kept <-> released physical switch */
+  .switch{justify-content:space-between;padding:0 8px 0 16px;cursor:pointer}
+  .switch .txt{display:flex;flex-direction:column;gap:3px}
+  .switch .state{font:700 19px "Saira Condensed",sans-serif;letter-spacing:.06em;
+    color:var(--cyan);text-shadow:0 0 14px rgba(63,224,197,.4)}
+  .toggle{
+    position:relative;width:58px;height:52px;border-radius:14px;flex:0 0 auto;
+    background:linear-gradient(180deg,#0a1513,#060d0c);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.7),inset 0 0 0 1px rgba(63,224,197,.25);
+    display:flex;flex-direction:column;justify-content:flex-start;padding:4px;
+  }
+  .toggle .knob{
+    width:50px;height:22px;border-radius:9px;
+    background:linear-gradient(180deg,#56f0d6,#2bbfa6);
+    box-shadow:0 2px 6px rgba(0,0,0,.5),0 0 12px rgba(63,224,197,.5);
+  }
+
+  /* ---------- lure colors (tier 2) ---------- */
+  .lures{
+    flex:0 0 auto;display:flex;align-items:center;gap:10px;
+    margin-top:14px;padding:0 4px;
+  }
+  .lures .lab{font:500 10px "Spline Sans Mono",monospace;letter-spacing:.16em;
+    color:var(--muted)}
+  .swatch{display:flex;align-items:center;gap:8px;
+    padding:7px 12px 7px 8px;border-radius:13px;
+    border:1px solid var(--line);background:rgba(255,255,255,.02);
+    font:600 12px "Spline Sans Mono",monospace;color:var(--ink)}
+  .swatch i{width:16px;height:16px;border-radius:5px;box-shadow:0 0 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.15)}
+  .plus2{margin-left:auto;width:32px;height:32px;border-radius:10px;
+    border:1px dashed var(--line);color:var(--muted);
+    display:flex;align-items:center;justify-content:center;font:400 18px sans-serif}
+
+  /* ---------- bottom ticket (tier-3 quiet strip) ---------- */
+  .ticket{
+    flex:0 0 auto;margin-top:auto;margin-bottom:14px;
+    border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:0;
+    height:46px;
+    opacity:.92;
+  }
+  .tk{flex:1;display:flex;flex-direction:column;gap:2px;
+    padding:0 11px;border-right:1px solid var(--line)}
+  .tk:last-child{border-right:0}
+  .tk .tlab{font:500 9px "Spline Sans Mono",monospace;letter-spacing:.12em;
+    color:var(--muted)}
+  .tk .tval{font:600 13px "Spline Sans Mono",monospace;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tk .tval.gps{font-size:10px;color:var(--muted)}
+  .tk .chev{position:absolute}
+
+  /* ---------- SAVE ---------- */
+  .save{
+    flex:0 0 auto;margin-bottom:24px;
+    height:64px;border-radius:20px;border:0;cursor:pointer;
+    background:linear-gradient(180deg,#ffc638,#ff9e00);
+    color:#1a1200;
+    font:800 21px "Saira Condensed",sans-serif;letter-spacing:.16em;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    box-shadow:0 0 0 1px rgba(255,179,0,.4),0 10px 26px rgba(255,158,0,.28),
+      inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .save svg{flex:0 0 auto}
+
+  /* hero count-up */
+  @keyframes countin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .center{animation:countin .7s ease .4s both}
+
+  /* ---------- caption under frame ---------- */
+  .caption{
+    font:500 12px "Spline Sans Mono",monospace;
+    color:#5d706b;letter-spacing:.08em;
+  }
+  .caption b{color:#9fb3ad;font-weight:600}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status">
+      <span>9:41</span>
+      <span class="right">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#eef6f3"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#eef6f3"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#eef6f3" opacity=".5"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#eef6f3" opacity=".3"/></svg>
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none"><rect x="1" y="1" width="18" height="10" rx="3" stroke="#eef6f3" opacity=".5"/><rect x="3" y="3" width="13" height="6" rx="1.5" fill="#eef6f3"/><rect x="20" y="4" width="2" height="4" rx="1" fill="#eef6f3" opacity=".5"/></svg>
+      </span>
+    </div>
+
+    <div class="screen">
+      <div class="grain"></div>
+      <div class="app">
+
+        <!-- angler + auto area -->
+        <div class="rail">
+          <div class="pill">
+            <span class="dot"></span>
+            <span class="k">ANGLER</span> Tyler
+          </div>
+          <div class="pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11Z" stroke="#7d938c" stroke-width="2"/><circle cx="12" cy="10" r="2.4" stroke="#7d938c" stroke-width="2"/></svg>
+            North Flat
+          </div>
+        </div>
+
+        <!-- field selector that re-points the dial -->
+        <div class="seg" role="tablist">
+          <button role="tab" aria-selected="true">LENGTH<span class="u">in</span></button>
+          <button role="tab" aria-selected="false">DEPTH<span class="u">ft</span></button>
+        </div>
+
+        <!-- THE GAUGE -->
+        <div class="gaugewrap">
+          <div class="gauge">
+            <div class="dialface">
+              <svg class="ticksvg" viewBox="0 0 298 298" aria-hidden="true">
+                <!-- 60 ticks around the dial -->
+                <g id="ticks"></g>
+                <circle class="ring-bg" cx="149" cy="149" r="120" fill="none"/>
+                <circle class="ring-arc" cx="149" cy="149" r="120" fill="none"/>
+              </svg>
+              <div class="center">
+                <div class="scaletag">LENGTH · IN</div>
+                <div class="hero">
+                  <span class="heronum">18</span>
+                  <span class="herofrac">.5</span>
+                </div>
+                <div class="herounit">INCHES</div>
+              </div>
+              <div class="nudge minus">–</div>
+              <div class="nudge plus">+</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- two big tactile controls -->
+        <div class="controls">
+          <div class="ctl species">
+            <svg width="40" height="22" viewBox="0 0 64 32" fill="none">
+              <path d="M4 16C12 6 26 4 38 7c8 2 14 5 18 9-4 4-10 7-18 9-12 3-26 1-34-9Z" fill="#16302b" stroke="#3fe0c5" stroke-width="1.6"/>
+              <path d="M56 16c4-3 6-6 6-6s-2 9-2 6 0 9-6 6" fill="#16302b" stroke="#3fe0c5" stroke-width="1.6" stroke-linejoin="round"/>
+              <circle cx="14" cy="14" r="1.8" fill="#3fe0c5"/>
+              <path d="M30 9c0 5 0 9 0 14M38 8c0 6 0 10 0 16" stroke="#3fe0c5" stroke-width="1.1" opacity=".5"/>
+            </svg>
+            <div class="txt">
+              <span class="lab">SPECIES</span>
+              <span class="name">Walleye</span>
+            </div>
+          </div>
+
+          <div class="ctl switch">
+            <div class="txt">
+              <span class="lab">DISPOSITION</span>
+              <span class="state">KEPT</span>
+            </div>
+            <div class="toggle"><div class="knob"></div></div>
+          </div>
+        </div>
+
+        <!-- lure colors (tier 2) -->
+        <div class="lures">
+          <span class="lab">LURE</span>
+          <div class="swatch"><i style="background:#c8ff2e"></i>Chartreuse</div>
+          <div class="swatch"><i style="background:#8a3fff"></i>Purple</div>
+          <div class="plus2">+</div>
+        </div>
+
+        <!-- quiet ticket: tier-3 / auto -->
+        <div class="ticket">
+          <div class="tk">
+            <span class="tlab">WATER</span>
+            <span class="tval">64°F</span>
+          </div>
+          <div class="tk">
+            <span class="tlab">BAIT</span>
+            <span class="tval">Minnow</span>
+          </div>
+          <div class="tk">
+            <span class="tlab">GPS · FROZEN ±4m</span>
+            <span class="tval gps">44.4568, -100.3457</span>
+          </div>
+        </div>
+
+        <!-- SAVE -->
+        <button class="save">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#1a1200" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          LOG FISH
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="caption"><b>INSTRUMENT</b> — one gauge, one number</div>
+
+<script>
+  // generate 60 tick marks; highlight active = 18.5/60 of the ring (~277deg arc)
+  (function(){
+    var g=document.getElementById('ticks');
+    var cx=149, cy=149, R=130;
+    var total=60, valueTick=37; // 18.5" maps near tick 37 on the visible arc
+    // arc spans 270deg from 135deg to 405deg (gap at bottom)
+    var start=135, span=270;
+    var ns='http://www.w3.org/2000/svg';
+    for(var i=0;i<=total;i++){
+      var ang=(start + span*(i/total))*Math.PI/180;
+      var outer=R, inner=(i%5===0)?R-13:R-8;
+      var x1=cx+Math.cos(ang)*outer, y1=cy+Math.sin(ang)*outer;
+      var x2=cx+Math.cos(ang)*inner, y2=cy+Math.sin(ang)*inner;
+      var ln=document.createElementNS(ns,'line');
+      ln.setAttribute('x1',x1);ln.setAttribute('y1',y1);
+      ln.setAttribute('x2',x2);ln.setAttribute('y2',y2);
+      var active = i<=valueTick;
+      ln.setAttribute('stroke', active ? '#ffb300' : '#22332e');
+      ln.setAttribute('stroke-width', (i%5===0)?2.2:1.4);
+      ln.setAttribute('opacity', active ? (i===valueTick?1:.55) : .8);
+      if(i===valueTick){ln.setAttribute('stroke-width','3.4');
+        ln.setAttribute('filter','drop-shadow(0 0 5px #ffb300)');}
+      g.appendChild(ln);
+    }
+    // re-aim the SVG so the 270deg gauge gap sits at the bottom
+    document.querySelector('.ticksvg').style.transform='rotate(0deg)';
+    // make the sweeping progress arc trace the same 270deg path
+    var arcs=document.querySelectorAll('.ring-bg,.ring-arc');
+    arcs.forEach(function(c){
+      c.setAttribute('r','130');
+      var circ=2*Math.PI*130; // ~816
+      var visible=circ*0.75;  // 270deg
+      c.setAttribute('stroke-dasharray', visible+' '+circ);
+      c.setAttribute('transform','rotate(135 149 149)');
+    });
+    var arc=document.querySelector('.ring-arc');
+    var circ=2*Math.PI*130, visible=circ*0.75;
+    var frac=valueTick/total; // 0.616
+    arc.style.strokeDasharray=(visible*frac)+' '+circ;
+    arc.style.strokeDashoffset='0';
+    arc.style.animation='none';
+  })();
+</script>
+</body>
+</html>

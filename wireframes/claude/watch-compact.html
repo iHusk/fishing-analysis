@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10. Watch-style compact glance</title>
+<style>
+  :root{
+    --bg:#000;
+    --face:#0a0d12;
+    --ring:#161b22;
+    --line:#222a33;
+    --txt:#f4f7fb;
+    --dim:#8b97a6;
+    --accent:#39e0c8;     /* teal-cyan, watch-y */
+    --accent2:#7cff4f;    /* chartreuse swatch */
+    --purple:#9b6bff;     /* purple swatch */
+    --kept:#39e0c8;
+    --warn:#ffb020;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    background:#111418;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    color:var(--txt);
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;padding:28px 0;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== Device frame ===== */
+  .device{
+    width:390px;height:844px;
+    border-radius:54px;
+    background:#000;
+    padding:0;
+    position:relative;
+    box-shadow:0 0 0 11px #1c1f24, 0 0 0 13px #2c3036, 0 30px 70px rgba(0,0,0,.7);
+  }
+  .screen{
+    position:absolute;inset:0;
+    width:390px;height:844px;
+    border-radius:54px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 70% at 50% -10%, #10161d 0%, #05070a 60%, #000 100%);
+    display:flex;flex-direction:column;
+  }
+  /* status bar */
+  .status{
+    height:54px;flex:0 0 54px;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 30px 8px;font-size:15px;font-weight:600;letter-spacing:.2px;
+    position:relative;z-index:5;
+  }
+  .notch{
+    position:absolute;top:11px;left:50%;transform:translateX(-50%);
+    width:124px;height:34px;background:#000;border-radius:20px;z-index:6;
+  }
+  .status .right{display:flex;gap:6px;align-items:center;}
+  .bars{display:inline-block;width:17px;height:11px;
+    background:
+      linear-gradient(#fff,#fff) 0 100%/3px 4px no-repeat,
+      linear-gradient(#fff,#fff) 5px 100%/3px 6px no-repeat,
+      linear-gradient(#fff,#fff) 10px 100%/3px 9px no-repeat,
+      linear-gradient(#fff,#fff) 15px 100%/3px 11px no-repeat;}
+  .batt{width:25px;height:12px;border:1.6px solid #fff;border-radius:3px;position:relative;}
+  .batt::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:6px;background:#fff;border-radius:0 1px 1px 0;}
+  .batt::before{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:75%;background:#fff;border-radius:1px;}
+
+  /* ===== Top bar: title + angler/species chips ===== */
+  .topbar{
+    flex:0 0 auto;padding:2px 16px 8px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  .title{font-size:13px;font-weight:700;letter-spacing:2.5px;color:var(--dim);text-transform:uppercase;}
+  .pillrow{display:flex;gap:7px;}
+  .pill{
+    display:flex;align-items:center;gap:6px;
+    background:var(--ring);border:1px solid var(--line);
+    border-radius:20px;padding:6px 11px 6px 8px;font-size:14px;font-weight:600;
+  }
+  .pill .dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+  .pill.angler .dot{background:var(--accent);color:#04201c;}
+  .pill.species .dot{background:#1d2a26;color:var(--accent);font-size:13px;}
+  .pill .chev{color:var(--dim);font-size:11px;margin-left:1px;}
+
+  /* ===== Crown / dial : the hero ===== */
+  .dialwrap{
+    flex:1 1 auto;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    min-height:0;
+  }
+  .dial{
+    position:relative;width:300px;height:300px;
+  }
+  .dial svg{display:block;width:300px;height:300px;}
+  .ticks line{stroke:#2a333d;stroke-width:2;}
+  .ticks line.maj{stroke:#46525f;stroke-width:3;}
+  .center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+  }
+  .lenlabel{font-size:12px;font-weight:700;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:-6px;}
+  .lennum{
+    font-size:112px;font-weight:800;line-height:.9;letter-spacing:-3px;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 30px rgba(57,224,200,.25);
+  }
+  .lennum small{font-size:46px;font-weight:700;color:var(--accent);letter-spacing:-1px;}
+  .lenunit{font-size:15px;font-weight:700;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-top:2px;}
+  /* the moving crown indicator */
+  .crowndot{position:absolute;top:50%;left:50%;width:18px;height:18px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 14px var(--accent);transform:translate(-50%,-50%);}
+  /* +/- nudge buttons flanking the dial */
+  .nudge{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:50px;height:50px;border-radius:50%;
+    background:var(--ring);border:1px solid var(--line);
+    color:var(--txt);font-size:30px;font-weight:600;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .nudge.minus{left:-2px;}
+  .nudge.plus{right:-2px;}
+  .step{position:absolute;left:50%;transform:translateX(-50%);bottom:6px;font-size:11px;color:var(--dim);letter-spacing:1px;}
+
+  /* ===== Kept / Released toggle ===== */
+  .ketrow{flex:0 0 auto;padding:0 16px 8px;display:flex;gap:10px;}
+  .seg{flex:1;display:flex;background:var(--ring);border:1px solid var(--line);border-radius:16px;padding:4px;}
+  .seg button{
+    flex:1;border:none;background:transparent;color:var(--dim);
+    font-size:17px;font-weight:700;letter-spacing:.5px;border-radius:12px;padding:11px 0;
+    display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  .seg button.on{background:var(--kept);color:#04201c;box-shadow:0 2px 10px rgba(57,224,200,.3);}
+  .seg.rel button.on{background:#3a6cff;color:#fff;box-shadow:0 2px 10px rgba(58,108,255,.3);}
+
+  /* ===== Complication ring: small glanceable indicators ===== */
+  .comps{
+    flex:0 0 auto;padding:0 14px 6px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  }
+  .comp{
+    background:var(--ring);border:1px solid var(--line);border-radius:16px;
+    padding:9px 8px 8px;text-align:center;min-height:60px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  }
+  .comp .clabel{font-size:9.5px;font-weight:700;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase;}
+  .comp .cval{font-size:19px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;}
+  .comp .cval small{font-size:11px;font-weight:600;color:var(--dim);}
+  .swatches{display:flex;gap:4px;margin-top:1px;}
+  .sw{width:15px;height:15px;border-radius:50%;border:1.5px solid #2c3640;}
+  .sw.chart{background:var(--accent2);}
+  .sw.purp{background:var(--purple);}
+
+  /* ===== Tier-3 strip (auto / optional, de-emphasized) ===== */
+  .t3{
+    flex:0 0 auto;padding:0 14px 4px;
+    display:flex;gap:8px;align-items:stretch;
+  }
+  .gps{
+    flex:1;background:#080c10;border:1px solid #161d24;border-radius:14px;
+    padding:8px 11px;display:flex;flex-direction:column;justify-content:center;gap:1px;
+  }
+  .gps .gtop{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.5px;}
+  .gps .area{font-size:15px;font-weight:700;}
+  .gps .coord{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.2px;}
+  .gps .acc{color:#4fbf6a;font-weight:700;}
+  .t3btns{display:flex;flex-direction:column;gap:8px;width:96px;}
+  .t3btn{
+    flex:1;background:#080c10;border:1px solid #161d24;border-radius:14px;
+    color:var(--dim);font-size:12px;font-weight:700;letter-spacing:.4px;
+    display:flex;align-items:center;justify-content:center;gap:5px;
+  }
+  .t3btn b{color:var(--txt);font-weight:700;}
+
+  /* ===== Save / future-input bar ===== */
+  .savebar{flex:0 0 auto;padding:2px 14px 14px;display:flex;gap:10px;align-items:center;}
+  .iobtn{
+    width:56px;height:56px;border-radius:18px;flex:0 0 56px;
+    background:var(--ring);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--accent);
+  }
+  .save{
+    flex:1;height:56px;border:none;border-radius:18px;
+    background:linear-gradient(180deg,var(--accent),#19b9a4);
+    color:#03201c;font-size:20px;font-weight:800;letter-spacing:.5px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    box-shadow:0 6px 20px rgba(57,224,200,.3);
+  }
+  .home{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#5a626c;z-index:7;}
+
+  /* caption under device */
+  .caption{margin-top:18px;color:#aeb6c2;font-size:14px;font-weight:600;letter-spacing:.3px;}
+  .caption small{display:block;color:#6b7480;font-weight:500;font-size:12px;margin-top:3px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <!-- status bar -->
+      <div class="status">
+        <span>9:41</span>
+        <span class="right"><span class="bars"></span><span style="font-size:11px;font-weight:700;letter-spacing:.5px;">LTE</span><span class="batt"></span></span>
+      </div>
+
+      <!-- title + angler/species -->
+      <div class="topbar">
+        <span class="title">Log Catch</span>
+        <div class="pillrow">
+          <div class="pill angler"><span class="dot">T</span>Tyler<span class="chev">▾</span></div>
+          <div class="pill species"><span class="dot">🐟</span>Walleye<span class="chev">▾</span></div>
+        </div>
+      </div>
+
+      <!-- HERO: length crown dial -->
+      <div class="dialwrap">
+        <button class="nudge minus" aria-label="minus quarter inch">−</button>
+        <div class="dial">
+          <svg viewBox="0 0 300 300" aria-hidden="true">
+            <!-- outer arc track -->
+            <circle cx="150" cy="150" r="138" fill="none" stroke="#161d24" stroke-width="10"/>
+            <!-- progress arc: 18.5 of 60 -> ~111deg of 360, start top -->
+            <circle cx="150" cy="150" r="138" fill="none" stroke="#39e0c8" stroke-width="10"
+                    stroke-linecap="round"
+                    stroke-dasharray="867.08" stroke-dashoffset="599.43"
+                    transform="rotate(-90 150 150)"
+                    style="filter:drop-shadow(0 0 6px rgba(57,224,200,.6))"/>
+            <!-- tick marks -->
+            <g class="ticks">
+              <line x1="150" y1="22" x2="150" y2="40" class="maj"/>
+              <line x1="278" y1="150" x2="260" y2="150" class="maj"/>
+              <line x1="150" y1="278" x2="150" y2="260" class="maj"/>
+              <line x1="22" y1="150" x2="40" y2="150" class="maj"/>
+              <line x1="240" y1="60" x2="228" y2="72"/>
+              <line x1="240" y1="240" x2="228" y2="228"/>
+              <line x1="60" y1="240" x2="72" y2="228"/>
+              <line x1="60" y1="60" x2="72" y2="72"/>
+            </g>
+          </svg>
+          <!-- crown dot positioned on arc at ~111deg from top (clockwise) -->
+          <div class="crowndot" style="transform:translate(-50%,-50%) rotate(111deg) translateY(-138px) rotate(-111deg);"></div>
+          <div class="center">
+            <span class="lenlabel">Length</span>
+            <span class="lennum">18<small>.50</small></span>
+            <span class="lenunit">inches</span>
+          </div>
+          <span class="step">turn crown · 0.25″ steps</span>
+        </div>
+        <button class="nudge plus" aria-label="plus quarter inch">+</button>
+      </div>
+
+      <!-- Kept / Released -->
+      <div class="ketrow">
+        <div class="seg">
+          <button class="on">✓ Kept</button>
+          <button>Released</button>
+        </div>
+      </div>
+
+      <!-- complication ring -->
+      <div class="comps">
+        <div class="comp">
+          <span class="clabel">Depth</span>
+          <span class="cval">22<small>ft</small></span>
+        </div>
+        <div class="comp">
+          <span class="clabel">Water</span>
+          <span class="cval">64<small>°F</small></span>
+        </div>
+        <div class="comp">
+          <span class="clabel">Lure</span>
+          <span class="swatches"><span class="sw chart"></span><span class="sw purp"></span></span>
+        </div>
+        <div class="comp">
+          <span class="clabel">Bait</span>
+          <span class="cval" style="font-size:14px;color:var(--dim);">None</span>
+        </div>
+      </div>
+
+      <!-- Tier-3 auto/optional -->
+      <div class="t3">
+        <div class="gps">
+          <span class="gtop">📍 North Flat <span style="color:var(--dim);font-weight:500;">· tap to edit</span></span>
+          <span class="coord">44.456789, −100.345678 <span class="acc">±4 m</span></span>
+        </div>
+        <div class="t3btns">
+          <button class="t3btn">📝 <b>Notes</b></button>
+        </div>
+      </div>
+
+      <!-- save + future inputs -->
+      <div class="savebar">
+        <button class="iobtn" aria-label="BLE device" title="Pair bite/catch button">🎣</button>
+        <button class="save">SAVE CATCH ✓</button>
+        <button class="iobtn" aria-label="Voice entry" title="Voice mode">🎙</button>
+      </div>
+
+      <div class="home"></div>
+    </div>
+  </div>
+
+  <div class="caption">10. Watch-style compact glance
+    <small>Crown-dial length · dark watch face · glanceable complications</small>
+  </div>
+
+<script>
+// Tiny vanilla demo (page reads correctly with JS off). Quarter-inch nudges.
+(function(){
+  var len=18.5, num=document.querySelector('.lennum'), arc=document.querySelector('circle[stroke="#39e0c8"]'),
+      dot=document.querySelector('.crowndot'), C=867.08, R=138;
+  function render(){
+    var whole=Math.floor(len), frac=Math.round((len-whole)*100);
+    num.innerHTML=whole+'<small>.'+(frac<10?'0'+frac:frac)+'</small>';
+    var pct=len/60, deg=pct*360;
+    arc.setAttribute('stroke-dashoffset', (C*(1-pct)).toFixed(2));
+    dot.style.transform='translate(-50%,-50%) rotate('+deg+'deg) translateY(-'+R+'px) rotate('+(-deg)+'deg)';
+  }
+  document.querySelector('.nudge.plus').addEventListener('click',function(){len=Math.min(60,len+0.25);render();});
+  document.querySelector('.nudge.minus').addEventListener('click',function(){len=Math.max(0,len-0.25);render();});
+  // kept/released
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      this.parentNode.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+      this.classList.add('on');
+    });
+  });
+})();
+</script>
+</body>
+</html>

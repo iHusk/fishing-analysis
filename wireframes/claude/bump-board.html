@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FishingLogger — Bump Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Spline+Sans+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* clinical bone palette */
+    --bone:#f4f1ea;
+    --bone-2:#ece8df;
+    --bone-3:#e3ded2;
+    --ink:#1a1815;
+    --ink-2:#3c382f;
+    --muted:#8d8675;
+    --faint:#b6ad9a;
+    --hair:#cfc8b6;
+    --hair-2:#ded7c6;
+    --signal:#ff5a1f;       /* blaze orange — used sparingly */
+    --signal-ink:#ffffff;
+    --white:#fbfaf6;
+    --released:#1f7a8c;     /* secondary cool for "released" affordance only */
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:#d8d2c4;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #e7e1d4 0%, #cfc8b8 60%, #bdb6a4 100%);
+    color:var(--ink);
+    font-family:"Hanken Grotesk",sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:24px 0 30px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== device ===== */
+  .phone{
+    width:390px;
+    height:844px;
+    flex:0 0 844px;
+    position:relative;
+    border-radius:56px;
+    background:#0a0a0c;
+    padding:0;
+    box-shadow:
+      0 0 0 2px #2c2c30,
+      0 0 0 12px #111114,
+      0 0 0 13px #34343a,
+      0 40px 90px rgba(40,34,22,.42);
+  }
+
+  .notch{
+    position:absolute;
+    z-index:9;
+    top:11px;
+    left:50%;
+    width:118px;
+    height:32px;
+    transform:translateX(-50%);
+    border-radius:18px;
+    background:#0a0a0c;
+  }
+
+  /* the inner screen is EXACTLY 390x844, no scroll, no clip */
+  .screen{
+    position:absolute;
+    inset:0;
+    width:390px;
+    height:844px;
+    border-radius:56px;
+    background:var(--bone);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* status bar */
+  .statusbar{
+    height:54px;
+    flex:0 0 54px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    padding:0 34px 7px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .statusbar .right{display:flex;gap:7px;align-items:center;}
+  .signal{display:grid;grid-template-columns:repeat(4,3px);gap:2px;align-items:end;height:11px;}
+  .signal i{display:block;width:3px;border-radius:1px;background:var(--ink);}
+  .signal i:nth-child(1){height:5px;}
+  .signal i:nth-child(2){height:7px;}
+  .signal i:nth-child(3){height:9px;}
+  .signal i:nth-child(4){height:11px;}
+  .batt{width:25px;height:12px;border:1.6px solid var(--ink);border-radius:3px;position:relative;}
+  .batt:before{content:"";position:absolute;right:-4px;top:3px;width:2px;height:6px;border-radius:0 2px 2px 0;background:var(--ink);}
+  .batt:after{content:"";position:absolute;left:1.6px;top:1.6px;bottom:1.6px;width:16px;border-radius:1px;background:var(--ink);}
+
+  /* header */
+  .head{
+    flex:0 0 56px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 22px;
+  }
+  .head .ttl{
+    display:flex;
+    align-items:baseline;
+    gap:9px;
+  }
+  .head .ttl b{
+    font-size:21px;
+    font-weight:800;
+    letter-spacing:-.4px;
+  }
+  .head .ttl .kicker{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:10px;
+    font-weight:500;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .gps-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    height:30px;
+    padding:0 11px 0 9px;
+    border-radius:999px;
+    background:var(--bone-3);
+    border:1px solid var(--hair);
+    font-family:"Spline Sans Mono",monospace;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.4px;
+    color:var(--ink-2);
+  }
+  .gps-chip .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--signal);
+    box-shadow:0 0 0 3px rgba(255,90,31,.16);
+  }
+
+  /* ===== the bump board (hero) ===== */
+  .board-wrap{
+    flex:1 1 auto;
+    display:flex;
+    padding:6px 18px 8px;
+    min-height:0;
+  }
+  .board{
+    position:relative;
+    flex:1 1 auto;
+    display:flex;
+    border-radius:26px;
+    background:linear-gradient(180deg,var(--white),var(--bone-2));
+    border:1px solid var(--hair);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.7) inset,
+      0 22px 40px -22px rgba(40,34,22,.45);
+    overflow:visible;
+  }
+
+  /* readout column (right of ruler) */
+  .readout{
+    position:absolute;
+    z-index:5;
+    right:20px;
+    top:18px;
+    text-align:right;
+    pointer-events:none;
+  }
+  .readout .lab{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .readout .big{
+    display:flex;
+    align-items:baseline;
+    justify-content:flex-end;
+    gap:4px;
+    margin-top:2px;
+  }
+  #lenNum{
+    font-size:78px;
+    line-height:.82;
+    font-weight:800;
+    letter-spacing:-3px;
+    font-variant-numeric:tabular-nums;
+    color:var(--ink);
+    transition:transform .12s cubic-bezier(.2,.8,.2,1);
+  }
+  #lenNum.settle{animation:settle .26s cubic-bezier(.2,.9,.2,1);}
+  @keyframes settle{0%{transform:translateY(2px) scale(.985);}100%{transform:none;}}
+  .readout .unit{
+    font-size:20px;
+    font-weight:700;
+    color:var(--muted);
+    letter-spacing:-.5px;
+  }
+  .readout .spec{
+    margin-top:9px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:5px;
+  }
+  .readout .spec .pill{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.6px;
+    color:var(--muted);
+  }
+
+  /* the ruler track */
+  .ruler{
+    position:relative;
+    width:118px;
+    flex:0 0 118px;
+    margin:14px 0 14px 12px;
+    border-radius:16px;
+    background:
+      linear-gradient(180deg,#fbfaf6,#f0ece2);
+    border:1px solid var(--hair);
+    box-shadow:0 2px 6px -3px rgba(40,34,22,.3) inset;
+    overflow:hidden;
+    cursor:ns-resize;
+    touch-action:none;
+  }
+  /* tick marks drawn as gradient hairlines; numbers absolutely placed in JS-free static layout */
+  .ticks{position:absolute;inset:0;}
+  .ticks .tick{
+    position:absolute;
+    left:0;
+    height:1px;
+    background:var(--hair);
+  }
+  .ticks .tick.major{height:1.5px;background:#a59c87;width:40px;left:0;}
+  .ticks .tick.half{width:24px;left:0;background:#bcb39d;}
+  .ticks .tick.minor{width:14px;left:0;}
+  .ticks .num{
+    position:absolute;
+    left:44px;
+    transform:translateY(-50%);
+    font-family:"Spline Sans Mono",monospace;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-2);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* the calibration sweep (one-time) */
+  .sweep{
+    position:absolute;
+    left:0;right:0;
+    height:64px;
+    pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,90,31,0),rgba(255,90,31,.18),rgba(255,90,31,0));
+    opacity:0;
+  }
+  .sweep.run{animation:sweep 1.05s ease-in-out .25s 1 both;}
+  @keyframes sweep{
+    0%{top:-70px;opacity:0;}
+    12%{opacity:1;}
+    88%{opacity:1;}
+    100%{top:520px;opacity:0;}
+  }
+
+  /* the nose line + marker that the angler drags */
+  .marker{
+    position:absolute;
+    left:-12px;
+    right:auto;
+    width:172px;            /* extends across ruler + into board */
+    height:0;
+    z-index:6;
+    transition:top .14s cubic-bezier(.2,.85,.2,1);
+  }
+  .marker .line{
+    position:absolute;
+    left:0;
+    top:-1px;
+    width:130px;
+    height:2px;
+    background:var(--signal);
+    box-shadow:0 0 0 .5px rgba(255,90,31,.35);
+  }
+  .marker .grip{
+    position:absolute;
+    left:118px;
+    top:0;
+    width:56px;
+    height:56px;
+    margin-top:-28px;
+    border-radius:50%;
+    background:var(--signal);
+    box-shadow:
+      0 6px 16px -4px rgba(255,90,31,.6),
+      0 1px 0 rgba(255,255,255,.4) inset;
+    display:grid;
+    place-items:center;
+  }
+  .marker .grip svg{display:block;}
+  .marker .tag{
+    position:absolute;
+    left:0;
+    top:-30px;
+    height:24px;
+    padding:0 9px;
+    border-radius:7px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:"Spline Sans Mono",monospace;
+    font-size:12px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.3px;
+  }
+
+  /* the fish, laid against the board, nose at the marker */
+  .fish{
+    position:absolute;
+    z-index:4;
+    left:96px;
+    width:188px;
+    pointer-events:none;
+    transition:top .14s cubic-bezier(.2,.85,.2,1);
+    filter:drop-shadow(0 10px 14px rgba(40,34,22,.18));
+  }
+  .fish svg{display:block;width:100%;height:auto;}
+
+  /* species + kept big toggles row */
+  .toggles{
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    padding:8px 18px 4px;
+  }
+  .seg{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    height:56px;
+    padding:4px;
+    border-radius:16px;
+    background:var(--bone-3);
+    border:1px solid var(--hair);
+  }
+  .seg .opt{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    border-radius:12px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--muted);
+    letter-spacing:-.2px;
+  }
+  .seg .opt svg{opacity:.5;}
+  .seg .opt.on{
+    background:var(--white);
+    color:var(--ink);
+    box-shadow:0 3px 8px -3px rgba(40,34,22,.3);
+  }
+  .seg .opt.on svg{opacity:1;}
+  .seg.kept .opt.on{color:var(--ink);}
+  .seg.kept .opt.on .dotk{background:var(--signal);}
+  .seg.species .opt.on .dotk{background:var(--ink);}
+  .dotk{width:9px;height:9px;border-radius:50%;background:var(--faint);}
+
+  /* angler row + depth */
+  .row2{
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:1.55fr 1fr;
+    gap:10px;
+    padding:4px 18px 4px;
+  }
+  .anglers{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:4px;
+    height:54px;
+    padding:4px;
+    border-radius:16px;
+    background:var(--bone-3);
+    border:1px solid var(--hair);
+  }
+  .anglers .a{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--muted);
+  }
+  .anglers .a.on{
+    background:var(--ink);
+    color:var(--white);
+  }
+  .depth{
+    height:54px;
+    border-radius:16px;
+    background:var(--bone-3);
+    border:1px solid var(--hair);
+    display:grid;
+    grid-template-columns:40px 1fr 40px;
+    align-items:center;
+    overflow:hidden;
+  }
+  .depth .step{
+    height:100%;
+    display:grid;
+    place-items:center;
+    font-size:24px;
+    font-weight:700;
+    color:var(--ink-2);
+    user-select:none;
+  }
+  .depth .val{
+    text-align:center;
+    line-height:1;
+  }
+  .depth .val b{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:19px;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .depth .val span{
+    display:block;
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-top:2px;
+  }
+
+  /* quiet pre-filled data strip */
+  .strip{
+    flex:0 0 auto;
+    margin:6px 18px 4px;
+    padding:10px 12px;
+    border-radius:16px;
+    background:var(--bone-2);
+    border:1px solid var(--hair-2);
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:9px 14px;
+  }
+  .strip .f{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .strip .f .l{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .strip .f .v{
+    font-size:13px;
+    font-weight:700;
+    color:var(--ink-2);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .strip .f .v.mono{font-family:"Spline Sans Mono",monospace;font-weight:600;font-size:11px;letter-spacing:-.2px;}
+  .sw{width:11px;height:11px;border-radius:3px;flex:0 0 11px;box-shadow:0 0 0 1px rgba(0,0,0,.12);}
+  .sw.chart{background:#c7f53a;}
+  .sw.purple{background:#7b4bd8;}
+  .strip .f.full{grid-column:1 / -1;}
+
+  /* save bar */
+  .savebar{
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:56px 1fr;
+    gap:10px;
+    padding:6px 18px 8px;
+  }
+  .cancel{
+    height:60px;
+    border-radius:18px;
+    border:1px solid var(--hair);
+    background:var(--bone-3);
+    color:var(--ink-2);
+    display:grid;
+    place-items:center;
+  }
+  .save{
+    height:60px;
+    border:0;
+    border-radius:18px;
+    background:var(--signal);
+    color:var(--signal-ink);
+    font-family:inherit;
+    font-weight:800;
+    font-size:17px;
+    letter-spacing:.2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    box-shadow:0 12px 24px -8px rgba(255,90,31,.55);
+  }
+  .save .meta{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:11px;
+    font-weight:600;
+    opacity:.85;
+    letter-spacing:0;
+  }
+
+  /* home indicator */
+  .homebar{
+    flex:0 0 auto;
+    height:22px;
+    display:grid;
+    place-items:center;
+  }
+  .homebar i{
+    width:134px;height:5px;border-radius:3px;background:var(--faint);display:block;
+  }
+
+  /* caption under frame */
+  .caption{
+    font-family:"Spline Sans Mono",monospace;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    color:#6c6655;
+  }
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="FishingLogger Bump Board — drag a fish up a measuring board to set length">
+    <div class="notch"></div>
+
+    <div class="screen" id="screen">
+      <!-- status -->
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="right">
+          <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span style="font-size:13px;font-weight:700;">LTE</span>
+          <span class="batt" aria-hidden="true"></span>
+        </span>
+      </div>
+
+      <!-- header -->
+      <header class="head">
+        <div class="ttl">
+          <b>Log Catch</b>
+          <span class="kicker">North Flat</span>
+        </div>
+        <div class="gps-chip"><span class="dot"></span>GPS · FROZEN</div>
+      </header>
+
+      <!-- HERO: bump board -->
+      <div class="board-wrap">
+        <section class="board" aria-label="Bump board — length 18.5 inches">
+          <!-- the measuring track -->
+          <div class="ruler" id="ruler">
+            <div class="ticks" id="ticks" aria-hidden="true"></div>
+            <div class="sweep run" id="sweep"></div>
+          </div>
+
+          <!-- big readout -->
+          <div class="readout">
+            <div class="lab">Length</div>
+            <div class="big">
+              <span id="lenNum">18.5</span><span class="unit">in</span>
+            </div>
+            <div class="spec">
+              <span class="pill">0.25&quot; SNAP</span>
+              <span class="pill">DRAG · READ · DONE</span>
+            </div>
+          </div>
+
+          <!-- the fish laid on the board -->
+          <div class="fish" id="fish" aria-hidden="true">
+            <svg viewBox="0 0 188 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- tail -->
+              <path d="M183 32 C176 20, 176 44, 183 32 L162 12 C158 24, 158 40, 162 52 Z" fill="#4a4538"/>
+              <!-- body -->
+              <path d="M8 32 C8 18, 40 8, 96 12 C132 14, 158 22, 166 32 C158 42, 132 50, 96 52 C40 56, 8 46, 8 32 Z" fill="#5d5848"/>
+              <path d="M8 32 C8 18, 40 8, 96 12 C132 14, 158 22, 166 32 C158 30, 120 26, 90 26 C50 26, 18 28, 8 32 Z" fill="#736d59"/>
+              <!-- dorsal fin -->
+              <path d="M70 12 C84 0, 104 0, 118 11 C104 9, 84 9, 70 12 Z" fill="#4a4538"/>
+              <!-- lateral line -->
+              <path d="M22 33 C60 30, 120 30, 158 33" stroke="#403c31" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+              <!-- eye -->
+              <circle cx="22" cy="29" r="4.4" fill="#1a1815"/>
+              <circle cx="20.6" cy="27.6" r="1.4" fill="#f4f1ea"/>
+              <!-- gill -->
+              <path d="M40 18 C36 26, 36 38, 40 46" stroke="#403c31" stroke-width="1.6" stroke-linecap="round" opacity=".45"/>
+            </svg>
+          </div>
+
+          <!-- the drag marker (nose line + grip) -->
+          <div class="marker" id="marker">
+            <div class="tag" id="tag">18.50&quot;</div>
+            <div class="line"></div>
+            <div class="grip" aria-label="Drag to set length">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M11 4 L7 8 M11 4 L15 8 M11 4 V18 M11 18 L7 14 M11 18 L15 14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- species + kept toggles -->
+      <div class="toggles">
+        <div class="seg species" aria-label="Species: walleye">
+          <div class="opt on"><span class="dotk"></span>Walleye</div>
+          <div class="opt">Other</div>
+        </div>
+        <div class="seg kept" aria-label="Kept vs released: kept">
+          <div class="opt on"><span class="dotk"></span>Kept</div>
+          <div class="opt">Released</div>
+        </div>
+      </div>
+
+      <!-- angler + depth -->
+      <div class="row2">
+        <div class="anglers" aria-label="Angler: Tyler">
+          <div class="a on">Tyler</div>
+          <div class="a">Brian</div>
+          <div class="a">Brent</div>
+        </div>
+        <div class="depth" aria-label="Depth 22 feet">
+          <div class="step">−</div>
+          <div class="val"><b>22</b><span>ft deep</span></div>
+          <div class="step">+</div>
+        </div>
+      </div>
+
+      <!-- quiet pre-filled strip -->
+      <div class="strip" aria-label="Pre-filled trip defaults">
+        <div class="f">
+          <span class="l">Lure 1</span>
+          <span class="v"><i class="sw chart"></i>Chartreuse</span>
+        </div>
+        <div class="f">
+          <span class="l">Lure 2</span>
+          <span class="v"><i class="sw purple"></i>Purple</span>
+        </div>
+        <div class="f">
+          <span class="l">Water</span>
+          <span class="v mono">64°F</span>
+        </div>
+        <div class="f">
+          <span class="l">Bait</span>
+          <span class="v">Crawler</span>
+        </div>
+        <div class="f">
+          <span class="l">Area</span>
+          <span class="v">North Flat</span>
+        </div>
+        <div class="f">
+          <span class="l">Acc</span>
+          <span class="v mono">±4 m</span>
+        </div>
+        <div class="f full">
+          <span class="l">GPS · frozen at landing</span>
+          <span class="v mono">44.456789, −100.345678</span>
+        </div>
+      </div>
+
+      <!-- save -->
+      <div class="savebar">
+        <button class="cancel" aria-label="Cancel">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5 L15 15 M15 5 L5 15" stroke="#3c382f" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="save">
+          Save Catch
+          <span class="meta">Tyler · 18.5&quot; · kept</span>
+        </button>
+      </div>
+
+      <div class="homebar"><i></i></div>
+    </div>
+  </main>
+
+  <div class="caption">Bump Board — drag, read, done</div>
+
+<script>
+(function(){
+  // ===== ruler geometry =====
+  // The ruler shows inches 0..30 with 0 at the BOTTOM (fish dragged UP = longer).
+  var MIN = 0, MAX = 30, STEP = 0.25;
+  var ruler = document.getElementById('ruler');
+  var ticks = document.getElementById('ticks');
+  var marker = document.getElementById('marker');
+  var fish = document.getElementById('fish');
+  var lenNum = document.getElementById('lenNum');
+  var tag = document.getElementById('tag');
+  var value = 18.5;
+
+  function H(){ return ruler.clientHeight; }
+
+  // px position (from top of ruler) for a given inch value
+  function yFor(v){
+    var frac = (v - MIN) / (MAX - MIN);      // 0 at MIN
+    return H() * (1 - frac);                  // bottom = MIN, top = MAX
+  }
+  function valFor(y){
+    var frac = 1 - (y / H());
+    return MIN + frac * (MAX - MIN);
+  }
+  function snap(v){
+    v = Math.round(v / STEP) * STEP;
+    return Math.max(MIN, Math.min(MAX, v));
+  }
+
+  // ===== build tick marks =====
+  function buildTicks(){
+    ticks.innerHTML = '';
+    var h = H();
+    for(var i = MIN; i <= MAX; i += 1){
+      // whole-inch major
+      addTick(i, 'major');
+      var lab = document.createElement('div');
+      lab.className = 'num';
+      lab.style.top = yFor(i) + 'px';
+      lab.textContent = i;
+      ticks.appendChild(lab);
+      if(i < MAX){
+        addTick(i + 0.5, 'half');
+        addTick(i + 0.25, 'minor');
+        addTick(i + 0.75, 'minor');
+      }
+    }
+  }
+  function addTick(v, cls){
+    var t = document.createElement('div');
+    t.className = 'tick ' + cls;
+    t.style.top = yFor(v) + 'px';
+    ticks.appendChild(t);
+  }
+
+  // ===== render =====
+  function render(animated){
+    var y = yFor(value);
+    marker.style.top = y + 'px';
+    // fish nose sits at the marker line; fish drawn so its nose (right edge-ish) aligns.
+    // position fish so its vertical center ~ marker, nose pointing toward ruler.
+    var fh = fish.offsetHeight || 60;
+    fish.style.top = (y - fh/2) + 'px';
+    lenNum.textContent = (Math.round(value*4)/4).toFixed(value % 1 === 0 ? 0 : (value*4%2===0?1:2)).replace(/\.00$/,'');
+    // simpler clean formatting:
+    lenNum.textContent = formatLen(value);
+    tag.textContent = value.toFixed(2) + '"';
+    if(animated){
+      lenNum.classList.remove('settle');
+      void lenNum.offsetWidth;
+      lenNum.classList.add('settle');
+    }
+  }
+  function formatLen(v){
+    // show one decimal unless it's a quarter that needs two (.25/.75)
+    var q = Math.round(v*4)/4;
+    if(q % 1 === 0) return q.toFixed(0);
+    if((q*4) % 2 === 0) return q.toFixed(1);   // .5
+    return q.toFixed(2);                         // .25 / .75
+  }
+
+  // ===== drag =====
+  var dragging = false;
+  function clientY(e){ return e.touches ? e.touches[0].clientY : e.clientY; }
+  function onDown(e){
+    dragging = true;
+    marker.style.transition = 'none';
+    fish.style.transition = 'none';
+    move(e);
+    e.preventDefault();
+  }
+  function move(e){
+    if(!dragging) return;
+    var rect = ruler.getBoundingClientRect();
+    var y = clientY(e) - rect.top;
+    y = Math.max(0, Math.min(H(), y));
+    value = snap(valFor(y));
+    render(false);
+    e.preventDefault();
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    marker.style.transition = '';
+    fish.style.transition = '';
+    render(true);   // settle animation + snap glide
+  }
+
+  ruler.addEventListener('mousedown', onDown);
+  marker.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', onUp);
+  ruler.addEventListener('touchstart', onDown, {passive:false});
+  marker.addEventListener('touchstart', onDown, {passive:false});
+  window.addEventListener('touchmove', move, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  // ===== depth stepper (cosmetic) =====
+  var depthVal = 22;
+  var steps = document.querySelectorAll('.depth .step');
+  var depthEl = document.querySelector('.depth .val b');
+  steps[0].addEventListener('click', function(){ depthVal = Math.max(0, depthVal-1); depthEl.textContent = depthVal; });
+  steps[1].addEventListener('click', function(){ depthVal = Math.min(300, depthVal+1); depthEl.textContent = depthVal; });
+
+  // ===== segmented toggles =====
+  document.querySelectorAll('.seg').forEach(function(seg){
+    seg.querySelectorAll('.opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        seg.querySelectorAll('.opt').forEach(function(o){o.classList.remove('on');});
+        opt.classList.add('on');
+      });
+    });
+  });
+  document.querySelectorAll('.anglers .a').forEach(function(a){
+    a.addEventListener('click', function(){
+      document.querySelectorAll('.anglers .a').forEach(function(o){o.classList.remove('on');});
+      a.classList.add('on');
+    });
+  });
+
+  // ===== init (wait a tick so layout/fonts settle) =====
+  function init(){
+    buildTicks();
+    render(false);
+  }
+  init();
+  window.addEventListener('load', init);
+  // rebuild after fonts load (heights stable anyway)
+  setTimeout(init, 120);
+})();
+</script>
+</body>
+</html>
