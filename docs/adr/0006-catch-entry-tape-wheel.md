@@ -1,10 +1,10 @@
 # ADR 0006 — Catch-entry UI: the "Tape Wheel" pattern
 
-- **Status:** Accepted
-- **Date:** 2026-06-23
+- **Status:** Accepted — **implemented 2026-06-24** (on-device feel-tuning pending)
+- **Date:** 2026-06-23 (decision); 2026-06-24 (build)
 - **Deciders:** Tyler (project owner)
 - **Linear:** APP-4 / HAY-133 (In Progress)
-- **Artifacts:** `wireframes/claude/tape-wheel.html` (chosen), `wireframes/BRIEF.md`, runner-ups `arc-slider.html` + `confirm-card.html`
+- **Artifacts:** `wireframes/claude/tape-wheel.html` (chosen), `wireframes/claude/bait-picker-radial.html`, `wireframes/BRIEF.md`, runner-ups `arc-slider.html` + `confirm-card.html`
 
 ## Context
 
@@ -68,6 +68,37 @@ Adopt the **"Tape Wheel"** pattern for catch entry (`wireframes/claude/tape-whee
   **not yet designed** — left as a follow-up.
 - ⚠️ Requires a new **per-angler + trip defaults model** (angler profiles) that doesn't exist
   yet; the whole pattern leans on good defaults.
+
+## Implementation (2026-06-24)
+
+Built into the private `iHusk/FishingLogger` SwiftUI app (deployment target iOS 26.5).
+A grounding pass first confirmed this is a **view-layer reskin over the working, locked
+data layer** — `Store.addCatch(...)`, `FishCatch`, and the CSV `Schema` are reused
+verbatim with **zero schema change**; GPS freeze-at-open and carry-forward prefill already
+existed and were lifted as-is.
+
+Files (4 new, authored in parallel via subagents; integration + build by the main thread):
+- `FishTheme.swift` — dark + amber design tokens, Sora / DM Mono helpers (`fishPanel`,
+  `fishEyebrow`); fonts bundled (`Fonts/Sora.ttf`, `DMMono-Regular/Medium.ttf`, declared in
+  `Info.plist` `UIAppFonts`).
+- `TapeInput.swift` — the momentum tape (velocity capture → ease-out decay → snap), evolved
+  from the existing `RulerInput`; Length step 0.25 (major @ whole inch), Depth step 0.5
+  (major @ whole foot), **labels on major ticks only**; per-snap selection haptic.
+- `RadialBaitPicker.swift` — press-hold → bloom-from-touch → flick-to-quadrant
+  (Crawler/Minnow/Lure/Jig) → release-commits; ported from `bait-picker-radial.html`.
+- `AnglerProfiles.swift` — `AnglerProfileStore` persisting `profiles.json` (separate file,
+  **never touches `catches.csv`**); selecting an angler resolves their defaults, falling back
+  to global carry-forward.
+- `CatchEntryView.swift` rewritten as the Tape Wheel (kept the `init(onSaved:)` contract);
+  presented via `.fullScreenCover` (was `.sheet`); `AnglerProfileStore` injected at the shell.
+
+**Verified:** builds clean (BuildProject + RenderPreview, 0 errors); fits 390×844 with no
+scroll; theme/fonts/layout render to spec. **Pending (device-only):** momentum/fling feel,
+haptics, swipe-to-log threshold — the gesture tuning called out in Consequences below.
+
+**Carried-over deltas vs the original spec:** the GPS "area" pill shows free-text /
+carry-forward `locationName` (auto-naming is HAY-130, not yet built); the lure rail is capped
+at **two** color slots (the locked schema has only `lureColor1`/`lureColor2`).
 
 ## Alternatives considered
 
