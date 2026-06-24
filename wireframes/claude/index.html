@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger Log Catch Wireframes</title>
+<style>
+  :root{
+    --bg:#081018;
+    --panel:#111d28;
+    --panel2:#172638;
+    --ink:#f4f8fb;
+    --muted:#9fb0bf;
+    --line:#2a4056;
+    --accent:#20d39b;
+    --warn:#ffd45a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif}
+  body{padding:28px}
+  header{max-width:1180px;margin:0 auto 24px;display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:end}
+  h1{margin:0;font-size:34px;letter-spacing:-.02em;line-height:1}
+  .dek{margin:10px 0 0;color:var(--muted);font-size:15px;line-height:1.45;max-width:700px}
+  .meta{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;color:var(--muted);font-size:13px;line-height:1.45}
+  .meta b{color:var(--ink)}
+  .grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.26)}
+  .thumb{height:306px;background:#05090d;overflow:hidden;display:flex;align-items:flex-start;justify-content:center;padding-top:10px}
+  iframe{width:390px;height:844px;border:0;transform:scale(.34);transform-origin:top center;pointer-events:none;flex:0 0 auto}
+  .copy{padding:12px 12px 14px;border-top:1px solid var(--line);min-height:134px}
+  .eyebrow{color:var(--accent);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  h2{font-size:15px;margin:4px 0 7px;letter-spacing:-.01em}
+  p{margin:0;color:var(--muted);font-size:12px;line-height:1.4}
+  a{display:inline-block;margin-top:10px;color:#8bd8ff;text-decoration:none;font-size:12px;font-weight:700}
+  .judge{max-width:1180px;margin:24px auto 0;background:var(--panel2);border:1px solid var(--line);
+    border-radius:18px;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .judge h2{font-size:18px;margin:0 0 8px}
+  ol{margin:0;padding-left:20px;color:var(--muted);font-size:13px;line-height:1.55}
+  .note{color:var(--muted);font-size:13px;line-height:1.5}
+  .note b{color:var(--warn)}
+  @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}header,.judge{grid-template-columns:1fr}}
+  @media(max-width:740px){body{padding:16px}.grid{grid-template-columns:1fr}.thumb{height:420px}iframe{transform:scale(.48)}}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Log Catch Screen Concepts</h1>
+      <p class="dek">Ten offline, no-scroll 390×844 iPhone mockups exploring faster ways to log a walleye from a moving boat with wet hands, bright sun, and strong catch-to-catch defaults.</p>
+    </div>
+    <div class="meta">
+      <b>Common sample:</b> Tyler · walleye · 18.5 in · kept · 22 ft · chartreuse + orange · North Flat · GPS frozen. Each tile opens the full standalone HTML mockup.
+    </div>
+  </header>
+
+  <main class="grid" aria-label="Wireframe contact sheet">
+    <article class="card">
+      <div class="thumb"><iframe title="Radial speed-dial" src="radial-dial.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">01</div><h2>Radial Speed-Dial</h2><p>Length becomes the dominant rotary target, with thumb-reach satellites for the high-frequency corrections.</p><a href="radial-dial.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Tap-tile dashboard" src="tile-dashboard.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">02</div><h2>Tap-Tile Dashboard</h2><p>Every field is a large status tile; common fields can cycle or expand without leaving the dashboard.</p><a href="tile-dashboard.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Voice-first conversational" src="voice-first.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">03</div><h2>Voice-First</h2><p>A mic-first flow parses the catch into tappable chips, leaving a natural home for future voice/BLE capture.</p><a href="voice-first.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="One-field swipe deck" src="swipe-deck.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">04</div><h2>Swipe Deck</h2><p>One large field per card with a compact always-visible review strip for every captured value.</p><a href="swipe-deck.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Smart defaults summary" src="summary-confirm.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">05</div><h2>Two-Tap Confirm</h2><p>Trip and angler defaults produce a ready catch; only changed values need attention before saving.</p><a href="summary-confirm.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Fish ruler hero" src="ruler-hero.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">06</div><h2>Fish Ruler Hero</h2><p>The screen behaves like a measuring board: drag the fish to length, then confirm supporting chips.</p><a href="ruler-hero.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Parallel drum wheels" src="drum-wheels.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">07</div><h2>Parallel Drums</h2><p>Visible picker wheels give fast, forgiving adjustments to angler, species, length, and depth together.</p><a href="drum-wheels.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Map-centric bottom sheet" src="map-sheet.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">08</div><h2>Map-Centric Sheet</h2><p>The frozen GPS pin and named area anchor the screen, with a compact catch sheet below.</p><a href="map-sheet.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Pre-filled chip board" src="chip-board.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">09</div><h2>Pre-Filled Chip Board</h2><p>All fields are already selected chips; tap any chip to change it while the whole catch stays visible.</p><a href="chip-board.html">Open full size</a></div>
+    </article>
+    <article class="card">
+      <div class="thumb"><iframe title="Watch-style compact glance" src="watch-compact.html"></iframe></div>
+      <div class="copy"><div class="eyebrow">10</div><h2>Watch Compact</h2><p>Huge numerals and glanceable controls make a tiny, one-handed interface scale up to phone size.</p><a href="watch-compact.html">Open full size</a></div>
+    </article>
+  </main>
+
+  <section class="judge">
+    <div>
+      <h2>Initial Ranking</h2>
+      <ol>
+        <li>Two-Tap Confirm</li>
+        <li>Pre-Filled Chip Board</li>
+        <li>Fish Ruler Hero</li>
+        <li>Tap-Tile Dashboard</li>
+        <li>Radial Speed-Dial</li>
+        <li>Map-Centric Sheet</li>
+        <li>Watch Compact</li>
+        <li>Voice-First</li>
+        <li>Parallel Drums</li>
+        <li>Swipe Deck</li>
+      </ol>
+    </div>
+    <p class="note"><b>Recommendation:</b> combine the fast default posture from Two-Tap Confirm, the all-fields-at-a-glance chip model, and the ruler/rotary length affordance. Keep voice/BLE as a secondary confirm affordance, not the primary path, because wind and engine noise make voice risky on the boat.</p>
+  </section>
+</body>
+</html>

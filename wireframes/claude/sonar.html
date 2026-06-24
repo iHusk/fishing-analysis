@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SONAR — Log Catch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --indigo-top:#060c1c;
+    --indigo-bot:#0c1530;
+    --amber:#ffc24a;
+    --amber-soft:#ffd789;
+    --cyan:#38d6e6;
+    --ink:#eaf2ff;
+    --muted:#6f86a8;
+    --released:#38d6e6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  html,body{height:100%;}
+  body{
+    background:#02060f;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    font-family:'Oxanium',sans-serif;
+    gap:18px;
+    padding:30px 0;
+  }
+
+  /* ============ PHONE FRAME ============ */
+  .phone{
+    width:390px;
+    height:844px;
+    position:relative;
+    border-radius:54px;
+    background:#000;
+    padding:0;
+    box-shadow:
+      0 0 0 11px #0a0e17,
+      0 0 0 13px #1c2433,
+      0 40px 90px -20px rgba(0,0,0,.9),
+      0 0 120px -30px rgba(56,214,230,.18);
+  }
+  .notch{
+    position:absolute;
+    top:0;left:50%;transform:translateX(-50%);
+    width:128px;height:32px;
+    background:#000;
+    border-bottom-left-radius:20px;
+    border-bottom-right-radius:20px;
+    z-index:60;
+  }
+
+  /* ============ APP SCREEN — EXACTLY 390x844 ============ */
+  .screen{
+    width:390px;
+    height:844px;
+    border-radius:54px;
+    overflow:hidden;
+    position:relative;
+    background:
+      radial-gradient(120% 80% at 50% 0%, #0a1430 0%, transparent 60%),
+      linear-gradient(180deg, var(--indigo-top) 0%, #08102a 45%, var(--indigo-bot) 100%);
+    color:var(--ink);
+    isolation:isolate;
+  }
+
+  /* CRT vignette + scanlines */
+  .screen::before{
+    content:"";
+    position:absolute;inset:0;
+    background:
+      radial-gradient(130% 100% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%);
+    pointer-events:none;
+    z-index:50;
+  }
+  .scanlines{
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.022) 0px,
+      rgba(255,255,255,.022) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events:none;
+    z-index:48;
+    mix-blend-mode:overlay;
+  }
+
+  /* status bar */
+  .statusbar{
+    position:absolute;top:0;left:0;right:0;height:54px;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 26px 6px;
+    font-family:'Spline Sans Mono',monospace;
+    font-size:13px;font-weight:600;
+    color:var(--ink);
+    z-index:40;
+  }
+  .statusbar .right{display:flex;gap:6px;align-items:center;opacity:.85;}
+
+  /* ============ TOP CHROME: angler chip + species + readout ============ */
+  .topchrome{
+    position:absolute;top:54px;left:0;right:0;
+    height:70px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+    z-index:42;
+  }
+  .angler-chip{
+    display:flex;align-items:center;gap:9px;
+    background:rgba(56,214,230,.08);
+    border:1px solid rgba(56,214,230,.28);
+    padding:8px 13px 8px 9px;
+    border-radius:30px;
+    height:46px;
+  }
+  .angler-dot{
+    width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(150deg,var(--amber),#ff9d2e);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Oxanium';font-weight:800;font-size:14px;color:#1a0f00;
+    box-shadow:0 0 14px rgba(255,194,74,.5);
+  }
+  .angler-chip .meta{display:flex;flex-direction:column;line-height:1;}
+  .angler-chip .lbl{font-family:'Spline Sans Mono';font-size:8.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;}
+  .angler-chip .nm{font-family:'Oxanium';font-weight:700;font-size:15px;color:var(--ink);margin-top:2px;}
+  .angler-chip .chev{color:var(--cyan);font-size:11px;margin-left:2px;opacity:.7;}
+
+  .species-pill{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(255,194,74,.07);
+    border:1px solid rgba(255,194,74,.30);
+    padding:8px 15px;border-radius:30px;height:46px;
+  }
+  .species-pill .sp-ico{color:var(--amber);display:flex;}
+  .species-pill .sp-txt{display:flex;flex-direction:column;line-height:1;}
+  .species-pill .sp-txt .lbl{font-family:'Spline Sans Mono';font-size:8.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;}
+  .species-pill .sp-txt .val{font-family:'Oxanium';font-weight:700;font-size:14px;color:var(--amber-soft);margin-top:2px;}
+
+  /* ============ WATER COLUMN — THE HERO ============ */
+  .column-wrap{
+    position:absolute;
+    top:124px;
+    left:0;right:0;
+    bottom:212px;       /* leaves room for bottom controls */
+    z-index:20;
+  }
+  #sonar{
+    width:100%;height:100%;
+    display:block;
+  }
+
+  /* big length readout floats over the column */
+  .length-readout{
+    position:absolute;
+    top:128px;
+    left:50%;transform:translateX(-50%);
+    text-align:center;
+    z-index:30;
+    pointer-events:none;
+  }
+  .length-readout .num{
+    font-family:'Spline Sans Mono';
+    font-weight:700;
+    font-size:62px;
+    line-height:.9;
+    color:var(--amber);
+    text-shadow:0 0 26px rgba(255,194,74,.55), 0 0 4px rgba(255,194,74,.8);
+    letter-spacing:-.01em;
+  }
+  .length-readout .num .unit{font-size:24px;color:var(--amber-soft);margin-left:2px;}
+  .length-readout .cap{
+    font-family:'Oxanium';font-weight:600;
+    font-size:10px;letter-spacing:.42em;text-transform:uppercase;
+    color:var(--muted);margin-top:5px;
+  }
+
+  /* ============ LENGTH SLIDER (docked just below column) ============ */
+  .length-dock{
+    position:absolute;
+    left:18px;right:18px;
+    bottom:200px;
+    height:10px;
+    z-index:34;
+  }
+  /* (length slider visually integrated; handled in bottom controls block) */
+
+  /* ============ BOTTOM CONTROL STACK ============ */
+  .controls{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    height:212px;
+    z-index:44;
+    padding:0 16px 0;
+    background:linear-gradient(180deg, rgba(6,12,28,0) 0%, rgba(6,12,28,.55) 22%, #060d1f 60%);
+    display:flex;flex-direction:column;
+  }
+
+  /* length slider row */
+  .len-row{
+    margin-top:8px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .len-row .len-lbl{
+    font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.16em;
+    color:var(--muted);text-transform:uppercase;white-space:nowrap;
+  }
+  .len-track{
+    position:relative;flex:1;height:30px;display:flex;align-items:center;
+  }
+  .len-track .rail{
+    position:absolute;left:0;right:0;height:4px;border-radius:4px;
+    background:rgba(56,214,230,.16);
+  }
+  .len-track .fill{
+    position:absolute;left:0;height:4px;border-radius:4px;width:30.8%;
+    background:linear-gradient(90deg,#ff9d2e,var(--amber));
+    box-shadow:0 0 12px rgba(255,194,74,.6);
+  }
+  .len-track .knob{
+    position:absolute;left:30.8%;transform:translateX(-50%);
+    width:30px;height:30px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff2d6, var(--amber) 55%, #e08e1e);
+    box-shadow:0 0 0 5px rgba(255,194,74,.16), 0 0 16px rgba(255,194,74,.55);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .len-track .knob::after{content:"";width:8px;height:8px;border-radius:50%;background:#1a0f00;opacity:.55;}
+  .len-tick{font-family:'Spline Sans Mono';font-size:9px;color:var(--muted);}
+
+  /* tier-2 row: depth confirm + lure swatches */
+  .tier2{
+    margin-top:11px;
+    display:flex;gap:10px;align-items:stretch;
+  }
+  .t2-card{
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(56,214,230,.16);
+    border-radius:14px;
+    padding:9px 12px;
+    display:flex;flex-direction:column;justify-content:center;
+    min-height:54px;
+  }
+  .t2-card .lbl{font-family:'Spline Sans Mono';font-size:8.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;}
+  .depth-card{flex:0 0 96px;}
+  .depth-card .dv{font-family:'Spline Sans Mono';font-weight:700;font-size:23px;color:var(--cyan);margin-top:3px;line-height:1;}
+  .depth-card .dv .u{font-size:12px;color:var(--muted);margin-left:2px;}
+  .lure-card{flex:1;}
+  .lure-card .swatches{display:flex;align-items:center;gap:9px;margin-top:6px;}
+  .sw{
+    display:flex;align-items:center;gap:7px;
+  }
+  .sw .dot{
+    width:24px;height:24px;border-radius:7px;
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22), 0 0 10px rgba(0,0,0,.4);
+  }
+  .sw .dot.chart{background:linear-gradient(145deg,#e6ff5a,#b6e000);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.3),0 0 12px rgba(200,255,40,.4);}
+  .sw .dot.purple{background:linear-gradient(145deg,#a05cff,#6a2fcf);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25),0 0 12px rgba(150,80,255,.4);}
+  .sw .nm{font-family:'Oxanium';font-weight:600;font-size:12px;color:var(--ink);}
+  .lure-plus{font-family:'Oxanium';color:var(--muted);font-weight:700;font-size:14px;}
+
+  /* kept/released + species mini handled in action row */
+  .action-row{
+    margin-top:11px;
+    display:flex;gap:10px;align-items:stretch;
+    height:60px;
+  }
+  .kr-toggle{
+    flex:0 0 150px;
+    display:flex;
+    background:rgba(255,255,255,.04);
+    border-radius:15px;
+    padding:4px;
+    border:1px solid rgba(255,255,255,.07);
+  }
+  .kr-toggle .opt{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border-radius:11px;gap:2px;
+    font-family:'Oxanium';font-weight:700;font-size:13px;
+    color:var(--muted);
+    transition:all .2s;
+  }
+  .kr-toggle .opt .ico{display:flex;}
+  .kr-toggle .opt.kept.active{
+    background:linear-gradient(160deg,rgba(255,194,74,.22),rgba(255,194,74,.10));
+    color:var(--amber);
+    box-shadow:inset 0 0 0 1px rgba(255,194,74,.5), 0 0 18px -4px rgba(255,194,74,.5);
+  }
+  .kr-toggle .opt.rel.active{
+    background:linear-gradient(160deg,rgba(56,214,230,.18),rgba(56,214,230,.08));
+    color:var(--cyan);
+    box-shadow:inset 0 0 0 1px rgba(56,214,230,.45);
+  }
+  .save-btn{
+    flex:1;
+    display:flex;align-items:center;justify-content:center;gap:11px;
+    background:linear-gradient(150deg,var(--amber) 0%, #ff9d2e 100%);
+    border-radius:15px;
+    color:#160c00;
+    font-family:'Oxanium';font-weight:800;font-size:19px;letter-spacing:.04em;
+    text-transform:uppercase;
+    box-shadow:0 0 30px -6px rgba(255,194,74,.7), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .save-btn .sv-ico{display:flex;}
+
+  /* ============ BOTTOM GPS / AREA RIBBON ============ */
+  .ribbon{
+    margin-top:auto;
+    height:30px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 6px;
+    font-family:'Spline Sans Mono';
+    font-size:10px;
+    color:var(--muted);
+    border-top:1px solid rgba(56,214,230,.10);
+    letter-spacing:.02em;
+  }
+  .ribbon .area{color:var(--cyan);font-weight:600;display:flex;align-items:center;gap:5px;}
+  .ribbon .area .pin{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pinpulse 2.4s ease-in-out infinite;}
+  .ribbon .gps{opacity:.82;}
+  .ribbon .acc{color:var(--amber);opacity:.85;}
+
+  @keyframes pinpulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  /* ====== SONAR SVG ANIMATIONS ====== */
+  .ping-sweep{
+    transform-box:fill-box;
+    animation:ping 5.5s linear infinite;
+  }
+  @keyframes ping{
+    0%{transform:translateY(-4px);opacity:0;}
+    8%{opacity:.9;}
+    92%{opacity:.9;}
+    100%{transform:translateY(360px);opacity:0;}
+  }
+  .fish-arch{
+    transform-box:fill-box;transform-origin:center;
+    animation:fishglow 3.2s ease-in-out infinite;
+  }
+  @keyframes fishglow{
+    0%,100%{opacity:.92;filter:drop-shadow(0 0 6px rgba(255,194,74,.6));}
+    50%{opacity:1;filter:drop-shadow(0 0 16px rgba(255,194,74,.95));}
+  }
+  .bottom-contour{animation:scroll 9s linear infinite;}
+  @keyframes scroll{0%{transform:translateX(0);}100%{transform:translateX(-26px);}}
+  .thermo-band{animation:thermo 6s ease-in-out infinite;}
+  @keyframes thermo{0%,100%{opacity:.55;}50%{opacity:.8;}}
+
+  /* caption strip under frame */
+  .caption{
+    font-family:'Oxanium';
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.34em;
+    text-transform:uppercase;
+    color:#5b7299;
+  }
+  .caption b{color:var(--amber);font-weight:800;}
+</style>
+</head>
+<body>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen" id="screen">
+      <div class="scanlines"></div>
+
+      <!-- STATUS BAR -->
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="right">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="1" fill="#eaf2ff"/><rect x="4.5" y="4" width="3" height="7" rx="1" fill="#eaf2ff"/><rect x="9" y="2" width="3" height="9" rx="1" fill="#eaf2ff"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#eaf2ff" opacity=".4"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="3" stroke="#eaf2ff" stroke-opacity=".5"/><rect x="2" y="2" width="13" height="7" rx="1.5" fill="#eaf2ff"/><rect x="20" y="3.5" width="1.5" height="4" rx="1" fill="#eaf2ff" opacity=".6"/></svg>
+        </span>
+      </div>
+
+      <!-- TOP CHROME -->
+      <div class="topchrome">
+        <div class="angler-chip">
+          <div class="angler-dot">T</div>
+          <div class="meta">
+            <span class="lbl">Angler</span>
+            <span class="nm">Tyler</span>
+          </div>
+          <span class="chev">▾</span>
+        </div>
+        <div class="species-pill">
+          <span class="sp-ico">
+            <svg width="22" height="14" viewBox="0 0 22 14" fill="none">
+              <path d="M2 7C4 3.5 7.5 1.5 12 1.5C16 1.5 19 4 20.5 7C19 10 16 12.5 12 12.5C7.5 12.5 4 10.5 2 7Z" fill="currentColor" opacity=".18"/>
+              <path d="M2 7C4 3.5 7.5 1.5 12 1.5C16 1.5 19 4 20.5 7C19 10 16 12.5 12 12.5C7.5 12.5 4 10.5 2 7Z" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M2 7L-3 3.5V10.5L2 7Z" transform="translate(3.5)" fill="currentColor"/>
+              <circle cx="16.5" cy="6" r="1.1" fill="#0c1530"/>
+            </svg>
+          </span>
+          <div class="sp-txt">
+            <span class="lbl">Species</span>
+            <span class="val">Walleye</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BIG LENGTH READOUT -->
+      <div class="length-readout">
+        <div class="num">18.5<span class="unit">″</span></div>
+        <div class="cap">Length</div>
+      </div>
+
+      <!-- ============ WATER COLUMN (HERO) ============ -->
+      <div class="column-wrap">
+        <svg id="sonar" viewBox="0 0 358 508" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#081232"/>
+              <stop offset="1" stop-color="#0c1530"/>
+            </linearGradient>
+            <linearGradient id="archGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff0cf"/>
+              <stop offset="0.5" stop-color="#ffc24a"/>
+              <stop offset="1" stop-color="#ff9d2e"/>
+            </linearGradient>
+            <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffc24a"/>
+              <stop offset="1" stop-color="#a85f12"/>
+            </linearGradient>
+            <linearGradient id="thermoGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#38d6e6" stop-opacity="0"/>
+              <stop offset="0.5" stop-color="#38d6e6" stop-opacity="0.30"/>
+              <stop offset="1" stop-color="#38d6e6" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="archBloom" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#ffc24a" stop-opacity="0.55"/>
+              <stop offset="1" stop-color="#ffc24a" stop-opacity="0"/>
+            </radialGradient>
+            <filter id="soft"><feGaussianBlur stdDeviation="1.1"/></filter>
+          </defs>
+
+          <!-- water body -->
+          <rect x="0" y="0" width="358" height="508" fill="url(#water)"/>
+
+          <!-- faint vertical sonar grid columns -->
+          <g stroke="#38d6e6" stroke-opacity="0.05" stroke-width="1">
+            <line x1="60" y1="0" x2="60" y2="508"/>
+            <line x1="120" y1="0" x2="120" y2="508"/>
+            <line x1="180" y1="0" x2="180" y2="508"/>
+            <line x1="240" y1="0" x2="240" y2="508"/>
+            <line x1="300" y1="0" x2="300" y2="508"/>
+          </g>
+
+          <!-- depth scale ticks on right edge -->
+          <g font-family="Spline Sans Mono" font-size="11" fill="#6f86a8">
+            <!-- surface marker -->
+            <line x1="0" y1="6" x2="358" y2="6" stroke="#38d6e6" stroke-opacity="0.25" stroke-width="1"/>
+            <text x="346" y="22" text-anchor="end" fill="#38d6e6" opacity="0.8">0 ft</text>
+
+            <line x1="318" y1="86" x2="338" y2="86" stroke="#38d6e6" stroke-opacity="0.3"/>
+            <text x="346" y="90" text-anchor="end">5</text>
+
+            <line x1="318" y1="171" x2="338" y2="171" stroke="#38d6e6" stroke-opacity="0.3"/>
+            <text x="346" y="175" text-anchor="end">10</text>
+
+            <line x1="318" y1="256" x2="338" y2="256" stroke="#38d6e6" stroke-opacity="0.3"/>
+            <text x="346" y="260" text-anchor="end">15</text>
+
+            <line x1="318" y1="341" x2="338" y2="341" stroke="#38d6e6" stroke-opacity="0.3"/>
+            <text x="346" y="345" text-anchor="end">20</text>
+
+            <line x1="318" y1="426" x2="338" y2="426" stroke="#38d6e6" stroke-opacity="0.3"/>
+            <text x="346" y="430" text-anchor="end">25</text>
+          </g>
+
+          <!-- THERMOCLINE band ~ 64F sits mid column -->
+          <g class="thermo-band">
+            <rect x="0" y="196" width="358" height="34" fill="url(#thermoGrad)"/>
+            <line x1="0" y1="213" x2="358" y2="213" stroke="#38d6e6" stroke-opacity="0.35" stroke-dasharray="2 5" stroke-width="1"/>
+            <g transform="translate(12,209)">
+              <rect x="-2" y="-12" width="74" height="20" rx="6" fill="#0a1430" stroke="#38d6e6" stroke-opacity="0.4" stroke-width="0.8"/>
+              <text x="8" y="2.5" font-family="Spline Sans Mono" font-size="11" font-weight="600" fill="#38d6e6">64°F</text>
+              <circle cx="3" cy="-1.5" r="2" fill="#38d6e6"/>
+            </g>
+            <text x="92" y="190" text-anchor="start" font-family="Oxanium" font-size="8.5" letter-spacing="0.16em" fill="#38d6e6" opacity="0.5">THERMOCLINE</text>
+          </g>
+
+          <!-- ping sweep line -->
+          <g class="ping-sweep">
+            <rect x="0" y="0" width="358" height="3" fill="#38d6e6" opacity="0.5"/>
+            <rect x="0" y="3" width="358" height="40" fill="url(#thermoGrad)" opacity="0.5" transform="scale(1,-1) translate(0,-3)"/>
+          </g>
+
+          <!-- ============ FISH ARCH at depth 22ft (y≈375) ============ -->
+          <!-- 22ft -> 5ft=86, 25ft=426 ; per ft 17 ; 22ft = 6 + 22*17.0 = 380 -->
+          <g class="fish-arch" transform="translate(179,378)">
+            <!-- bloom halo -->
+            <ellipse cx="0" cy="0" rx="74" ry="40" fill="url(#archBloom)"/>
+            <!-- classic sonar fish arch (size encodes length 18.5") -->
+            <path d="M-58 14 C-40 -22 -16 -30 0 -30 C16 -30 40 -22 58 14"
+                  fill="none" stroke="url(#archGrad)" stroke-width="9" stroke-linecap="round"
+                  filter="url(#soft)"/>
+            <path d="M-58 14 C-40 -22 -16 -30 0 -30 C16 -30 40 -22 58 14"
+                  fill="none" stroke="#fff6e2" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+            <!-- core mark -->
+            <circle cx="0" cy="-25" r="5.5" fill="#fff6e2"/>
+            <circle cx="0" cy="-25" r="11" fill="none" stroke="#ffc24a" stroke-width="1.5" opacity="0.5"/>
+
+            <!-- length caliper handles -->
+            <g stroke="#fff6e2" stroke-width="2.4" opacity="0.85">
+              <line x1="-58" y1="22" x2="-58" y2="34"/>
+              <line x1="58" y1="22" x2="58" y2="34"/>
+            </g>
+            <line x1="-58" y1="28" x2="58" y2="28" stroke="#ffc24a" stroke-width="1.4" stroke-dasharray="3 4" opacity="0.6"/>
+
+            <!-- depth call-out on right of arch -->
+            <g transform="translate(82,0)">
+              <rect x="-4" y="-15" width="78" height="30" rx="9" fill="#0c1530" stroke="#ffc24a" stroke-opacity="0.55" stroke-width="1"/>
+              <text x="6" y="-1" font-family="Spline Sans Mono" font-size="17" font-weight="700" fill="#ffc24a">22<tspan font-size="10" fill="#ffd789"> ft</tspan></text>
+              <text x="6" y="11" font-family="Oxanium" font-size="7.5" letter-spacing="0.2em" fill="#6f86a8">CAUGHT</text>
+            </g>
+            <!-- drag affordance arrows -->
+            <g stroke="#ffc24a" stroke-width="2" stroke-linecap="round" opacity="0.5">
+              <path d="M-78 -8 L-84 -14 L-90 -8" fill="none"/>
+              <path d="M-78 8 L-84 14 L-90 8" fill="none"/>
+            </g>
+          </g>
+
+          <!-- ============ LAKE BOTTOM CONTOUR (sonar return) ~ 27ft ============ -->
+          <g class="bottom-contour">
+            <path d="M-30 470 Q 20 452 70 466 T 170 460 T 270 470 T 388 456 L 388 510 L -30 510 Z"
+                  fill="url(#bottomGrad)" opacity="0.9"/>
+            <path d="M-30 470 Q 20 452 70 466 T 170 460 T 270 470 T 388 456"
+                  fill="none" stroke="#ffe2a3" stroke-width="2" opacity="0.85"/>
+            <!-- texture stipple -->
+            <g fill="#7a4710" opacity="0.5">
+              <circle cx="40" cy="488" r="2"/><circle cx="95" cy="494" r="1.5"/>
+              <circle cx="150" cy="486" r="2"/><circle cx="210" cy="492" r="1.6"/>
+              <circle cx="265" cy="490" r="2"/><circle cx="320" cy="494" r="1.5"/>
+              <circle cx="360" cy="486" r="1.8"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- ============ BOTTOM CONTROLS ============ -->
+      <div class="controls">
+
+        <!-- LENGTH SLIDER -->
+        <div class="len-row">
+          <span class="len-lbl">12″</span>
+          <div class="len-track">
+            <div class="rail"></div>
+            <div class="fill"></div>
+            <div class="knob"></div>
+          </div>
+          <span class="len-tick" style="color:var(--amber)">18.5″</span>
+        </div>
+
+        <!-- TIER-2: depth + lure -->
+        <div class="tier2">
+          <div class="t2-card depth-card">
+            <span class="lbl">Depth</span>
+            <span class="dv">22<span class="u">ft</span></span>
+          </div>
+          <div class="t2-card lure-card">
+            <span class="lbl">Lure Color</span>
+            <div class="swatches">
+              <div class="sw"><span class="dot chart"></span><span class="nm">Chartreuse</span></div>
+              <span class="lure-plus">+</span>
+              <div class="sw"><span class="dot purple"></span><span class="nm">Purple</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTION ROW: kept/released + save -->
+        <div class="action-row">
+          <div class="kr-toggle">
+            <div class="opt kept active">
+              <span class="ico">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span>Kept</span>
+            </div>
+            <div class="opt rel">
+              <span class="ico">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 12C7 8 10 7 13 9C16 11 19 11 21 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 5L21 8L18 11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span>Released</span>
+            </div>
+          </div>
+          <div class="save-btn">
+            <span class="sv-ico">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 3H16L21 8V21H5V3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 3V8H15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="13" cy="14" r="3" stroke="currentColor" stroke-width="2"/></svg>
+            </span>
+            Log Catch
+          </div>
+        </div>
+
+        <!-- GPS / AREA RIBBON -->
+        <div class="ribbon">
+          <span class="area"><span class="pin"></span>North Flat</span>
+          <span class="gps">44.456789, −100.345678</span>
+          <span class="acc">±4m</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="caption">SONAR — <b>log it where you saw it</b></div>
+
+</body>
+</html>

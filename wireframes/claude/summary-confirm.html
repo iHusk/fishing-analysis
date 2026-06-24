@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger - Smart Default Summary</title>
+<style>
+  :root{
+    --lake:#0d161b;
+    --deep:#131f25;
+    --panel:#182832;
+    --panel-2:#203540;
+    --receipt:#f4f6ee;
+    --receipt-2:#e7efe0;
+    --ink:#f7fbff;
+    --muted:#a9bbc4;
+    --paper-ink:#172125;
+    --paper-muted:#607077;
+    --line:rgba(255,255,255,.14);
+    --paper-line:#cfd9cb;
+    --lime:#c8f13a;
+    --green:#24c46b;
+    --blue:#5bc7ff;
+    --orange:#ffb03a;
+    --red:#ff6b5f;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0;
+    min-height:100vh;
+    background:#22272d;
+    color:#e9eef2;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  body{display:flex;flex-direction:column;align-items:center;}
+  .stage{padding:28px 0 10px;}
+
+  .phone{
+    position:relative;
+    width:390px;
+    height:844px;
+    overflow:hidden;
+    border-radius:54px;
+    background:
+      radial-gradient(circle at 20% 12%, rgba(91,199,255,.14), transparent 28%),
+      linear-gradient(180deg,#111d23 0%, var(--lake) 100%);
+    box-shadow:0 0 0 11px #05090c,0 0 0 13px #343a40,0 28px 62px rgba(0,0,0,.52);
+  }
+  .notch{
+    position:absolute;
+    top:11px;
+    left:50%;
+    z-index:4;
+    width:124px;
+    height:34px;
+    transform:translateX(-50%);
+    border-radius:0 0 21px 21px;
+    background:#030405;
+  }
+  .statusbar{
+    height:49px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 29px;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  .status-icons{font-size:12px;display:flex;gap:7px;align-items:center;}
+
+  .app{
+    height:795px;
+    padding:8px 15px 14px;
+    display:flex;
+    flex-direction:column;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+  h1{
+    margin:0;
+    color:var(--ink);
+    font-size:23px;
+    line-height:1.05;
+    font-weight:850;
+    letter-spacing:0;
+  }
+  .catch-count{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    height:31px;
+    padding:0 10px;
+    border:1px solid rgba(200,241,58,.36);
+    border-radius:999px;
+    background:rgba(200,241,58,.12);
+    color:var(--lime);
+    font-size:12px;
+    font-weight:850;
+  }
+  .pulse{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--lime);
+    box-shadow:0 0 0 4px rgba(200,241,58,.14);
+  }
+
+  .default-strip{
+    min-height:52px;
+    margin-bottom:8px;
+    border:1px solid var(--line);
+    border-radius:17px;
+    background:linear-gradient(135deg,rgba(32,53,64,.96),rgba(19,31,37,.96));
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 10px;
+  }
+  .default-badge{
+    width:34px;
+    height:34px;
+    border-radius:12px;
+    display:grid;
+    place-items:center;
+    background:var(--lime);
+    color:#111914;
+    font-size:16px;
+    font-weight:900;
+  }
+  .default-copy{min-width:0;flex:1;}
+  .default-copy .kicker{
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.1;
+    font-weight:850;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .default-copy .value{
+    margin-top:3px;
+    color:var(--ink);
+    font-size:13px;
+    line-height:1.18;
+    font-weight:750;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .voice-fix{
+    flex:0 0 auto;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    border-radius:12px;
+    border:1px solid rgba(91,199,255,.38);
+    background:rgba(91,199,255,.1);
+    color:#bdecff;
+    font-size:12px;
+    font-weight:850;
+  }
+
+  .angler-row{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr 42px;
+    gap:7px;
+    margin-bottom:8px;
+  }
+  .angler{
+    min-height:45px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:var(--panel);
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    font-weight:800;
+    font-size:13px;
+  }
+  .angler .dot{
+    width:23px;
+    height:23px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#2b3e49;
+    color:#dbe6ec;
+    font-size:12px;
+  }
+  .angler.active{
+    border-color:rgba(200,241,58,.7);
+    background:#263b2a;
+    color:#fff;
+  }
+  .angler.active .dot{background:var(--lime);color:#101811;}
+  .angler.add{font-size:22px;color:#d8e5eb;}
+
+  .receipt{
+    margin-bottom:8px;
+    padding:13px;
+    border-radius:22px;
+    color:var(--paper-ink);
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0) 36%),
+      linear-gradient(180deg,var(--receipt),var(--receipt-2));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),0 12px 28px rgba(0,0,0,.24);
+  }
+  .receipt-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding-bottom:9px;
+    margin-bottom:10px;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .receipt-head .label{
+    color:var(--paper-muted);
+    font-size:10px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .receipt-head .hint{
+    color:#37515d;
+    font-size:11px;
+    line-height:1;
+    font-weight:850;
+  }
+  .hero-line{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:end;
+  }
+  .species{
+    font-size:15px;
+    color:#516269;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .length{
+    margin-top:2px;
+    color:#11191d;
+    font-size:52px;
+    line-height:.92;
+    font-weight:900;
+    letter-spacing:0;
+  }
+  .length span{
+    color:#52636b;
+    font-size:17px;
+    font-weight:850;
+  }
+  .len-steps{
+    display:flex;
+    gap:8px;
+    align-self:stretch;
+    align-items:flex-end;
+  }
+  .step{
+    width:48px;
+    height:48px;
+    border-radius:16px;
+    display:grid;
+    place-items:center;
+    background:#fff;
+    border:1px solid #cbd7cb;
+    color:#11191d;
+    font-size:24px;
+    font-weight:900;
+    box-shadow:0 2px 0 rgba(17,25,29,.12);
+  }
+  .status-switch{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+    margin-top:11px;
+  }
+  .switch-option{
+    height:39px;
+    border-radius:14px;
+    display:grid;
+    place-items:center;
+    border:1px solid #cbd7cb;
+    background:rgba(255,255,255,.7);
+    color:#5c6a70;
+    font-size:13px;
+    font-weight:900;
+  }
+  .switch-option.active{
+    border-color:#18a85b;
+    background:#ddf8d9;
+    color:#136d40;
+  }
+
+  .details{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+    margin-bottom:8px;
+  }
+  .field{
+    min-height:50px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:rgba(24,40,50,.95);
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .field .mark{
+    flex:0 0 auto;
+    width:26px;
+    height:26px;
+    border-radius:9px;
+    display:grid;
+    place-items:center;
+    background:#263b47;
+    color:#e8f5fb;
+    font-size:11px;
+    font-weight:900;
+  }
+  .field.depth .mark{background:#173f57;color:#aee5ff;}
+  .field.water .mark{background:#4e341a;color:#ffd18b;}
+  .field.bait .mark{background:#4c2630;color:#ffc0ce;}
+  .field.loc .mark{background:#183f2e;color:#a2f0bd;}
+  .field.notes .mark{background:#3c3556;color:#d4c8ff;}
+  .field.gps .mark{background:#222c37;color:#c9d9e6;}
+  .field-body{min-width:0;flex:1;}
+  .field-label{
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.05;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+  }
+  .field-value{
+    margin-top:3px;
+    color:var(--ink);
+    font-size:15px;
+    line-height:1.1;
+    font-weight:850;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .field-sub{
+    margin-top:2px;
+    color:#9db0b9;
+    font-size:11px;
+    line-height:1.05;
+    font-weight:750;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .swatch{
+    display:inline-block;
+    width:14px;
+    height:14px;
+    margin-right:5px;
+    border-radius:5px;
+    border:1px solid rgba(255,255,255,.55);
+    vertical-align:-2px;
+  }
+  .edit-dot{
+    flex:0 0 auto;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(255,255,255,.2);
+    color:#d5e3ea;
+    font-size:13px;
+    font-weight:900;
+  }
+  .wide{grid-column:1 / -1;}
+  .field.notes,.field.gps{min-height:44px;}
+  .field.gps{
+    min-height:48px;
+    border-style:dashed;
+    background:rgba(12,21,26,.88);
+  }
+  .gps-lock{
+    flex:0 0 auto;
+    text-align:right;
+    color:var(--lime);
+    font-size:11px;
+    font-weight:900;
+    line-height:1.15;
+  }
+  .gps-lock span{display:block;color:#91a6b0;font-size:10px;margin-top:2px;}
+
+  .remote-row{
+    min-height:38px;
+    margin-bottom:8px;
+    padding:0 10px;
+    border:1px solid rgba(91,199,255,.22);
+    border-radius:14px;
+    background:rgba(91,199,255,.08);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .remote-row strong{
+    color:#dff6ff;
+    font-size:12px;
+    font-weight:900;
+  }
+  .remote-row span{
+    color:#a9c6d2;
+    font-size:11px;
+    font-weight:750;
+    white-space:nowrap;
+  }
+
+  .confirm{
+    margin-top:auto;
+    border-radius:22px;
+    padding:9px;
+    background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.16);
+  }
+  .confirm-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 4px 7px;
+    color:#cfdae0;
+    font-size:11px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+  }
+  .confirm-title span:last-child{color:var(--lime);}
+  .confirm-grid{
+    display:grid;
+    grid-template-columns:1fr 1.18fr;
+    gap:8px;
+  }
+  .confirm-step{
+    min-height:66px;
+    border-radius:17px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:0 11px;
+  }
+  .confirm-step .num{
+    flex:0 0 auto;
+    width:29px;
+    height:29px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:14px;
+    font-weight:950;
+  }
+  .confirm-step .main{
+    font-size:16px;
+    line-height:1.05;
+    font-weight:950;
+    letter-spacing:0;
+  }
+  .confirm-step .sub{
+    margin-top:3px;
+    font-size:11px;
+    line-height:1.1;
+    font-weight:850;
+  }
+  .confirm-step.ok{
+    background:#edf5e5;
+    color:#172125;
+    border:1px solid rgba(255,255,255,.75);
+  }
+  .confirm-step.ok .num{background:#d2e6c4;color:#22311e;}
+  .confirm-step.ok .sub{color:#5a6d57;}
+  .confirm-step.save{
+    background:linear-gradient(180deg,#d8ff50,#b7ec22);
+    color:#101811;
+    box-shadow:0 10px 22px rgba(200,241,58,.23);
+  }
+  .confirm-step.save .num{background:#101811;color:#d8ff50;}
+  .confirm-step.save .sub{color:#344316;}
+
+  .rationale{
+    width:390px;
+    padding:12px 4px 28px;
+    color:#d8dee4;
+    font-size:13px;
+    line-height:1.43;
+  }
+  .rationale h2{
+    margin:0 0 8px;
+    color:#fff;
+    font-size:15px;
+    line-height:1.2;
+  }
+  .rationale p{margin:6px 0;}
+  .rationale b{color:#fff;}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone" aria-label="390 by 844 iPhone mockup">
+      <div class="notch"></div>
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="status-icons"><span>No Service</span><span>LTE</span><span>87%</span></span>
+      </div>
+
+      <main class="app">
+        <section class="topbar" aria-label="Header">
+          <h1>Log Catch</h1>
+          <div class="catch-count"><span class="pulse"></span>GPS FROZEN</div>
+        </section>
+
+        <section class="default-strip" aria-label="Smart defaults source">
+          <div class="default-badge">OK</div>
+          <div class="default-copy">
+            <div class="kicker">Smart defaults loaded</div>
+            <div class="value">Angler: Tyler + trip defaults: walleye, chartreuse, North Flat</div>
+          </div>
+          <div class="voice-fix">Voice fix</div>
+        </section>
+
+        <section class="angler-row" aria-label="Angler selection">
+          <div class="angler active"><span class="dot">T</span>Tyler</div>
+          <div class="angler"><span class="dot">B</span>Brian</div>
+          <div class="angler"><span class="dot">B</span>Brent</div>
+          <div class="angler add">+</div>
+        </section>
+
+        <section class="receipt" aria-label="Default catch summary">
+          <div class="receipt-head">
+            <div>
+              <div class="label">Catch receipt</div>
+              <div class="hint">Tap any value that changed</div>
+            </div>
+            <div class="hint">#7 today</div>
+          </div>
+
+          <div class="hero-line">
+            <div>
+              <div class="species">Species: Walleye · Length</div>
+              <div class="length">18.5 <span>in</span></div>
+            </div>
+            <div class="len-steps" aria-label="Length controls">
+              <div class="step">-</div>
+              <div class="step">+</div>
+            </div>
+          </div>
+
+          <div class="status-switch" aria-label="Kept or released">
+            <div class="switch-option active">Kept</div>
+            <div class="switch-option">Released</div>
+          </div>
+        </section>
+
+        <section class="details" aria-label="Catch fields">
+          <div class="field depth">
+            <div class="mark">FT</div>
+            <div class="field-body">
+              <div class="field-label">Depth</div>
+              <div class="field-value">22 ft</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field water">
+            <div class="mark">F</div>
+            <div class="field-body">
+              <div class="field-label">Water temp</div>
+              <div class="field-value">64 F</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field">
+            <div class="mark">1</div>
+            <div class="field-body">
+              <div class="field-label">Lure color 1</div>
+              <div class="field-value"><span class="swatch" style="background:#c8f13a"></span>Chartreuse</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field">
+            <div class="mark">2</div>
+            <div class="field-body">
+              <div class="field-label">Lure color 2</div>
+              <div class="field-value"><span class="swatch" style="background:#7a49c9"></span>Purple</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field bait">
+            <div class="mark">BT</div>
+            <div class="field-body">
+              <div class="field-label">Bait</div>
+              <div class="field-value">Crawler</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field loc">
+            <div class="mark">AR</div>
+            <div class="field-body">
+              <div class="field-label">Location name</div>
+              <div class="field-value">North Flat</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field notes wide">
+            <div class="mark">NT</div>
+            <div class="field-body">
+              <div class="field-label">Notes</div>
+              <div class="field-value">Tap to add bite detail</div>
+            </div>
+            <div class="edit-dot">+</div>
+          </div>
+          <div class="field gps wide">
+            <div class="mark">GPS</div>
+            <div class="field-body">
+              <div class="field-label">GPS tag</div>
+              <div class="field-value">44.45679, -100.34568</div>
+              <div class="field-sub">Frozen at Log button tap near North Flat</div>
+            </div>
+            <div class="gps-lock">+/-4 m<span>locked</span></div>
+          </div>
+        </section>
+
+        <section class="remote-row" aria-label="Future remote and voice affordance">
+          <strong>Remote-ready</strong>
+          <span>Button 1: defaults OK</span>
+          <span>Button 2: log</span>
+        </section>
+
+        <section class="confirm" aria-label="Two tap confirm">
+          <div class="confirm-title">
+            <span>Two-tap confirm</span>
+            <span>No keyboard</span>
+          </div>
+          <div class="confirm-grid">
+            <div class="confirm-step ok">
+              <div class="num">1</div>
+              <div>
+                <div class="main">Looks right</div>
+                <div class="sub">confirm defaults</div>
+              </div>
+            </div>
+            <div class="confirm-step save">
+              <div class="num">2</div>
+              <div>
+                <div class="main">Log catch</div>
+                <div class="sub">save Tyler's walleye</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <section class="rationale" aria-label="Concept rationale">
+    <h2>Concept 5: Smart-Default Summary + Two-Tap Confirm</h2>
+    <p><b>Paradigm:</b> a catch receipt, not a form; the app assumes the trip and Tyler defaults are right until corrected.</p>
+    <p><b>How it works:</b> glance the receipt, tap only changed tiles, then tap Looks right and Log catch; the same two actions map cleanly to a future BLE remote.</p>
+    <p><b>No-scroll strategy:</b> one hero value, compact two-column correction tiles, and one full-width GPS/notes row keep every field inside 390x844.</p>
+    <p><b>Outside-box angle:</b> confirmation is the primary control surface, while editing is exception handling through visible value chips.</p>
+    <p><b>Risks:</b> stale defaults could be accepted too quickly, so the default source, GPS lock, and editable chips stay visible at all times.</p>
+  </section>
+</body>
+</html>

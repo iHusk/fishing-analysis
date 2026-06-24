@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Wireframe 01 - Radial Marine Instrument</title>
+<style>
+  :root{
+    --ink:#f7fbff;
+    --muted:#99adbb;
+    --soft:#d3e6f1;
+    --deck:#071219;
+    --deep:#0b1f2a;
+    --panel:#102b36;
+    --panel2:#173d48;
+    --line:rgba(210,238,255,.19);
+    --teal:#31e0c2;
+    --cyan:#7ae7ff;
+    --lime:#d6ff3f;
+    --amber:#ffb449;
+    --orange:#ff7c2f;
+    --red:#ff5e5e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#05070a;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 0 40px;
+  }
+  .phone{
+    position:relative;
+    width:390px;
+    height:844px;
+    overflow:hidden;
+    border-radius:48px;
+    background:#000;
+    box-shadow:0 0 0 10px #11161d,0 0 0 12px #303943,0 34px 90px rgba(0,0,0,.64);
+  }
+  .notch{
+    position:absolute;
+    top:8px;
+    left:50%;
+    z-index:8;
+    width:124px;
+    height:32px;
+    transform:translateX(-50%);
+    border-radius:0 0 21px 21px;
+    background:#030405;
+  }
+  .status{
+    position:absolute;
+    z-index:9;
+    top:0;
+    left:0;
+    right:0;
+    height:46px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:13px 28px 0;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:.01em;
+    color:#f4fbff;
+  }
+  .screen{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    padding:52px 14px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    background:
+      radial-gradient(circle at 50% -6%,rgba(122,231,255,.36),transparent 34%),
+      radial-gradient(circle at 96% 16%,rgba(214,255,63,.14),transparent 27%),
+      linear-gradient(180deg,#123340 0%,#081923 38%,#051016 100%);
+  }
+  .screen:before{
+    content:"";
+    position:absolute;
+    inset:46px 0 0;
+    pointer-events:none;
+    background:
+      linear-gradient(118deg,rgba(255,255,255,.16),transparent 18%,transparent 72%,rgba(255,255,255,.05)),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 19px);
+    mix-blend-mode:screen;
+    opacity:.72;
+  }
+  .topbar,.defaults,.instrument,.field-bank,.actions{position:relative;z-index:1}
+  .topbar{
+    min-height:54px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .kicker{
+    margin-bottom:4px;
+    font-size:10px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--lime);
+  }
+  h1{
+    margin:0;
+    font-size:24px;
+    line-height:1;
+    letter-spacing:-.03em;
+  }
+  .gps{
+    min-width:118px;
+    padding:8px 10px;
+    border:1px solid rgba(122,231,255,.35);
+    border-radius:18px;
+    background:linear-gradient(180deg,rgba(122,231,255,.16),rgba(255,255,255,.045));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
+    text-align:right;
+    font-weight:900;
+    font-size:12px;
+    line-height:1.15;
+  }
+  .gps span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.1em}
+  .defaults{
+    display:grid;
+    grid-template-columns:1fr 1fr .82fr;
+    gap:7px;
+  }
+  .seg,.micro,.field,.voice,.save{
+    border:1px solid var(--line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 22px rgba(0,0,0,.19);
+  }
+  .seg{
+    min-height:54px;
+    padding:8px 9px;
+    border-radius:17px;
+    background:rgba(9,29,39,.72);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    font-size:18px;
+    font-weight:950;
+    line-height:.96;
+  }
+  .seg span,.micro span,.field span,.voice span,.save span{
+    display:block;
+    color:var(--muted);
+    font-size:8px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    margin-bottom:5px;
+  }
+  .seg.primary{border-color:rgba(214,255,63,.58);background:linear-gradient(180deg,rgba(214,255,63,.2),rgba(9,29,39,.76))}
+  .seg.kept{border-color:rgba(255,180,73,.62);background:linear-gradient(180deg,rgba(255,180,73,.22),rgba(9,29,39,.78))}
+  .instrument{
+    height:372px;
+    border-radius:30px;
+    padding:12px;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02)),
+      radial-gradient(circle at 50% 48%,rgba(49,224,194,.08),transparent 63%);
+    border:1px solid rgba(255,255,255,.11);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -34px 70px rgba(0,0,0,.22);
+  }
+  .dial-wrap{position:relative;height:286px}
+  .dial{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:286px;
+    height:286px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:
+      radial-gradient(circle at 50% 50%,#0a1820 0 37%,transparent 38%),
+      conic-gradient(from 226deg,rgba(214,255,63,.98) 0 64deg,var(--teal) 64deg 128deg,rgba(122,231,255,.44) 128deg 216deg,rgba(255,255,255,.12) 216deg 292deg,transparent 292deg 360deg);
+    border:1px solid rgba(255,255,255,.2);
+    box-shadow:inset 0 0 0 10px rgba(3,12,17,.78),inset 0 0 48px rgba(0,0,0,.62),0 18px 52px rgba(0,0,0,.34);
+  }
+  .dial:before{
+    content:"";
+    position:absolute;
+    inset:23px;
+    border-radius:50%;
+    background:
+      repeating-conic-gradient(from 226deg,rgba(255,255,255,.8) 0 1.25deg,transparent 1.25deg 8deg),
+      radial-gradient(circle,#0f2832 0 58%,rgba(255,255,255,.09) 58.4% 61%,transparent 61.5%);
+    mask:radial-gradient(circle,transparent 0 56%,#000 57% 100%);
+    opacity:.62;
+  }
+  .dial:after{
+    content:"";
+    position:absolute;
+    width:29px;
+    height:29px;
+    right:48px;
+    top:39px;
+    border-radius:50%;
+    background:#f8ffed;
+    border:7px solid var(--lime);
+    box-shadow:0 0 0 8px rgba(214,255,63,.16),0 0 24px rgba(214,255,63,.55);
+  }
+  .center{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:158px;
+    height:158px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 50% 12%,rgba(255,255,255,.12),transparent 38%),
+      linear-gradient(180deg,#102c36,#061217);
+    border:1px solid rgba(214,255,63,.28);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.12),0 10px 26px rgba(0,0,0,.34);
+  }
+  .center .label{color:var(--cyan);font-size:11px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}
+  .center b{font-size:66px;line-height:.82;letter-spacing:-.08em;font-variant-numeric:tabular-nums}
+  .center .unit{color:var(--soft);font-size:15px;font-weight:900}
+  .stepper{
+    margin-top:8px;
+    display:flex;
+    gap:8px;
+  }
+  .stepper div{
+    width:40px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    border-radius:12px;
+    background:#d8ff42;
+    color:#071219;
+    font-size:24px;
+    font-weight:950;
+    box-shadow:0 7px 20px rgba(214,255,63,.2);
+  }
+  .tick{
+    position:absolute;
+    color:#cde2eb;
+    font-size:10px;
+    font-weight:900;
+  }
+  .t14{left:25px;bottom:72px}.t16{left:56px;top:61px}.t18{left:139px;top:22px}.t20{right:53px;top:62px}.t22{right:24px;bottom:74px}
+  .micro-row{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+    margin-top:8px;
+  }
+  .micro{
+    min-height:54px;
+    padding:8px 9px;
+    border-radius:17px;
+    background:rgba(3,13,18,.52);
+    font-size:17px;
+    line-height:1.03;
+    font-weight:950;
+  }
+  .micro strong{display:block;color:#fff}
+  .swatch{
+    display:inline-block;
+    width:14px;
+    height:14px;
+    border-radius:5px;
+    margin-right:5px;
+    vertical-align:-2px;
+    border:1px solid rgba(255,255,255,.45);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  .chartreuse{background:#d6ff3f}.orange{background:#ff7c2f}
+  .field-bank{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:7px;
+  }
+  .field{
+    min-height:57px;
+    border-radius:16px;
+    padding:8px 9px;
+    background:rgba(255,255,255,.055);
+    font-size:15px;
+    line-height:1.07;
+    font-weight:950;
+    overflow:hidden;
+  }
+  .field.wide{grid-column:span 2}
+  .field.gps-tag{grid-column:span 2;font-size:12px;line-height:1.15}
+  .actions{
+    display:grid;
+    grid-template-columns:72px 72px 1fr;
+    gap:8px;
+    margin-top:auto;
+  }
+  .voice{
+    height:62px;
+    border-radius:19px;
+    background:rgba(255,255,255,.07);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    font-weight:950;
+    line-height:.95;
+  }
+  .save{
+    height:62px;
+    border:0;
+    border-radius:20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:#071219;
+    background:linear-gradient(180deg,#eeff72,#b9f829);
+    font-size:20px;
+    font-weight:1000;
+    letter-spacing:-.02em;
+    box-shadow:0 12px 30px rgba(214,255,63,.25),inset 0 1px 0 rgba(255,255,255,.55);
+  }
+  .save span{color:rgba(7,18,25,.72);margin:0 0 4px}
+  .rationale{
+    width:390px;
+    margin-top:14px;
+    padding:14px 15px;
+    border-radius:18px;
+    border:1px solid #263747;
+    background:#111820;
+    color:#d6e3ec;
+    font-size:13px;
+    line-height:1.45;
+  }
+  .rationale h2{margin:0 0 8px;color:#fff;font-size:16px}
+  .rationale p{margin:6px 0}
+  .rationale b{color:var(--lime)}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="status"><span>7:18</span><span>5G 100%</span></div>
+    <div class="screen">
+      <header class="topbar">
+        <div>
+          <div class="kicker">Radial marine instrument</div>
+          <h1>Log Catch</h1>
+        </div>
+        <div class="gps"><span>GPS frozen</span>North Flat<br>+/- 4 m</div>
+      </header>
+
+      <section class="defaults" aria-label="Fast defaults">
+        <div class="seg primary"><span>Angler</span>Tyler</div>
+        <div class="seg"><span>Species</span>Walleye</div>
+        <div class="seg kept"><span>Status</span>Kept</div>
+      </section>
+
+      <section class="instrument" aria-label="Length radial speed dial">
+        <div class="dial-wrap">
+          <div class="dial" aria-hidden="true"></div>
+          <div class="tick t14">14</div>
+          <div class="tick t16">16</div>
+          <div class="tick t18">18</div>
+          <div class="tick t20">20</div>
+          <div class="tick t22">22</div>
+          <div class="center">
+            <div class="label">Length</div>
+            <b>18.5</b>
+            <div class="unit">inches</div>
+            <div class="stepper" aria-label="Quarter inch nudges"><div>-</div><div>+</div></div>
+          </div>
+        </div>
+        <div class="micro-row">
+          <div class="micro"><span>Depth</span><strong>22 ft</strong></div>
+          <div class="micro"><span>Lure 1</span><i class="swatch chartreuse"></i>Chartreuse</div>
+          <div class="micro"><span>Lure 2</span><i class="swatch orange"></i>Orange</div>
+        </div>
+      </section>
+
+      <section class="field-bank" aria-label="Secondary fields">
+        <div class="field"><span>Water temp</span>64 deg F</div>
+        <div class="field"><span>Bait</span>Crawler</div>
+        <div class="field"><span>Trip default</span>Locked</div>
+        <div class="field wide"><span>Location name</span>North Flat</div>
+        <div class="field"><span>Notes</span>Tap to dictate</div>
+        <div class="field gps-tag"><span>GPS tag</span>44.4568, -100.3457 +/- 4 m</div>
+        <div class="field"><span>Haptics</span>0.25 in ticks</div>
+      </section>
+
+      <section class="actions" aria-label="Save and future controls">
+        <div class="voice"><span>BLE</span>Catch</div>
+        <div class="voice"><span>Voice</span>Note</div>
+        <div class="save"><span>Ready in 1 tap</span>Save kept catch</div>
+      </section>
+    </div>
+  </main>
+
+  <section class="rationale">
+    <h2>Radial Rationale</h2>
+    <p><b>Why it should feel better:</b> length becomes a luminous helm-style instrument with quarter-inch detents, while Tyler, walleye, kept, depth, lure pair, temp, bait, location, notes, and GPS remain visible without a form.</p>
+    <p><b>Boat practicality:</b> the common path is confirm or nudge length then save; BLE and voice have clear homes for rough water, gloves, and future hardware.</p>
+  </section>
+</body>
+</html>

@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FishingLogger - Log Catch - Tap-tile dashboard</title>
+<style>
+  :root{
+    --page:#1f2428;
+    --phone:#050607;
+    --lake:#07151b;
+    --deck:#0c2029;
+    --deck-2:#112b36;
+    --tile:#14323e;
+    --tile-hi:#194452;
+    --tile-soft:#0f2832;
+    --line:#2c5965;
+    --line-soft:#1d4651;
+    --text:#f3fbfc;
+    --muted:#9eb6bd;
+    --faint:#6e8c94;
+    --green:#50d96f;
+    --green-ink:#092514;
+    --gold:#ffcb45;
+    --gold-ink:#2a1b00;
+    --blue:#61c7ff;
+    --red:#ff735f;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--page);}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:18px 0 30px;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+  }
+
+  .device{
+    width:390px;
+    height:844px;
+    flex:0 0 auto;
+    position:relative;
+    border-radius:54px;
+    background:var(--phone);
+    box-shadow:0 26px 70px rgba(0,0,0,.55), inset 0 0 0 2px #2c3134;
+    overflow:hidden;
+  }
+
+  .notch{
+    position:absolute;
+    z-index:5;
+    top:10px;
+    left:50%;
+    width:126px;
+    height:34px;
+    transform:translateX(-50%);
+    border-radius:0 0 21px 21px;
+    background:#000;
+  }
+
+  .screen{
+    position:absolute;
+    inset:10px;
+    border-radius:44px;
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 18% 8%, rgba(97,199,255,.2), transparent 28%),
+      linear-gradient(180deg,#082331 0%, var(--lake) 50%, #061116 100%);
+    display:flex;
+    flex-direction:column;
+  }
+
+  .status{
+    height:42px;
+    flex:0 0 42px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 26px 0 30px;
+    font-size:13px;
+    font-weight:800;
+    color:#f7fbff;
+  }
+
+  .status-right{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    color:#dce7eb;
+    font-size:12px;
+  }
+
+  .signal{
+    display:flex;
+    align-items:flex-end;
+    gap:2px;
+    height:11px;
+  }
+
+  .signal i{
+    display:block;
+    width:3px;
+    border-radius:2px;
+    background:#dce7eb;
+  }
+
+  .signal i:nth-child(1){height:4px;}
+  .signal i:nth-child(2){height:7px;}
+  .signal i:nth-child(3){height:10px;}
+
+  .battery{
+    width:22px;
+    height:11px;
+    border:1.4px solid #dce7eb;
+    border-radius:3px;
+    position:relative;
+  }
+
+  .battery:before{
+    content:"";
+    position:absolute;
+    right:-4px;
+    top:3px;
+    width:2px;
+    height:4px;
+    border-radius:1px;
+    background:#dce7eb;
+  }
+
+  .battery:after{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:2px;
+    width:14px;
+    height:5px;
+    border-radius:2px;
+    background:#50d96f;
+  }
+
+  .app{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    padding:0 12px;
+  }
+
+  .topbar{
+    height:62px;
+    flex:0 0 62px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:center;
+    gap:10px;
+  }
+
+  h1{
+    margin:0;
+    font-size:26px;
+    line-height:.98;
+    letter-spacing:0;
+  }
+
+  .subline{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:5px;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:800;
+  }
+
+  .fix-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 0 3px rgba(80,217,111,.14);
+  }
+
+  .close{
+    width:42px;
+    height:42px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#d7e6e9;
+    background:rgba(20,50,62,.9);
+    font-size:24px;
+    line-height:1;
+  }
+
+  .defaults{
+    height:42px;
+    flex:0 0 42px;
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px;
+    margin-bottom:8px;
+    border:1px solid var(--line-soft);
+    border-radius:16px;
+    background:rgba(10,30,38,.78);
+    box-shadow:inset 0 1px rgba(255,255,255,.05);
+  }
+
+  .defaults .label{
+    color:var(--faint);
+    font-size:10px;
+    line-height:1;
+    text-transform:uppercase;
+    letter-spacing:.7px;
+    font-weight:900;
+  }
+
+  .defaults .value{
+    min-width:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#d9ebee;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  .defaults .edit{
+    color:var(--blue);
+    font-size:11px;
+    font-weight:900;
+  }
+
+  .board{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    grid-auto-rows:min-content;
+    gap:7px;
+  }
+
+  .tile{
+    position:relative;
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:linear-gradient(180deg,var(--tile-hi),var(--tile));
+    box-shadow:0 2px 0 rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.04);
+    padding:9px 10px;
+    overflow:hidden;
+  }
+
+  .tile:after{
+    content:"";
+    position:absolute;
+    inset:auto 10px 7px auto;
+    width:18px;
+    height:4px;
+    border-radius:4px;
+    background:rgba(158,182,189,.35);
+  }
+
+  .label{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    color:var(--faint);
+    font-size:10px;
+    line-height:1.05;
+    letter-spacing:.65px;
+    text-transform:uppercase;
+    font-weight:950;
+  }
+
+  .gesture{
+    color:var(--blue);
+    font-size:9px;
+    letter-spacing:.45px;
+    white-space:nowrap;
+  }
+
+  .value{
+    color:var(--text);
+    font-weight:950;
+    line-height:1;
+  }
+
+  .unit{
+    color:var(--muted);
+    font-size:.48em;
+    font-weight:900;
+    margin-left:3px;
+  }
+
+  .c2{grid-column:span 2;}
+  .c3{grid-column:span 3;}
+  .c6{grid-column:span 6;}
+
+  .identity{
+    height:102px;
+  }
+
+  .identity-main{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin-top:8px;
+  }
+
+  .avatar{
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    border-radius:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--green);
+    color:var(--green-ink);
+    font-size:17px;
+    font-weight:950;
+  }
+
+  .identity .value{
+    font-size:23px;
+  }
+
+  .mini-row{
+    display:flex;
+    gap:4px;
+    margin-top:8px;
+  }
+
+  .pill{
+    min-width:0;
+    padding:3px 6px;
+    border-radius:8px;
+    border:1px solid rgba(158,182,189,.22);
+    color:var(--muted);
+    background:rgba(7,21,27,.5);
+    font-size:10px;
+    font-weight:900;
+    line-height:1;
+    white-space:nowrap;
+  }
+
+  .pill.on{
+    color:var(--green-ink);
+    border-color:var(--green);
+    background:var(--green);
+  }
+
+  .pill.add{
+    color:var(--blue);
+  }
+
+  .species{
+    height:102px;
+  }
+
+  .species .fish-line{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:8px;
+  }
+
+  .species .value{
+    font-size:23px;
+  }
+
+  .fish-mark{
+    width:42px;
+    height:24px;
+    flex:0 0 auto;
+    border-radius:50% 45% 45% 50%;
+    background:linear-gradient(90deg,#d4eef3,#8dc8d4);
+    position:relative;
+    box-shadow:inset -9px 0 0 rgba(21,72,85,.22);
+  }
+
+  .fish-mark:before{
+    content:"";
+    position:absolute;
+    right:-12px;
+    top:4px;
+    border-left:15px solid #8dc8d4;
+    border-top:8px solid transparent;
+    border-bottom:8px solid transparent;
+  }
+
+  .fish-mark:after{
+    content:"";
+    position:absolute;
+    left:8px;
+    top:7px;
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:#082331;
+  }
+
+  .length{
+    height:176px;
+    grid-column:span 4;
+    background:
+      linear-gradient(90deg,rgba(255,203,69,.18),transparent 55%),
+      linear-gradient(180deg,#1c463c,#14323e);
+    border-color:#488866;
+  }
+
+  .length-main{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:8px;
+  }
+
+  .length .number{
+    color:var(--gold);
+    font-size:56px;
+    font-weight:1000;
+    letter-spacing:0;
+    line-height:.88;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .length .unit{
+    font-size:18px;
+    color:#f0dfae;
+  }
+
+  .step-stack{
+    margin-left:auto;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:6px;
+  }
+
+  .step{
+    width:48px;
+    height:42px;
+    border-radius:13px;
+    border:1px solid rgba(255,255,255,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(6,17,22,.62);
+    color:#f6fbfc;
+    font-size:28px;
+    font-weight:950;
+    line-height:1;
+  }
+
+  .step.plus{
+    background:var(--gold);
+    color:var(--gold-ink);
+    border-color:var(--gold);
+  }
+
+  .expand-rail{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:4px;
+    margin-top:18px;
+  }
+
+  .tick{
+    height:25px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(6,17,22,.42);
+    color:#d7e6e9;
+    font-size:10px;
+    font-weight:950;
+  }
+
+  .tick.hot{
+    color:var(--gold-ink);
+    background:var(--gold);
+    border-color:var(--gold);
+  }
+
+  .keep{
+    height:176px;
+    grid-column:span 2;
+    padding:0;
+    background:var(--tile-soft);
+  }
+
+  .keep .label{
+    padding:9px 10px 0;
+  }
+
+  .keep-toggle{
+    position:absolute;
+    left:8px;
+    right:8px;
+    bottom:8px;
+    top:32px;
+    display:grid;
+    grid-template-rows:1.35fr 1fr;
+    gap:7px;
+  }
+
+  .keep-choice{
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(6,17,22,.42);
+    color:var(--muted);
+    font-weight:950;
+  }
+
+  .keep-choice.on{
+    background:var(--green);
+    color:var(--green-ink);
+    border-color:var(--green);
+  }
+
+  .keep-choice b{
+    font-size:17px;
+    letter-spacing:.2px;
+  }
+
+  .keep-choice span{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.55px;
+  }
+
+  .depth,.lure-pair{
+    height:104px;
+  }
+
+  .depth .value{
+    margin-top:10px;
+    font-size:35px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .depth .micro{
+    margin-top:3px;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:850;
+  }
+
+  .colors{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:9px;
+  }
+
+  .color-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    padding:7px;
+    border-radius:13px;
+    background:rgba(6,17,22,.36);
+    border:1px solid rgba(255,255,255,.1);
+  }
+
+  .swatch{
+    width:29px;
+    height:29px;
+    flex:0 0 29px;
+    border-radius:10px;
+    border:2px solid rgba(255,255,255,.36);
+    box-shadow:0 2px 4px rgba(0,0,0,.25);
+  }
+
+  .color-copy{
+    min-width:0;
+  }
+
+  .color-copy small{
+    display:block;
+    margin-bottom:4px;
+    color:var(--faint);
+    font-size:8px;
+    line-height:1;
+    text-transform:uppercase;
+    letter-spacing:.45px;
+    font-weight:950;
+  }
+
+  .color-copy .value{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:15px;
+  }
+
+  .more{
+    height:185px;
+    grid-column:span 6;
+    border:1px solid var(--line-soft);
+    border-radius:18px;
+    background:rgba(9,27,34,.86);
+    padding:9px 10px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:9px 8px;
+    box-shadow:inset 0 1px rgba(255,255,255,.04);
+  }
+
+  .more-head{
+    grid-column:span 4;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    color:var(--faint);
+    font-size:10px;
+    line-height:1;
+    letter-spacing:.65px;
+    text-transform:uppercase;
+    font-weight:950;
+  }
+
+  .more-head .opened{
+    padding:3px 7px;
+    border:1px solid #2f6f80;
+    border-radius:8px;
+    color:var(--blue);
+    background:rgba(97,199,255,.08);
+    font-size:9px;
+  }
+
+  .micro-field{
+    min-width:0;
+    border-radius:12px;
+    padding:6px 7px;
+    background:rgba(20,50,62,.64);
+    border:1px solid rgba(44,89,101,.55);
+  }
+
+  .micro-label{
+    color:var(--faint);
+    font-size:8px;
+    text-transform:uppercase;
+    letter-spacing:.55px;
+    font-weight:950;
+    line-height:1;
+  }
+
+  .micro-value{
+    margin-top:5px;
+    color:var(--text);
+    font-size:13px;
+    font-weight:950;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .micro-value.dim{
+    color:var(--blue);
+  }
+
+  .gps-card{
+    grid-column:span 4;
+    min-width:0;
+    border-radius:13px;
+    border:1px solid rgba(80,217,111,.28);
+    background:linear-gradient(90deg,rgba(80,217,111,.13),rgba(20,50,62,.55));
+    padding:7px 8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .pin{
+    width:25px;
+    height:25px;
+    flex:0 0 25px;
+    border-radius:50% 50% 50% 3px;
+    transform:rotate(-45deg);
+    background:var(--green);
+    position:relative;
+  }
+
+  .pin:after{
+    content:"";
+    position:absolute;
+    left:7px;
+    top:7px;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--green-ink);
+  }
+
+  .gps-text{
+    min-width:0;
+  }
+
+  .gps-text b{
+    display:block;
+    color:#e6f6ea;
+    font-size:12px;
+    line-height:1;
+  }
+
+  .gps-text span{
+    display:block;
+    margin-top:4px;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:850;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .gps-accuracy{
+    margin-left:auto;
+    color:var(--green);
+    font-size:12px;
+    font-weight:950;
+  }
+
+  .actions{
+    height:70px;
+    flex:0 0 70px;
+    display:grid;
+    grid-template-columns:54px 54px 1fr;
+    gap:9px;
+    padding:8px 12px;
+  }
+
+  .tool,.save{
+    border:0;
+    border-radius:17px;
+    font-family:inherit;
+    font-weight:950;
+    color:var(--text);
+  }
+
+  .tool{
+    position:relative;
+    background:linear-gradient(180deg,#183947,#102731);
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .tool .ble{
+    width:18px;
+    height:28px;
+    border-radius:12px;
+    border:2px solid var(--blue);
+    position:relative;
+  }
+
+  .tool .ble:after{
+    content:"";
+    position:absolute;
+    left:5px;
+    bottom:4px;
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:var(--blue);
+  }
+
+  .tool .mic{
+    width:17px;
+    height:26px;
+    border-radius:12px 12px 10px 10px;
+    background:var(--blue);
+    position:relative;
+  }
+
+  .tool .mic:before{
+    content:"";
+    position:absolute;
+    left:-5px;
+    right:-5px;
+    bottom:-5px;
+    height:12px;
+    border:2px solid var(--blue);
+    border-top:0;
+    border-radius:0 0 14px 14px;
+  }
+
+  .tool .mic:after{
+    content:"";
+    position:absolute;
+    left:6px;
+    bottom:-11px;
+    width:5px;
+    height:8px;
+    background:var(--blue);
+    border-radius:2px;
+  }
+
+  .tool small{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:5px;
+    text-align:center;
+    color:var(--muted);
+    font-size:8px;
+    letter-spacing:.35px;
+  }
+
+  .save{
+    background:var(--green);
+    color:var(--green-ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-size:19px;
+    box-shadow:0 3px 0 #248940;
+  }
+
+  .save span{
+    color:rgba(9,37,20,.72);
+    font-size:11px;
+    font-weight:950;
+    text-transform:uppercase;
+    letter-spacing:.45px;
+  }
+
+  .home{
+    height:12px;
+    flex:0 0 12px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+  }
+
+  .home:before{
+    content:"";
+    width:128px;
+    height:5px;
+    border-radius:5px;
+    background:#40545b;
+  }
+
+  .rationale{
+    width:390px;
+    border:1px solid #3c484d;
+    border-radius:16px;
+    padding:12px 14px;
+    background:#151a1d;
+    color:#d7e0e3;
+    font-size:12px;
+    line-height:1.38;
+  }
+
+  .rationale h2{
+    margin:0 0 6px;
+    color:#fff;
+    font-size:14px;
+    letter-spacing:0;
+  }
+
+  .rationale p{
+    margin:5px 0 0;
+  }
+
+  .rationale b{
+    color:#fff;
+  }
+</style>
+</head>
+<body>
+  <div class="device" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="status-right">
+          <span>offline</span>
+          <span class="signal"><i></i><i></i><i></i></span>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <main class="app">
+        <header class="topbar">
+          <div>
+            <h1>Log Catch</h1>
+            <div class="subline"><span class="fix-dot"></span><span>GPS frozen at catch tap | North Flat</span></div>
+          </div>
+          <div class="close" aria-label="Close">x</div>
+        </header>
+
+        <section class="defaults" aria-label="Trip defaults">
+          <div class="label">Defaults</div>
+          <div class="value">Lake Oahe | Tyler profile | crawler harness</div>
+          <div class="edit">SET</div>
+        </section>
+
+        <section class="board" aria-label="Tap-tile catch fields">
+          <article class="tile identity c3">
+            <div class="label">Angler <span class="gesture">tap cycles</span></div>
+            <div class="identity-main">
+              <div class="avatar">T</div>
+              <div class="value">Tyler</div>
+            </div>
+            <div class="mini-row">
+              <span class="pill on">Tyler</span>
+              <span class="pill">Brian</span>
+              <span class="pill">Brent</span>
+              <span class="pill add">+</span>
+            </div>
+          </article>
+
+          <article class="tile species c3">
+            <div class="label">Species <span class="gesture">tap cycles</span></div>
+            <div class="fish-line">
+              <div class="value">Walleye</div>
+              <div class="fish-mark" aria-hidden="true"></div>
+            </div>
+            <div class="mini-row">
+              <span class="pill on">walleye</span>
+              <span class="pill">perch</span>
+              <span class="pill">pike</span>
+              <span class="pill add">+</span>
+            </div>
+          </article>
+
+          <article class="tile length">
+            <div class="label">Length <span class="gesture">expanded inline</span></div>
+            <div class="length-main">
+              <div class="number">18.5<span class="unit">in</span></div>
+              <div class="step-stack" aria-label="Quarter-inch length controls">
+                <div class="step plus">+</div>
+                <div class="step">-</div>
+              </div>
+            </div>
+            <div class="expand-rail">
+              <div class="tick">17.5</div>
+              <div class="tick">18</div>
+              <div class="tick hot">18.5</div>
+              <div class="tick">19</div>
+              <div class="tick">20</div>
+            </div>
+          </article>
+
+          <article class="tile keep">
+            <div class="label">Disposition <span class="gesture">tap</span></div>
+            <div class="keep-toggle">
+              <div class="keep-choice on"><b>KEPT</b><span>selected</span></div>
+              <div class="keep-choice"><b>Release</b><span>one tap</span></div>
+            </div>
+          </article>
+
+          <article class="tile depth c2">
+            <div class="label">Depth <span class="gesture">expand</span></div>
+            <div class="value">22<span class="unit">ft</span></div>
+            <div class="micro">slider opens here</div>
+          </article>
+
+          <article class="tile lure-pair c4">
+            <div class="label">Lure colors <span class="gesture">tap cycles each</span></div>
+            <div class="colors">
+              <div class="color-item">
+                <div class="swatch" style="background:#c9ef2f"></div>
+                <div class="color-copy">
+                  <small>Color 1</small>
+                  <div class="value">Chartreuse</div>
+                </div>
+              </div>
+              <div class="color-item">
+                <div class="swatch" style="background:#7c4bff"></div>
+                <div class="color-copy">
+                  <small>Color 2</small>
+                  <div class="value">Purple</div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <section class="more" aria-label="Optional and auto fields">
+            <div class="more-head">
+              <span>Auto and optional tiles</span>
+              <span class="opened">tap row expands</span>
+            </div>
+            <div class="micro-field">
+              <div class="micro-label">Water temp</div>
+              <div class="micro-value">64 F</div>
+            </div>
+            <div class="micro-field">
+              <div class="micro-label">Bait</div>
+              <div class="micro-value">Crawler</div>
+            </div>
+            <div class="micro-field">
+              <div class="micro-label">Location</div>
+              <div class="micro-value">North Flat</div>
+            </div>
+            <div class="micro-field">
+              <div class="micro-label">Notes</div>
+              <div class="micro-value dim">+ add</div>
+            </div>
+            <div class="gps-card">
+              <div class="pin" aria-hidden="true"></div>
+              <div class="gps-text">
+                <b>GPS tag frozen</b>
+                <span>44.456789, -100.345678</span>
+              </div>
+              <div class="gps-accuracy">+/- 4 m</div>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="actions">
+        <button class="tool" aria-label="BLE catch button home"><span class="ble"></span><small>BLE</small></button>
+        <button class="tool" aria-label="Voice mode home"><span class="mic"></span><small>VOICE</small></button>
+        <button class="save">SAVE <span>next catch</span></button>
+      </footer>
+      <div class="home"></div>
+    </div>
+  </div>
+
+  <section class="rationale">
+    <h2>Concept 2 rationale</h2>
+    <p><b>Paradigm:</b> a cockpit-style tile dashboard where every catch field is visible and most tiles are one-tap repeat values.</p>
+    <p><b>How it works:</b> tap a tile to cycle common choices; tap-hold or second tap expands the control inline, shown here on Length with quarter-inch steps.</p>
+    <p><b>No-scroll strategy:</b> Tier 1 gets large tiles, Tier 2 gets medium tiles, and optional/auto fields compress into a single bottom tile row with GPS display-only.</p>
+    <p><b>Outside-box angle:</b> the screen behaves like a hardware control panel for rough-water logging, with obvious homes for future BLE and voice capture.</p>
+    <p><b>Risks:</b> cycling hidden values can be missed, and inline expansion needs strict height limits so a changed tile never pushes content off the phone.</p>
+  </section>
+</body>
+</html>

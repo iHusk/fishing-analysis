@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger — Confirm Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* refined dark — editorial, warm-cool balance, not muddy */
+    --bg:#0c0f12;
+    --bg-2:#0a0c0f;
+    --card:#15191e;
+    --card-2:#1a1f25;
+    --raise:#20262d;
+    --ink:#f3f0ea;          /* warm off-white */
+    --ink-soft:#c3c8cc;
+    --muted:#828d96;
+    --faint:#56616a;
+    --line:#242a31;
+    --line-2:#2e353d;
+    /* warm = keep (positive), cool = release */
+    --keep:#e0a23b;         /* warm amber-gold */
+    --keep-deep:#c8841f;
+    --keep-soft:#e0a23b1f;
+    --cool:#4aa6c9;         /* cool marine for release */
+    --cool-soft:#4aa6c91f;
+    --accent:#6fcf97;       /* calm green readout accent */
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0;
+    min-height:100vh;
+    background:#05070a;
+    color:var(--ink);
+    font-family:"Fraunces",serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  body{
+    display:flex;flex-direction:column;align-items:center;
+    background:
+      radial-gradient(circle at 50% 0%, #14191f, transparent 60%),
+      linear-gradient(180deg,#0a0d10,#05070a);
+  }
+  .stage{padding:30px 0 8px;}
+
+  /* ---- iPhone frame: EXACT 390x844 ---- */
+  .phone{
+    position:relative;width:390px;height:844px;
+    border-radius:54px;background:#000;
+    box-shadow:
+      0 0 0 11px #050608,
+      0 0 0 13px #23292f,
+      0 30px 80px rgba(0,0,0,.62);
+  }
+  .notch{
+    position:absolute;top:11px;left:50%;z-index:6;
+    width:118px;height:32px;transform:translateX(-50%);
+    border-radius:0 0 20px 20px;background:#000;
+  }
+
+  /* ---- inner screen: EXACT 390x844, NO scroll ---- */
+  .screen{
+    position:absolute;inset:0;width:390px;height:844px;
+    border-radius:54px;overflow:hidden;
+    background:linear-gradient(180deg,var(--bg) 0%,var(--bg) 70%,var(--bg-2) 100%);
+    color:var(--ink);display:flex;flex-direction:column;
+  }
+
+  .statusbar{
+    flex:0 0 auto;height:46px;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 30px 7px;
+    font-family:"Space Mono",monospace;
+    font-size:14px;font-weight:700;letter-spacing:.01em;color:var(--ink);
+  }
+  .statusbar .right{display:flex;gap:8px;align-items:center;}
+  .statusbar svg{display:block;}
+
+  /* ---- masthead ---- */
+  .masthead{
+    flex:0 0 auto;padding:3px 24px 10px;
+    display:flex;align-items:flex-start;justify-content:space-between;
+  }
+  .masthead .eyebrow{
+    font-family:"Space Mono",monospace;
+    font-size:10px;font-weight:400;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .masthead h1{
+    margin:3px 0 0;
+    font-optical-sizing:auto;
+    font-size:27px;font-weight:600;line-height:1;
+    letter-spacing:-.01em;color:var(--ink);
+  }
+  .frozen{
+    display:flex;align-items:center;gap:6px;height:25px;
+    padding:0 11px 0 9px;margin-top:5px;
+    border:1px solid var(--line-2);border-radius:999px;
+    background:var(--card);color:var(--accent);
+    font-family:"Space Mono",monospace;
+    font-size:9px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;
+  }
+  .frozen svg{display:block;}
+
+  /* ---- ANGLER chips + species line ---- */
+  .topsel{flex:0 0 auto;padding:0 18px;}
+  .anglers{
+    display:flex;align-items:center;gap:7px;
+  }
+  .a-lab{
+    font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 7px 6px;
+  }
+  .chip{
+    height:40px;display:flex;align-items:center;gap:8px;
+    padding:0 14px 0 7px;
+    border:1px solid var(--line-2);border-radius:999px;
+    background:var(--card);color:var(--ink-soft);
+    font-family:"Fraunces",serif;
+    font-size:15px;font-weight:500;letter-spacing:-.01em;
+    transition:all .18s ease;
+  }
+  .chip .dot{
+    width:26px;height:26px;border-radius:50%;
+    display:grid;place-items:center;
+    background:var(--raise);color:var(--muted);
+    font-weight:600;font-size:12px;
+  }
+  .chip.on{
+    border-color:transparent;
+    background:linear-gradient(180deg,#2a3138,#20262d);
+    color:var(--ink);
+    box-shadow:0 4px 14px rgba(0,0,0,.4),0 0 0 1px var(--line-2) inset;
+  }
+  .chip.on .dot{background:var(--accent);color:#0c0f12;}
+  .chip.add{
+    width:40px;padding:0;justify-content:center;
+    color:var(--muted);border-style:dashed;
+  }
+
+  /* species big tappable line */
+  .species{
+    display:flex;align-items:center;gap:12px;
+    margin-top:11px;padding:11px 14px;
+    border:1px solid var(--line);border-radius:18px;
+    background:var(--card);
+  }
+  .species .fishmark{
+    flex:0 0 auto;width:40px;height:40px;border-radius:12px;
+    background:var(--raise);border:1px solid var(--line-2);
+    display:grid;place-items:center;
+  }
+  .species .body{flex:1 1 auto;line-height:1;}
+  .species .lab{
+    font-family:"Space Mono",monospace;
+    font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  }
+  .species .name{
+    margin-top:4px;font-size:23px;font-weight:600;
+    letter-spacing:-.01em;color:var(--ink);
+  }
+  .species .change{
+    flex:0 0 auto;display:flex;align-items:center;gap:6px;
+    height:30px;padding:0 8px 0 12px;
+    border:1px solid var(--line-2);border-radius:999px;background:var(--raise);
+    font-family:"Space Mono",monospace;
+    font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);
+  }
+
+  /* ---- the card (primary measure block) ---- */
+  .card{
+    flex:1 1 auto;
+    margin:13px 14px 0;
+    border:1px solid var(--line);border-radius:24px;
+    background:linear-gradient(180deg,var(--card),var(--card-2));
+    box-shadow:0 18px 40px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* ---- big primary measure (length, depth) ---- */
+  .meas{
+    flex:0 0 auto;padding:16px 18px 14px;
+  }
+  .meas + .meas{border-top:1px solid var(--line);}
+  .meas-top{display:flex;align-items:baseline;justify-content:space-between;}
+  .meas-label{
+    font-family:"Space Mono",monospace;
+    font-size:10px;font-weight:400;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .readout{display:flex;align-items:baseline;gap:8px;}
+  .readout .val{
+    font-optical-sizing:auto;
+    font-size:60px;line-height:.82;font-weight:600;
+    letter-spacing:-.03em;color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .readout .val .frac{font-size:34px;color:var(--accent);font-weight:500;}
+  .readout .unit{
+    font-family:"Space Mono",monospace;
+    font-size:13px;font-weight:400;color:var(--muted);letter-spacing:.02em;
+  }
+  .meas.depth .readout .val{font-size:48px;}
+
+  /* tape sliders */
+  .tape{
+    position:relative;margin-top:12px;
+    border:1px solid var(--line);border-radius:13px;
+    background:linear-gradient(180deg,#0e1216,#0a0d10);
+    overflow:hidden;cursor:ew-resize;touch-action:none;
+  }
+  .tape.lg{height:54px;}
+  .tape.md{height:46px;}
+  .ticks{position:absolute;inset:0;display:flex;align-items:flex-end;padding-bottom:9px;}
+  .tick{flex:1 0 auto;width:0;border-left:1px solid var(--line-2);height:8px;}
+  .tick.major{height:17px;border-left-color:var(--faint);}
+  .tape-num{
+    position:absolute;top:7px;
+    font-family:"Space Mono",monospace;
+    font-size:9px;color:var(--faint);transform:translateX(-50%);
+    pointer-events:none;
+  }
+  .thumb{
+    position:absolute;top:-1px;bottom:-1px;width:3px;
+    background:var(--accent);box-shadow:0 0 14px var(--accent);
+    z-index:3;pointer-events:none;
+  }
+  .thumb::after{
+    content:"";position:absolute;left:50%;top:50%;
+    width:24px;height:24px;transform:translate(-50%,-50%);
+    border-radius:9px;background:var(--accent);
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+  }
+  .thumb svg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;}
+
+  /* ---- collapsed quiet rows (lure / bait / temp) ---- */
+  .quiet{
+    flex:0 0 auto;
+    display:flex;align-items:center;gap:12px;
+    padding:13px 18px;border-top:1px solid var(--line);
+    cursor:pointer;
+  }
+  .quiet .ql{
+    font-family:"Space Mono",monospace;
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    flex:0 0 auto;min-width:96px;
+  }
+  .quiet .qv{
+    flex:1 1 auto;display:flex;align-items:center;gap:9px;
+    font-size:17px;font-weight:500;letter-spacing:-.01em;color:var(--ink);
+  }
+  .quiet .sw{
+    width:22px;height:22px;border-radius:7px;flex:0 0 auto;
+    border:1px solid rgba(255,255,255,.14);
+  }
+  .quiet .qadd{
+    width:26px;height:26px;border-radius:8px;flex:0 0 auto;
+    border:1px dashed var(--line-2);background:var(--card);
+    display:grid;place-items:center;
+  }
+  .quiet .caret{flex:0 0 auto;color:var(--faint);}
+  .quiet .qv .deg{color:var(--accent);}
+
+  /* ---- bottom swipe bar (disposition + save) ---- */
+  .foot{
+    flex:1 1 auto;
+    padding:14px 18px;
+    padding-bottom:max(14px, env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;justify-content:flex-end;gap:10px;
+  }
+  .gpsline{
+    display:flex;align-items:center;justify-content:center;gap:7px;
+    font-family:"Space Mono",monospace;
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  }
+  .gpsline .pin{color:var(--accent);display:block;}
+  .gpsline b{color:var(--ink-soft);font-weight:400;}
+
+  .swipe{
+    position:relative;height:66px;width:100%;
+    border-radius:20px;overflow:hidden;
+    background:#10141a;border:1px solid var(--line-2);
+    box-shadow:0 14px 30px rgba(0,0,0,.45) inset, 0 1px 0 rgba(255,255,255,.02);
+    touch-action:none;user-select:none;
+  }
+  /* the colored fill that grows from the resting center toward the committed side */
+  .swipe-fill{
+    position:absolute;top:0;bottom:0;left:0;width:0;
+    background:linear-gradient(90deg,var(--keep-deep),var(--keep));
+    opacity:.0;transition:opacity .12s ease;
+  }
+  .swipe.dragging .swipe-fill{transition:none;}
+  /* edge hint labels */
+  .swipe .edge{
+    position:absolute;top:50%;transform:translateY(-50%);
+    font-family:"Space Mono",monospace;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    display:flex;align-items:center;gap:6px;pointer-events:none;
+  }
+  .swipe .edge.left{left:16px;color:var(--cool);}
+  .swipe .edge.right{right:16px;color:var(--keep);}
+  .swipe .edge svg{display:block;}
+  /* center status text */
+  .swipe .center{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    text-align:center;pointer-events:none;z-index:4;width:140px;
+  }
+  .swipe .center .ttl{
+    font-family:"Fraunces",serif;font-size:16px;font-weight:600;
+    letter-spacing:-.01em;color:var(--ink);line-height:1;
+  }
+  .swipe .center .sub{
+    font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.06em;
+    color:var(--muted);margin-top:3px;
+  }
+  /* draggable grip knob */
+  .grip{
+    position:absolute;top:5px;left:50%;
+    width:88px;height:56px;margin-left:-44px;
+    border-radius:15px;
+    background:linear-gradient(180deg,var(--raise),#1a2027);
+    border:1px solid var(--line-2);
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;gap:5px;
+    z-index:5;cursor:grab;
+  }
+  .swipe.dragging .grip{cursor:grabbing;}
+  .grip .bar{width:2px;height:18px;border-radius:2px;background:var(--faint);}
+  .grip .ar{position:absolute;top:50%;transform:translateY(-50%);color:var(--muted);}
+  .grip .ar.l{left:9px;} .grip .ar.r{right:9px;}
+
+  .home-ind{
+    width:128px;height:5px;border-radius:3px;
+    background:#ffffff1c;margin:5px auto 0;
+  }
+
+  /* ---- overlays (progressive disclosure) ---- */
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:30;
+    background:var(--card-2);
+    border-top:1px solid var(--line-2);
+    border-radius:24px 24px 0 0;
+    box-shadow:0 -20px 50px rgba(0,0,0,.6);
+    padding:16px 18px 22px;
+    transform:translateY(110%);
+    transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    /* closed sheets are fully out of layout so they can NEVER inflate
+       the screen's scrollHeight, regardless of DOM position */
+    display:none;
+  }
+  .sheet.mounted{display:block;}
+  .sheet.open{transform:translateY(0);}
+  .scrim{
+    position:absolute;inset:0;z-index:25;background:rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:opacity .22s ease;
+  }
+  .scrim.show{opacity:1;pointer-events:auto;}
+  .sheet h3{
+    margin:0 0 12px;font-size:17px;font-weight:600;letter-spacing:-.01em;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .sheet h3 .x{
+    font-family:"Space Mono",monospace;font-size:11px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.08em;
+  }
+
+  /* color rail in sheet */
+  .rail{display:flex;flex-wrap:wrap;gap:11px;}
+  .col{
+    display:flex;flex-direction:column;align-items:center;gap:6px;width:58px;
+  }
+  .col .pic{
+    width:46px;height:46px;border-radius:13px;
+    border:1px solid rgba(255,255,255,.12);
+  }
+  .col.sel .pic{box-shadow:0 0 0 2px var(--card-2),0 0 0 4px var(--accent);}
+  .col .nm{
+    font-family:"Space Mono",monospace;font-size:8.5px;letter-spacing:.02em;
+    color:var(--muted);text-align:center;line-height:1.15;
+  }
+  .col.sel .nm{color:var(--accent);}
+
+  /* bait radio list in sheet */
+  .baitlist{display:flex;flex-direction:column;gap:8px;}
+  .baitopt{
+    display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;
+    border:1px solid var(--line-2);border-radius:14px;background:var(--card);
+    font-size:17px;font-weight:500;color:var(--ink-soft);
+  }
+  .baitopt svg{display:block;opacity:.6;}
+  .baitopt.on{
+    border-color:var(--accent);color:var(--ink);background:var(--card-2);
+    box-shadow:0 0 0 1px var(--accent) inset;
+  }
+  .baitopt.on svg{opacity:1;}
+  .baitopt .rd{
+    margin-left:auto;width:18px;height:18px;border-radius:50%;
+    border:1.5px solid var(--line-2);
+  }
+  .baitopt.on .rd{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 42%,transparent 46%);}
+
+  /* temp slider in sheet */
+  .tempbig{
+    font-size:46px;font-weight:600;letter-spacing:-.02em;
+    text-align:center;margin:4px 0 14px;
+    font-variant-numeric:tabular-nums;
+  }
+  .tempbig .deg{color:var(--accent);}
+  .tempbar{
+    position:relative;height:50px;border:1px solid var(--line);border-radius:14px;
+    background:linear-gradient(90deg,#1b2730,#2a2118);overflow:hidden;
+    cursor:ew-resize;touch-action:none;
+  }
+  .tempbar .tfill{position:absolute;top:0;bottom:0;left:0;background:rgba(255,255,255,.04);}
+  .tempbar .tthumb{
+    position:absolute;top:-1px;bottom:-1px;width:3px;background:var(--accent);
+    box-shadow:0 0 14px var(--accent);z-index:3;pointer-events:none;
+  }
+  .tempbar .tthumb::after{
+    content:"";position:absolute;left:50%;top:50%;width:26px;height:26px;
+    transform:translate(-50%,-50%);border-radius:9px;background:var(--accent);
+    box-shadow:0 4px 12px rgba(0,0,0,.5);
+  }
+
+  /* committed state flash */
+  .committed .swipe{transition:none;}
+
+  /* ---- caption strip ---- */
+  .caption{
+    width:390px;padding:14px 6px 30px;text-align:center;
+    font-family:"Space Mono",monospace;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6a747c;
+  }
+
+  /* ---- staggered settle-in ---- */
+  @keyframes settle{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .anim{opacity:0;animation:settle .5s cubic-bezier(.2,.7,.2,1) forwards;}
+  .topsel{animation-delay:.05s;}
+  .card{animation-delay:.14s;}
+  .foot{animation-delay:.24s;}
+  @keyframes thumbpop{0%{transform:scale(.6);}70%{transform:scale(1.1);}100%{transform:scale(1);}}
+  .thumb::after{animation:thumbpop .5s .5s both cubic-bezier(.2,.8,.2,1.2);}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone" aria-label="iPhone 390 by 844">
+      <div class="notch"></div>
+
+      <div class="screen" id="screen">
+        <!-- status bar -->
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="17" height="11" viewBox="0 0 17 11" fill="none"><rect x="0" y="7" width="3" height="4" rx="1" fill="#f3f0ea"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#f3f0ea"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#f3f0ea"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#f3f0ea" opacity=".35"/></svg>
+            <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.6" y="0.6" width="18" height="9.8" rx="2.6" stroke="#f3f0ea" stroke-opacity=".4"/><rect x="2" y="2" width="13" height="7" rx="1.4" fill="#f3f0ea"/><rect x="20" y="3.6" width="1.6" height="3.8" rx=".8" fill="#f3f0ea" opacity=".4"/></svg>
+          </span>
+        </div>
+
+        <!-- masthead -->
+        <div class="masthead">
+          <div>
+            <div class="eyebrow">Lake Oahe · Catch No. 7</div>
+            <h1>Confirm Catch</h1>
+          </div>
+          <div class="frozen">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M2 3.2l8 5.6M10 3.2l-8 5.6" stroke="#6fcf97" stroke-width="1.2" stroke-linecap="round"/></svg>
+            GPS Frozen
+          </div>
+        </div>
+
+        <!-- TOP: anglers + species -->
+        <div class="topsel anim">
+          <div class="a-lab">Choose the angler</div>
+          <div class="anglers" role="radiogroup" aria-label="Angler">
+            <div class="chip on" role="radio" aria-checked="true"><span class="dot">T</span>Tyler</div>
+            <div class="chip" role="radio" aria-checked="false"><span class="dot">B</span>Brian</div>
+            <div class="chip" role="radio" aria-checked="false"><span class="dot">B</span>Brent</div>
+            <div class="chip add" aria-label="Add angler">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="#828d96" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+
+          <div class="species" id="speciesBtn" role="button" tabindex="0">
+            <div class="fishmark">
+              <svg width="26" height="11" viewBox="0 0 26 11" fill="none"><path d="M1 5.5C5 1 10 1 15 5.5C10 10 5 10 1 5.5Z" fill="#6fcf9722" stroke="#6fcf97" stroke-width="1.1"/><path d="M15 5.5L24 2V9L15 5.5Z" fill="#6fcf9722" stroke="#6fcf97" stroke-width="1.1" stroke-linejoin="round"/><circle cx="5" cy="5" r="1" fill="#6fcf97"/></svg>
+            </div>
+            <div class="body">
+              <div class="lab">Species · tap to change</div>
+              <div class="name">Walleye</div>
+            </div>
+            <div class="change">Change
+              <svg width="7" height="11" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#c3c8cc" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD: primary measures + quiet rows -->
+        <div class="card anim">
+
+          <!-- LENGTH (hero) -->
+          <div class="meas length">
+            <div class="meas-top">
+              <span class="meas-label">Length</span>
+              <span class="readout"><span class="val" id="lenVal">18<span class="frac">.5</span></span><span class="unit">in</span></span>
+            </div>
+            <div class="tape lg" id="tapeLen" role="slider" aria-label="Length, drag to set" aria-valuemin="8" aria-valuemax="30" aria-valuenow="18.5">
+              <div class="ticks" id="ticksLen"></div>
+              <span class="tape-num" style="left:14%">14</span>
+              <span class="tape-num" style="left:32%">16</span>
+              <span class="tape-num" style="left:50%">18</span>
+              <span class="tape-num" style="left:68%">20</span>
+              <span class="tape-num" style="left:86%">22</span>
+              <div class="thumb" id="thumbLen" style="left:50%">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 2L1 5.5l2 3.5M8 2l2 3.5-2 3.5" stroke="#0c0f12" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- DEPTH -->
+          <div class="meas depth">
+            <div class="meas-top">
+              <span class="meas-label">Depth</span>
+              <span class="readout"><span class="val" id="depthVal">22</span><span class="unit">ft</span></span>
+            </div>
+            <div class="tape md" id="tapeDepth" role="slider" aria-label="Depth, drag to set" aria-valuemin="0" aria-valuemax="60" aria-valuenow="22">
+              <div class="ticks" id="ticksDepth"></div>
+              <span class="tape-num" style="left:14%">10</span>
+              <span class="tape-num" style="left:32%">15</span>
+              <span class="tape-num" style="left:50%">20</span>
+              <span class="tape-num" style="left:68%">25</span>
+              <span class="tape-num" style="left:86%">30</span>
+              <div class="thumb" id="thumbDepth" style="left:50%">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 2L1 5.5l2 3.5M8 2l2 3.5-2 3.5" stroke="#0c0f12" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- LURE COLOR (collapsed) -->
+          <div class="quiet" id="lureRow" role="button" tabindex="0">
+            <span class="ql">Lure color</span>
+            <span class="qv">
+              <span class="sw" id="lureSw" style="background:#c2d62e"></span>
+              <span id="lureName">Chartreuse</span>
+              <span class="qadd" aria-label="Add color">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5v9M1.5 6h9" stroke="#828d96" stroke-width="1.4" stroke-linecap="round"/></svg>
+              </span>
+            </span>
+            <span class="caret"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1.5 1.5l5 5-5 5" stroke="#56616a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+
+          <!-- BAIT (collapsed) -->
+          <div class="quiet" id="baitRow" role="button" tabindex="0">
+            <span class="ql">Bait</span>
+            <span class="qv"><span id="baitName">Crawler</span></span>
+            <span class="caret"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1.5 1.5l5 5-5 5" stroke="#56616a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+
+          <!-- WATER TEMP (collapsed) -->
+          <div class="quiet" id="tempRow" role="button" tabindex="0">
+            <span class="ql">Water temp</span>
+            <span class="qv"><span id="tempName">64</span><span class="deg">°</span></span>
+            <span class="caret"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1.5 1.5l5 5-5 5" stroke="#56616a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+
+          <!-- FOOT: gps + swipe bar -->
+          <div class="foot">
+            <div class="gpsline">
+              <span class="pin"><svg width="11" height="13" viewBox="0 0 15 18" fill="none"><path d="M7.5 1C4 1 1.5 3.5 1.5 6.8c0 4.2 6 10 6 10s6-5.8 6-10C13.5 3.5 11 1 7.5 1Z" stroke="#6fcf97" stroke-width="1.3"/><circle cx="7.5" cy="6.8" r="2.2" fill="#6fcf9722" stroke="#6fcf97" stroke-width="1.2"/></svg></span>
+              <b>North Flat</b> · GPS Locked
+            </div>
+
+            <div class="swipe" id="swipe" role="slider" aria-label="Swipe right to keep and log, left to release and log">
+              <div class="swipe-fill" id="swipeFill"></div>
+              <div class="edge left">
+                <svg width="9" height="12" viewBox="0 0 9 12" fill="none"><path d="M7 1L2 6l5 5" stroke="#4aa6c9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Release
+              </div>
+              <div class="edge right">
+                Keep
+                <svg width="9" height="12" viewBox="0 0 9 12" fill="none"><path d="M2 1l5 5-5 5" stroke="#e0a23b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="center" id="swipeCenter">
+                <div class="ttl" id="swipeTtl">Keep &amp; Log</div>
+                <div class="sub" id="swipeSub">slide to commit</div>
+              </div>
+              <div class="grip" id="grip">
+                <span class="ar l"><svg width="6" height="9" viewBox="0 0 6 9" fill="none"><path d="M5 1L1 4.5 5 8" stroke="#828d96" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="bar"></span><span class="bar"></span>
+                <span class="ar r"><svg width="6" height="9" viewBox="0 0 6 9" fill="none"><path d="M1 1l4 3.5L1 8" stroke="#828d96" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== overlays ===== -->
+      <div class="scrim" id="scrim"></div>
+
+      <!-- color sheet -->
+      <div class="sheet" id="lureSheet">
+        <h3>Lure color <span class="x">done</span></h3>
+        <div class="rail" id="colorRail">
+          <div class="col sel" data-c="#c2d62e" data-n="Chartreuse"><span class="pic" style="background:#c2d62e"></span><span class="nm">Chartreuse</span></div>
+          <div class="col" data-c="#5a3aa0" data-n="Purple"><span class="pic" style="background:#5a3aa0"></span><span class="nm">Purple</span></div>
+          <div class="col" data-c="#f4f1ea" data-n="White"><span class="pic" style="background:#f4f1ea"></span><span class="nm">White</span></div>
+          <div class="col" data-c="firetiger" data-n="Firetiger"><span class="pic" style="background:linear-gradient(135deg,#c2d62e 0 33%,#e08a1e 33% 66%,#2f6b27 66%)"></span><span class="nm">Firetiger</span></div>
+          <div class="col" data-c="#e9701c" data-n="Orange"><span class="pic" style="background:#e9701c"></span><span class="nm">Orange</span></div>
+          <div class="col" data-c="#d4f3c8" data-n="Glow"><span class="pic" style="background:#d4f3c8"></span><span class="nm">Glow</span></div>
+          <div class="col" data-c="#c8a23c" data-n="Gold"><span class="pic" style="background:#c8a23c"></span><span class="nm">Gold</span></div>
+          <div class="col" data-c="#1c1d1f" data-n="Black"><span class="pic" style="background:#1c1d1f"></span><span class="nm">Black</span></div>
+        </div>
+      </div>
+
+      <!-- bait sheet -->
+      <div class="sheet" id="baitSheet">
+        <h3>Bait <span class="x">done</span></h3>
+        <div class="baitlist" id="baitList">
+          <div class="baitopt on" data-n="Crawler">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M2 8c2-3 4-3 6 0s4 3 6 0" stroke="#f3f0ea" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Crawler <span class="rd"></span>
+          </div>
+          <div class="baitopt" data-n="Minnow">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8C3 5.5 6 4 8.5 4S13 5.5 13 8 11 12 8.5 12 3 10.5 3 8Z" stroke="#828d96" stroke-width="1.4"/><path d="M13 8l2-2M13 8l2 2" stroke="#828d96" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Minnow <span class="rd"></span>
+          </div>
+          <div class="baitopt" data-n="Lure">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M2 8C5 4 9 4 12 8C9 12 5 12 2 8Z" stroke="#828d96" stroke-width="1.4"/><path d="M12 8l3-2v4l-3-2Z" stroke="#828d96" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            Lure <span class="rd"></span>
+          </div>
+          <div class="baitopt" data-n="Jig">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="3" stroke="#828d96" stroke-width="1.4"/><path d="M6 9v4M6 13c2 0 3-1 3-2" stroke="#828d96" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Jig <span class="rd"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- temp sheet -->
+      <div class="sheet" id="tempSheet">
+        <h3>Water temp <span class="x">done</span></h3>
+        <div class="tempbig"><span id="tempBig">64</span><span class="deg">°F</span></div>
+        <div class="tempbar" id="tempBar">
+          <div class="tfill" id="tempFill"></div>
+          <div class="tthumb" id="tempThumb" style="left:53%"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="caption">CONFIRM CARD</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- build tape ticks ----------
+  function fill(id,count,every){
+    var t=document.getElementById(id); if(!t) return;
+    var frag=document.createDocumentFragment();
+    for(var i=0;i<count;i++){
+      var d=document.createElement('div');
+      d.className='tick'+(i%every===0?' major':'');
+      frag.appendChild(d);
+    }
+    t.appendChild(frag);
+  }
+  fill('ticksLen',52,4);
+  fill('ticksDepth',44,4);
+
+  function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+  // ---------- draggable measuring tapes (smooth, NO snapping) ----------
+  function makeTape(tapeEl, thumbEl, opts){
+    var min=opts.min, max=opts.max, dec=opts.dec, render=opts.render;
+    function setFromX(clientX){
+      var r=tapeEl.getBoundingClientRect();
+      var pct=clamp((clientX-r.left)/r.width,0,1);
+      var val=min+pct*(max-min);
+      thumbEl.style.left=(pct*100)+'%';
+      tapeEl.setAttribute('aria-valuenow', dec? val.toFixed(1): Math.round(val));
+      render(val);
+    }
+    function down(e){
+      e.preventDefault();
+      var move=function(ev){ setFromX(ev.touches?ev.touches[0].clientX:ev.clientX); };
+      var up=function(){
+        document.removeEventListener('mousemove',move);
+        document.removeEventListener('mouseup',up);
+        document.removeEventListener('touchmove',move);
+        document.removeEventListener('touchend',up);
+      };
+      document.addEventListener('mousemove',move);
+      document.addEventListener('mouseup',up);
+      document.addEventListener('touchmove',move,{passive:false});
+      document.addEventListener('touchend',up);
+      move(e);
+    }
+    tapeEl.addEventListener('mousedown',down);
+    tapeEl.addEventListener('touchstart',down,{passive:false});
+  }
+
+  // Length: 18.5" smooth. Tape range tuned so 18.5 sits ~50%.
+  var lenVal=document.getElementById('lenVal');
+  makeTape(document.getElementById('tapeLen'), document.getElementById('thumbLen'), {
+    min:12.4, max:23.6, dec:true,
+    render:function(v){
+      var whole=Math.floor(v), frac=Math.round((v-whole)*10);
+      if(frac===10){whole++;frac=0;}
+      lenVal.innerHTML = whole + '<span class="frac">.'+frac+'</span>';
+    }
+  });
+
+  // Depth: 22 ft smooth.
+  var depthVal=document.getElementById('depthVal');
+  makeTape(document.getElementById('tapeDepth'), document.getElementById('thumbDepth'), {
+    min:7.6, max:32.4, dec:false,
+    render:function(v){ depthVal.textContent=Math.round(v); }
+  });
+
+  // ---------- sheets / scrim ----------
+  var scrim=document.getElementById('scrim');
+  var openSheet=null;
+  function open(id){
+    if(openSheet) closeSheet();
+    openSheet=document.getElementById(id);
+    // mount (display:block) first, force a reflow, THEN add .open so the
+    // translateY(110%) -> translateY(0) slide-up still animates from display:none.
+    openSheet.classList.add('mounted');
+    void openSheet.offsetHeight;            // forced reflow
+    openSheet.classList.add('open');
+    scrim.classList.add('show');
+  }
+  function closeSheet(){
+    if(openSheet){
+      var s=openSheet;
+      s.classList.remove('open');           // slide back down
+      // after the slide-down transition, unmount (display:none) so it
+      // leaves layout entirely and cannot contribute to scrollHeight.
+      var unmount=function(){ s.classList.remove('mounted'); s.removeEventListener('transitionend',unmount); };
+      s.addEventListener('transitionend',unmount);
+      setTimeout(unmount,360);              // fallback if transitionend doesn't fire
+    }
+    openSheet=null;
+    scrim.classList.remove('show');
+  }
+  scrim.addEventListener('click',closeSheet);
+  document.querySelectorAll('.sheet .x').forEach(function(x){ x.addEventListener('click',closeSheet); });
+
+  document.getElementById('lureRow').addEventListener('click',function(){ open('lureSheet'); });
+  document.getElementById('baitRow').addEventListener('click',function(){ open('baitSheet'); });
+  document.getElementById('tempRow').addEventListener('click',function(){ open('tempSheet'); });
+
+  // species + angler are cosmetic toggles
+  document.querySelectorAll('.chip[role=radio]').forEach(function(c){
+    c.addEventListener('click',function(){
+      document.querySelectorAll('.chip[role=radio]').forEach(function(o){o.classList.remove('on');o.setAttribute('aria-checked','false');});
+      c.classList.add('on');c.setAttribute('aria-checked','true');
+    });
+  });
+
+  // ---------- color rail selection ----------
+  var lureSw=document.getElementById('lureSw'), lureName=document.getElementById('lureName');
+  document.querySelectorAll('#colorRail .col').forEach(function(col){
+    col.addEventListener('click',function(){
+      document.querySelectorAll('#colorRail .col').forEach(function(o){o.classList.remove('sel');});
+      col.classList.add('sel');
+      var c=col.getAttribute('data-c');
+      lureSw.style.background = c==='firetiger' ? 'linear-gradient(135deg,#c2d62e 0 33%,#e08a1e 33% 66%,#2f6b27 66%)' : c;
+      lureName.textContent=col.getAttribute('data-n');
+    });
+  });
+
+  // ---------- bait selection ----------
+  var baitName=document.getElementById('baitName');
+  document.querySelectorAll('#baitList .baitopt').forEach(function(o){
+    o.addEventListener('click',function(){
+      document.querySelectorAll('#baitList .baitopt').forEach(function(x){x.classList.remove('on');});
+      o.classList.add('on');
+      baitName.textContent=o.getAttribute('data-n');
+      setTimeout(closeSheet,160);
+    });
+  });
+
+  // ---------- temp slider ----------
+  var tempName=document.getElementById('tempName'), tempBig=document.getElementById('tempBig');
+  var tempBar=document.getElementById('tempBar'), tempThumb=document.getElementById('tempThumb'), tempFill=document.getElementById('tempFill');
+  var TMIN=40, TMAX=85;
+  function tempFromX(clientX){
+    var r=tempBar.getBoundingClientRect();
+    var pct=clamp((clientX-r.left)/r.width,0,1);
+    var val=Math.round(TMIN+pct*(TMAX-TMIN));
+    tempThumb.style.left=(pct*100)+'%';
+    tempFill.style.width=(pct*100)+'%';
+    tempBig.textContent=val; tempName.textContent=val;
+  }
+  (function(){
+    function down(e){
+      e.preventDefault();
+      var move=function(ev){ tempFromX(ev.touches?ev.touches[0].clientX:ev.clientX); };
+      var up=function(){
+        document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);
+        document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up);
+      };
+      document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+      document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',up);
+      move(e);
+    }
+    tempBar.addEventListener('mousedown',down);
+    tempBar.addEventListener('touchstart',down,{passive:false});
+    // seed fill to match 64°
+    tempFill.style.width='53%';
+  })();
+
+  // ---------- the swipe-to-commit bar ----------
+  var swipe=document.getElementById('swipe'), grip=document.getElementById('grip'),
+      fill2=document.getElementById('swipeFill'), ttl=document.getElementById('swipeTtl'),
+      sub=document.getElementById('swipeSub');
+  var committed=false;
+
+  function setGrip(px, side){
+    // px = offset from center, positive = right(keep), negative = left(release)
+    grip.style.transform='translateX('+px+'px)';
+    var w=swipe.clientWidth;
+    var mag=Math.min(Math.abs(px)/(w/2-50), 1);
+    if(side>0){
+      fill2.style.left='50%';
+      fill2.style.width=(mag*50)+'%';
+      fill2.style.background='linear-gradient(90deg,var(--keep-deep),var(--keep))';
+    }else if(side<0){
+      fill2.style.left=(50-mag*50)+'%';
+      fill2.style.width=(mag*50)+'%';
+      fill2.style.background='linear-gradient(90deg,var(--cool),#2f7e9c)';
+    }else{
+      fill2.style.width='0';
+    }
+    fill2.style.opacity = mag>0.02 ? (0.18+mag*0.55) : 0;
+    if(side>0){ ttl.textContent='Keep & Log'; }
+    else if(side<0){ ttl.textContent='Release & Log'; }
+    else { ttl.textContent='Keep & Log'; }
+  }
+
+  function commit(side){
+    committed=true;
+    swipe.classList.add('committed');
+    var w=swipe.clientWidth;
+    var end = side>0 ? (w/2-44) : -(w/2-44);
+    grip.style.transition='transform .2s cubic-bezier(.2,.8,.2,1)';
+    grip.style.transform='translateX('+end+'px)';
+    fill2.style.left = side>0? '50%' : '0';
+    fill2.style.width='50%';
+    fill2.style.opacity=1;
+    fill2.style.background = side>0
+      ? 'linear-gradient(90deg,var(--keep-deep),var(--keep))'
+      : 'linear-gradient(90deg,var(--cool),#2f7e9c)';
+    var disp = side>0 ? 'Kept' : 'Released';
+    ttl.textContent = (side>0?'Kept':'Released') + ' · Logged ✓';
+    sub.textContent = 'walleye · ' + (lenVal.textContent.replace(/\s+/g,'')) ;
+    if(navigator.vibrate) try{navigator.vibrate(18);}catch(e){}
+  }
+
+  function down(e){
+    if(committed) return;
+    e.preventDefault();
+    swipe.classList.add('dragging');
+    grip.style.transition='none';
+    var startX = e.touches?e.touches[0].clientX:e.clientX;
+    var w=swipe.clientWidth;
+    var maxOff=w/2-44;
+    var threshold=maxOff*0.62;
+    var current=0;
+
+    var move=function(ev){
+      var x=(ev.touches?ev.touches[0].clientX:ev.clientX)-startX;
+      current=clamp(x,-maxOff,maxOff);
+      setGrip(current, current>2?1:(current<-2?-1:0));
+      sub.textContent = Math.abs(current)>threshold ? 'release to commit' : 'slide to commit';
+    };
+    var up=function(){
+      swipe.classList.remove('dragging');
+      document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);
+      document.removeEventListener('touchmove',move);document.removeEventListener('touchend',up);
+      if(current>threshold){ commit(1); }
+      else if(current<-threshold){ commit(-1); }
+      else {
+        // snap back to rest (slightly toward keep)
+        grip.style.transition='transform .25s cubic-bezier(.2,.8,.2,1)';
+        setGrip(0,0);
+        grip.style.transform='translateX(0px)';
+        sub.textContent='slide to commit';
+      }
+    };
+    document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+    document.addEventListener('touchmove',move,{passive:false});document.addEventListener('touchend',up);
+  }
+  grip.addEventListener('mousedown',down);
+  grip.addEventListener('touchstart',down,{passive:false});
+
+  // ---------- ASSERT: no scroll/clip in default state ----------
+  window.addEventListener('load',function(){
+    var s=document.getElementById('screen');
+    var ok = s.scrollHeight===s.clientHeight;
+    console.log('[confirm-card] no-scroll assert:', ok, 'scrollHeight='+s.scrollHeight, 'clientHeight='+s.clientHeight);
+    if(!ok) console.error('[confirm-card] SCROLL/CLIP DETECTED — layout exceeds 844px');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FishingLogger - Log Catch Ruler Hero</title>
+<style>
+  :root{
+    --page:#16191d;
+    --phone:#07151a;
+    --water:#082531;
+    --water-2:#0b3443;
+    --panel:#102f3b;
+    --panel-2:#153947;
+    --chip:#173b48;
+    --chip-2:#0d2b35;
+    --ink:#f4fbff;
+    --muted:#a9c5cf;
+    --faint:#6d95a2;
+    --line:#285363;
+    --tape:#f1c348;
+    --tape-2:#d5a62f;
+    --tape-ink:#162025;
+    --green:#37d39c;
+    --green-ink:#03251a;
+    --blue:#76c7ff;
+    --orange:#ffb347;
+    --purple:#7b5cff;
+    --shadow:0 18px 38px rgba(0,0,0,.42);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;min-height:100%;}
+  body{
+    background:var(--page);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    padding:18px 0 28px;
+  }
+
+  .phone{
+    width:390px;
+    height:844px;
+    flex:0 0 844px;
+    position:relative;
+    overflow:hidden;
+    border-radius:54px;
+    background:
+      radial-gradient(circle at 72% 6%, rgba(118,199,255,.16), transparent 28%),
+      linear-gradient(180deg,#09202a 0%,#061218 100%);
+    box-shadow:0 0 0 11px #1b1d22,0 0 0 13px #2a2d33,0 30px 70px rgba(0,0,0,.58);
+  }
+
+  .notch{
+    position:absolute;
+    z-index:4;
+    top:10px;
+    left:50%;
+    width:122px;
+    height:33px;
+    transform:translateX(-50%);
+    border-radius:19px;
+    background:#000;
+  }
+
+  .statusbar{
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 31px 0 34px;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:0;
+  }
+
+  .statusbar .right{
+    display:flex;
+    gap:7px;
+    align-items:center;
+    font-size:12px;
+  }
+
+  .signal{
+    width:18px;
+    height:11px;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:2px;
+    align-items:end;
+  }
+
+  .signal i{display:block;width:3px;border-radius:2px;background:var(--ink);}
+  .signal i:nth-child(1){height:4px;}
+  .signal i:nth-child(2){height:6px;}
+  .signal i:nth-child(3){height:9px;}
+  .signal i:nth-child(4){height:11px;}
+
+  .battery{
+    width:24px;
+    height:12px;
+    border:1.8px solid var(--ink);
+    border-radius:3px;
+    position:relative;
+  }
+
+  .battery:before{
+    content:"";
+    position:absolute;
+    right:-4px;
+    top:3px;
+    width:2px;
+    height:5px;
+    border-radius:2px;
+    background:var(--ink);
+  }
+
+  .battery:after{
+    content:"";
+    position:absolute;
+    left:2px;
+    top:2px;
+    bottom:2px;
+    width:15px;
+    border-radius:1px;
+    background:var(--green);
+  }
+
+  .app{
+    height:796px;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .topbar{
+    height:54px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:2px 16px 8px;
+  }
+
+  .title{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+
+  .title strong{
+    font-size:23px;
+    line-height:1;
+    letter-spacing:0;
+  }
+
+  .title span{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:750;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+  }
+
+  .top-actions{
+    display:flex;
+    gap:7px;
+    align-items:center;
+  }
+
+  .mode-pill{
+    min-width:48px;
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:11px;
+    border:1px solid rgba(255,255,255,.1);
+    background:#123744;
+    color:#c9eefd;
+    font-size:10px;
+    font-weight:850;
+    text-transform:uppercase;
+  }
+
+  .mode-pill.live{
+    background:var(--green);
+    color:var(--green-ink);
+  }
+
+  .ruler-card{
+    margin:0 14px;
+    height:304px;
+    border-radius:25px;
+    position:relative;
+    overflow:hidden;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.07),transparent 24%),
+      linear-gradient(180deg,var(--water-2),var(--water));
+    border:1px solid #285869;
+    box-shadow:var(--shadow);
+  }
+
+  .ruler-card:before{
+    content:"";
+    position:absolute;
+    left:-18px;
+    right:-18px;
+    bottom:-24px;
+    height:82px;
+    opacity:.42;
+    background:
+      radial-gradient(ellipse at 22% 38%, rgba(118,199,255,.25), transparent 34%),
+      radial-gradient(ellipse at 66% 46%, rgba(55,211,156,.18), transparent 32%);
+  }
+
+  .hero-meta{
+    position:absolute;
+    top:13px;
+    left:15px;
+    right:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    z-index:2;
+  }
+
+  .length-copy{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+
+  .eyebrow{
+    color:#b8d4de;
+    font-size:11px;
+    font-weight:850;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+  }
+
+  .length-readout{
+    display:flex;
+    align-items:flex-end;
+    gap:7px;
+  }
+
+  .length-readout .num{
+    font-size:66px;
+    line-height:.86;
+    font-weight:900;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0;
+  }
+
+  .length-readout .unit{
+    color:var(--muted);
+    font-size:21px;
+    line-height:1.2;
+    font-weight:850;
+    padding-bottom:4px;
+  }
+
+  .sample-badges{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:7px;
+  }
+
+  .badge{
+    border-radius:999px;
+    padding:6px 9px;
+    color:var(--green-ink);
+    background:var(--green);
+    font-size:11px;
+    font-weight:900;
+    box-shadow:0 5px 12px rgba(0,0,0,.22);
+  }
+
+  .badge.secondary{
+    color:#06283d;
+    background:#9ee1ff;
+  }
+
+  .board{
+    position:absolute;
+    left:18px;
+    right:18px;
+    bottom:50px;
+    height:142px;
+    border-radius:18px;
+    overflow:hidden;
+    color:var(--tape-ink);
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 22%),
+      repeating-linear-gradient(90deg,
+        rgba(22,32,37,.92) 0 2px,
+        transparent 2px 9px,
+        rgba(22,32,37,.72) 9px 11px,
+        transparent 11px 31px),
+      linear-gradient(180deg,var(--tape),var(--tape-2));
+    border:2px solid rgba(14,20,23,.64);
+    box-shadow:inset 0 -18px 24px rgba(83,54,0,.2),0 12px 22px rgba(0,0,0,.28);
+  }
+
+  .board:before{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    top:0;
+    height:46px;
+    background:
+      repeating-linear-gradient(90deg,
+        transparent 0 30px,
+        rgba(22,32,37,.9) 30px 34px,
+        transparent 34px 60px);
+  }
+
+  .mark-labels{
+    position:absolute;
+    left:14px;
+    right:14px;
+    top:12px;
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    font-size:13px;
+    font-weight:900;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .mark-labels span{text-align:center;}
+  .mark-labels span:first-child{text-align:left;}
+  .mark-labels span:last-child{text-align:right;}
+
+  .fish{
+    position:absolute;
+    left:30px;
+    top:55px;
+    width:196px;
+    height:54px;
+    filter:drop-shadow(0 8px 10px rgba(0,0,0,.34));
+  }
+
+  .fish .tail{
+    position:absolute;
+    left:0;
+    top:8px;
+    width:48px;
+    height:42px;
+    background:#667780;
+    clip-path:polygon(0 50%,100% 0,78% 50%,100% 100%);
+  }
+
+  .fish .body{
+    position:absolute;
+    left:34px;
+    top:1px;
+    width:146px;
+    height:52px;
+    border-radius:62% 48% 50% 60%;
+    background:
+      radial-gradient(circle at 78% 28%, #111 0 3px, transparent 4px),
+      linear-gradient(180deg,#d8e7e8 0%,#8ba0a6 52%,#40545b 100%);
+    border:1px solid rgba(0,0,0,.22);
+  }
+
+  .fish .body:before{
+    content:"";
+    position:absolute;
+    left:20px;
+    right:38px;
+    top:14px;
+    height:4px;
+    border-radius:999px;
+    background:rgba(26,42,46,.48);
+  }
+
+  .fish .body:after{
+    content:"";
+    position:absolute;
+    left:55px;
+    top:-7px;
+    width:28px;
+    height:18px;
+    border-radius:70% 30% 0 0;
+    background:#5b6c73;
+    transform:rotate(8deg);
+  }
+
+  .nose-line{
+    position:absolute;
+    left:62.2%;
+    top:42px;
+    bottom:29px;
+    width:3px;
+    border-radius:999px;
+    background:#07151a;
+    box-shadow:0 0 0 3px rgba(55,211,156,.9);
+  }
+
+  .nose-line:before{
+    content:'18.5"';
+    position:absolute;
+    top:-31px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:5px 8px;
+    border-radius:10px;
+    background:#07151a;
+    color:var(--green);
+    font-size:13px;
+    font-weight:950;
+    font-variant-numeric:tabular-nums;
+    box-shadow:0 5px 12px rgba(0,0,0,.25);
+  }
+
+  .grabber{
+    position:absolute;
+    left:62.2%;
+    top:113px;
+    width:39px;
+    height:39px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:#07151a;
+    border:4px solid var(--green);
+    display:grid;
+    place-items:center;
+  }
+
+  .grabber i,
+  .grabber i:before,
+  .grabber i:after{
+    display:block;
+    width:3px;
+    height:14px;
+    border-radius:999px;
+    background:var(--green);
+    content:"";
+  }
+
+  .grabber i{position:relative;}
+  .grabber i:before{position:absolute;left:-8px;}
+  .grabber i:after{position:absolute;right:-8px;}
+
+  .ruler-controls{
+    position:absolute;
+    left:18px;
+    right:18px;
+    bottom:12px;
+    display:grid;
+    grid-template-columns:44px 1fr 44px;
+    gap:9px;
+    align-items:center;
+  }
+
+  .step{
+    height:44px;
+    border-radius:15px;
+    border:1px solid rgba(255,255,255,.12);
+    color:var(--ink);
+    background:#0b222b;
+    display:grid;
+    place-items:center;
+    font-size:25px;
+    font-weight:900;
+  }
+
+  .snap-note{
+    height:44px;
+    border-radius:15px;
+    border:1px solid rgba(255,255,255,.1);
+    background:rgba(3,14,18,.44);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#d7edf3;
+    font-size:12px;
+    font-weight:850;
+  }
+
+  .chip-tray{
+    margin:8px 14px 0;
+    padding:10px;
+    height:274px;
+    border-radius:22px;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 26%),
+      #0d2530;
+    border:1px solid var(--line);
+    box-shadow:0 14px 30px rgba(0,0,0,.28);
+  }
+
+  .tray-head{
+    height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+
+  .tray-head strong{
+    font-size:12px;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+    color:#c8e2eb;
+  }
+
+  .tray-head span{
+    font-size:11px;
+    color:#90d6bf;
+    font-weight:850;
+  }
+
+  .chips{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:7px;
+  }
+
+  .chip{
+    min-height:48px;
+    border-radius:14px;
+    border:1px solid rgba(121,166,180,.35);
+    background:var(--chip);
+    padding:7px 8px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:3px;
+    overflow:hidden;
+  }
+
+  .chip.two{grid-column:span 2;}
+  .chip.three{grid-column:span 3;}
+  .chip.wide{grid-column:span 4;}
+
+  .chip .label{
+    color:var(--muted);
+    font-size:9px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    white-space:nowrap;
+  }
+
+  .chip .value{
+    color:var(--ink);
+    font-size:15px;
+    line-height:1;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  .chip .value.small{font-size:13px;}
+  .chip .value.dim{color:#a9c5cf;}
+
+  .chip.primary{
+    background:linear-gradient(180deg,#194c3e,#10382f);
+    border-color:rgba(55,211,156,.55);
+  }
+
+  .chip.auto{
+    background:var(--chip-2);
+    border-style:dashed;
+  }
+
+  .chip.note{
+    background:rgba(23,59,72,.66);
+    border-style:dashed;
+  }
+
+  .state-toggle{
+    grid-column:span 2;
+    min-height:48px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    padding:4px;
+    border-radius:14px;
+    background:var(--chip-2);
+    border:1px solid rgba(121,166,180,.35);
+  }
+
+  .state-toggle span{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:900;
+  }
+
+  .state-toggle .on{
+    color:var(--green-ink);
+    background:var(--green);
+  }
+
+  .swatch-line{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .swatch{
+    width:14px;
+    height:14px;
+    border-radius:5px;
+    flex:0 0 14px;
+    border:1px solid rgba(255,255,255,.45);
+    box-shadow:0 0 0 2px rgba(0,0,0,.12);
+  }
+
+  .swatch.chartreuse{background:#cfff2d;}
+  .swatch.purple{background:var(--purple);}
+
+  .gps-strip{
+    margin:8px 14px 0;
+    min-height:48px;
+    border-radius:17px;
+    border:1px dashed rgba(118,199,255,.45);
+    background:rgba(13,43,53,.86);
+    display:grid;
+    grid-template-columns:34px 1fr auto;
+    align-items:center;
+    gap:8px;
+    padding:7px 10px;
+  }
+
+  .pin{
+    width:31px;
+    height:31px;
+    border-radius:50% 50% 50% 4px;
+    transform:rotate(-45deg);
+    background:#9ee1ff;
+    position:relative;
+  }
+
+  .pin:after{
+    content:"";
+    position:absolute;
+    inset:9px;
+    border-radius:50%;
+    background:#0b2c37;
+  }
+
+  .gps-title{
+    font-size:13px;
+    line-height:1.05;
+    font-weight:900;
+  }
+
+  .gps-sub{
+    margin-top:3px;
+    font-size:10px;
+    color:var(--muted);
+    font-weight:750;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .gps-lock{
+    padding:5px 8px;
+    border-radius:999px;
+    background:#113e35;
+    color:#8ef0c7;
+    font-size:10px;
+    font-weight:950;
+    white-space:nowrap;
+  }
+
+  .savebar{
+    margin-top:auto;
+    padding:8px 14px 11px;
+    display:grid;
+    grid-template-columns:56px 1fr 56px;
+    gap:9px;
+  }
+
+  .round-action,
+  .save{
+    height:56px;
+    border:0;
+    border-radius:18px;
+    color:var(--ink);
+    font-family:inherit;
+    font-weight:900;
+  }
+
+  .round-action{
+    background:#12313d;
+    border:1px solid rgba(255,255,255,.09);
+    color:#c8e2eb;
+    font-size:18px;
+  }
+
+  .save{
+    background:var(--green);
+    color:var(--green-ink);
+    box-shadow:0 10px 22px rgba(55,211,156,.3);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    font-size:17px;
+  }
+
+  .save span{
+    font-size:10px;
+    opacity:.78;
+    letter-spacing:.2px;
+  }
+
+  .rationale{
+    width:390px;
+    background:#101319;
+    border:1px solid #272e37;
+    border-radius:14px;
+    padding:11px 13px;
+    color:#ced9df;
+    font-size:12px;
+    line-height:1.42;
+  }
+
+  .rationale strong{color:#fff;}
+  .rationale p{margin:0 0 6px;}
+  .rationale p:last-child{margin-bottom:0;}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="FishingLogger Log Catch screen concept: drag-the-fish ruler hero">
+    <div class="notch"></div>
+
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="right">
+        <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>5G</span>
+        <span class="battery" aria-hidden="true"></span>
+      </span>
+    </div>
+
+    <section class="app">
+      <header class="topbar">
+        <div class="title">
+          <strong>Log Catch</strong>
+          <span>Lake Oahe trip defaults</span>
+        </div>
+        <div class="top-actions">
+          <div class="mode-pill">Voice</div>
+          <div class="mode-pill live">GPS frozen</div>
+        </div>
+      </header>
+
+      <section class="ruler-card" aria-label="Length ruler hero showing 18.5 inches">
+        <div class="hero-meta">
+          <div class="length-copy">
+            <span class="eyebrow">Length</span>
+            <div class="length-readout"><span class="num">18.5</span><span class="unit">in</span></div>
+          </div>
+          <div class="sample-badges">
+            <span class="badge">WALLEYE</span>
+            <span class="badge secondary">TYLER</span>
+          </div>
+        </div>
+
+        <div class="board">
+          <div class="mark-labels" aria-hidden="true">
+            <span>0</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span>
+          </div>
+          <div class="fish" aria-hidden="true">
+            <div class="tail"></div>
+            <div class="body"></div>
+          </div>
+          <div class="nose-line" aria-hidden="true"></div>
+          <div class="grabber" aria-hidden="true"><i></i></div>
+        </div>
+
+        <div class="ruler-controls">
+          <div class="step">-</div>
+          <div class="snap-note">0.25 in precision</div>
+          <div class="step">+</div>
+        </div>
+      </section>
+
+      <section class="chip-tray" aria-label="Catch fields chip tray">
+        <div class="tray-head">
+          <strong>Catch details</strong>
+          <span>Tyler locked defaults</span>
+        </div>
+
+        <div class="chips">
+          <div class="chip two primary">
+            <span class="label">Angler</span>
+            <span class="value">Tyler</span>
+          </div>
+          <div class="chip two">
+            <span class="label">Species</span>
+            <span class="value">Walleye</span>
+          </div>
+          <div class="state-toggle" aria-label="Kept selected, released available">
+            <span class="on">Kept</span>
+            <span>Released</span>
+          </div>
+
+          <div class="chip two">
+            <span class="label">Depth</span>
+            <span class="value">22 ft</span>
+          </div>
+          <div class="chip two">
+            <span class="label">Lure color 1</span>
+            <span class="value small swatch-line"><i class="swatch chartreuse"></i>Chartreuse</span>
+          </div>
+          <div class="chip two">
+            <span class="label">Lure color 2</span>
+            <span class="value small swatch-line"><i class="swatch purple"></i>Purple</span>
+          </div>
+
+          <div class="chip two">
+            <span class="label">Water temp</span>
+            <span class="value">64 F</span>
+          </div>
+          <div class="chip two">
+            <span class="label">Bait</span>
+            <span class="value">Crawler</span>
+          </div>
+          <div class="chip two auto">
+            <span class="label">Location name</span>
+            <span class="value small">North Flat</span>
+          </div>
+
+          <div class="chip three note">
+            <span class="label">Notes</span>
+            <span class="value dim">+ add note</span>
+          </div>
+          <div class="chip three auto">
+            <span class="label">GPS tag</span>
+            <span class="value small">Frozen +/-4 m</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="gps-strip" aria-label="Frozen GPS coordinate tag">
+        <div class="pin" aria-hidden="true"></div>
+        <div>
+          <div class="gps-title">North Flat auto-area</div>
+          <div class="gps-sub">44.4568, -100.3457 at log tap</div>
+        </div>
+        <div class="gps-lock">DISPLAY ONLY</div>
+      </section>
+
+      <footer class="savebar">
+        <button class="round-action" aria-label="cancel">X</button>
+        <button class="save">Save Catch <span>Tyler - walleye - 18.5 in - kept</span></button>
+        <button class="round-action" aria-label="voice">Mic</button>
+      </footer>
+    </section>
+  </main>
+
+  <section class="rationale" aria-label="Concept rationale">
+    <p><strong>Paradigm:</strong> the screen is a measuring board, so the primary task feels like laying the walleye on a ruler instead of filling a form.</p>
+    <p><strong>How it works:</strong> move the fish nose to length, nudge by quarter-inch, then confirm the prefilled chip tray values.</p>
+    <p><strong>No-scroll strategy:</strong> one hero plus a dense six-column chip tray keeps every field, GPS, and save action inside 390x844.</p>
+    <p><strong>Outside-box angle:</strong> length becomes direct manipulation; metadata becomes tackle-box chips. <strong>Risks:</strong> precision drag in rough water and chip density need field testing.</p>
+  </section>
+</body>
+</html>

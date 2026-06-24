@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FishingLogger — Map-centric bottom sheet</title>
+<style>
+  :root{
+    --bg:#0a1622;
+    --water:#16334d;
+    --water2:#1d4a6e;
+    --ink:#0c1a26;
+    --sheet:#101d2a;
+    --sheet2:#16273a;
+    --chip:#1e3144;
+    --chip-line:#2c4660;
+    --txt:#eaf2fa;
+    --dim:#8fa6bb;
+    --accent:#ffcf2e;     /* high-vis amber for primary */
+    --green:#34d164;
+    --blue:#3aa0ff;
+    --chartreuse:#c6ff2e;
+    --purple:#a45cff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:#1c1f24;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;min-height:100vh;}
+  .stage{padding:26px 0 14px;display:flex;flex-direction:column;align-items:center;}
+
+  /* ---------- device frame ---------- */
+  .phone{
+    width:390px;height:844px;position:relative;
+    border-radius:54px;background:#000;
+    box-shadow:0 0 0 11px #1b1d22,0 0 0 13px #2c2f36,0 30px 70px rgba(0,0,0,.55);
+    overflow:hidden;
+  }
+  .screen{position:absolute;inset:0;border-radius:54px;overflow:hidden;background:var(--bg);
+    display:flex;flex-direction:column;}
+
+  /* status bar */
+  .status{height:46px;flex:0 0 46px;position:relative;z-index:30;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 28px 6px;color:#fff;font-size:14px;font-weight:600;pointer-events:none;}
+  .notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);
+    width:122px;height:33px;background:#000;border-radius:20px;z-index:31;}
+  .status .r{display:flex;gap:7px;align-items:center;font-size:13px;}
+
+  /* ---------- MAP region (top) ---------- */
+  .map{position:relative;flex:0 0 318px;overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 30% 0%, #1b3d5a 0%, #122c43 45%, #0c2032 100%);
+  }
+  .map svg{position:absolute;inset:0;width:100%;height:100%;}
+  /* top app bar over map */
+  .appbar{position:absolute;top:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 14px 0;}
+  .barbtn{background:rgba(8,18,28,.62);backdrop-filter:blur(6px);
+    color:#fff;border:1px solid rgba(255,255,255,.14);
+    height:40px;padding:0 14px;border-radius:13px;font-size:15px;font-weight:600;
+    display:flex;align-items:center;gap:6px;}
+  .title{color:#fff;font-size:16px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.6);}
+
+  /* trip-default banner */
+  .tripbar{position:absolute;top:54px;left:14px;right:14px;z-index:20;
+    background:rgba(8,18,28,.55);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;
+    height:30px;display:flex;align-items:center;gap:8px;padding:0 11px;
+    color:var(--dim);font-size:12px;font-weight:600;}
+  .tripbar b{color:#dceaf6;}
+  .tripbar .gear{margin-left:auto;color:#cfe0ef;font-size:14px;}
+
+  /* frozen pin + area label */
+  .arealabel{position:absolute;z-index:15;left:50%;top:118px;transform:translate(-50%,0);
+    background:rgba(255,207,46,.16);border:1px solid rgba(255,207,46,.6);
+    color:#ffe48a;font-size:12px;font-weight:700;letter-spacing:.3px;
+    padding:4px 10px;border-radius:20px;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .pinwrap{position:absolute;z-index:16;left:50%;top:178px;transform:translate(-50%,-50%);
+    display:flex;flex-direction:column;align-items:center;}
+  .pulse{position:absolute;width:64px;height:64px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,207,46,.35) 0%,rgba(255,207,46,0) 70%);
+    animation:pulse 2.4s ease-out infinite;}
+  @keyframes pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+  .pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+    background:var(--accent);border:2px solid #fff;
+    box-shadow:0 4px 10px rgba(0,0,0,.5);}
+  .pin::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;
+    background:#0c1a26;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);}
+  .frozen{margin-top:14px;background:rgba(8,18,28,.7);border:1px solid rgba(255,255,255,.16);
+    color:#bfe6ff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;
+    display:flex;align-items:center;gap:5px;white-space:nowrap;}
+
+  /* GPS readout chip (display only) */
+  .gps{position:absolute;z-index:18;left:14px;bottom:10px;
+    background:rgba(8,18,28,.66);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.12);border-radius:11px;
+    padding:6px 10px;color:#cfe0ef;font-size:11px;line-height:1.35;
+    font-variant-numeric:tabular-nums;}
+  .gps .lab{color:#7fa9c9;font-size:9px;letter-spacing:.6px;font-weight:700;text-transform:uppercase;}
+  .acc{color:var(--green);font-weight:700;}
+  /* water-temp mini chip over map, right */
+  .wtemp{position:absolute;z-index:18;right:14px;bottom:10px;
+    background:rgba(8,18,28,.66);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.12);border-radius:11px;
+    padding:6px 11px;color:#dceaf6;font-size:13px;font-weight:700;
+    display:flex;align-items:center;gap:6px;}
+  .wtemp small{color:#7fa9c9;font-size:9px;letter-spacing:.5px;display:block;font-weight:700;text-transform:uppercase;}
+
+  /* ---------- BOTTOM SHEET ---------- */
+  .sheet{flex:1 1 auto;background:linear-gradient(180deg,var(--sheet) 0%,#0c1722 100%);
+    border-radius:22px 22px 0 0;margin-top:-16px;position:relative;z-index:25;
+    box-shadow:0 -10px 30px rgba(0,0,0,.45);
+    padding:8px 14px 8px;display:flex;flex-direction:column;gap:7px;}
+  .grab{width:38px;height:5px;border-radius:3px;background:#33485e;margin:2px auto 1px;}
+
+  .row{display:flex;gap:8px;align-items:stretch;}
+  .lbl{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--dim);
+    text-transform:uppercase;margin:0 0 3px 2px;display:flex;align-items:center;gap:5px;}
+  .lbl .auto{color:#5f7d97;font-weight:700;font-size:8.5px;border:1px solid #33485e;
+    padding:0 4px;border-radius:5px;letter-spacing:.4px;}
+
+  /* angler segmented + species */
+  .seg{display:flex;background:var(--chip);border:1px solid var(--chip-line);
+    border-radius:13px;padding:3px;gap:3px;flex:1;}
+  .seg button{flex:1;border:none;background:transparent;color:var(--dim);
+    font-size:14px;font-weight:700;height:38px;border-radius:10px;display:flex;
+    align-items:center;justify-content:center;gap:5px;}
+  .seg button.on{background:var(--accent);color:#1a1300;box-shadow:0 2px 6px rgba(255,207,46,.35);}
+  .seg .add{flex:0 0 40px;color:#cfe0ef;font-size:20px;font-weight:600;}
+  .ava{width:20px;height:20px;border-radius:50%;background:#3a5470;color:#fff;
+    font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .seg button.on .ava{background:#1a1300;color:var(--accent);}
+
+  .chip{flex:1;background:var(--chip);border:1px solid var(--chip-line);border-radius:13px;
+    height:44px;display:flex;align-items:center;justify-content:center;gap:7px;
+    color:var(--txt);font-size:14px;font-weight:700;padding:0 10px;}
+  .chip .ic{font-size:16px;}
+  .chip .sub{color:var(--dim);font-size:11px;font-weight:600;}
+  .chip.species{flex:0 0 150px;}
+  .chip .dd{color:#5f7d97;font-size:11px;margin-left:auto;}
+
+  /* LENGTH stepper — primary */
+  .length{background:linear-gradient(180deg,#1a3147,#142639);
+    border:1.5px solid #2f5273;border-radius:16px;padding:8px 10px 9px;}
+  .length .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px;}
+  .length .ttl{font-size:10px;font-weight:800;letter-spacing:.7px;color:#9fc7e6;text-transform:uppercase;}
+  .length .hint{font-size:10px;color:#6f93b1;font-weight:600;}
+  .lenrow{display:flex;align-items:center;gap:10px;}
+  .step{width:58px;height:54px;border-radius:14px;background:#22405b;border:1px solid #386084;
+    color:#eaf2fa;font-size:30px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+  .step:active{background:#2c5275;}
+  .lenval{flex:1;text-align:center;}
+  .lenval .num{font-size:40px;font-weight:800;color:#fff;line-height:1;letter-spacing:-1px;
+    font-variant-numeric:tabular-nums;}
+  .lenval .num span{font-size:18px;color:var(--accent);font-weight:700;margin-left:4px;}
+  .lenval .unit{font-size:11px;color:#7fa9c9;font-weight:700;letter-spacing:1px;margin-top:1px;}
+
+  /* kept / released big toggle */
+  .kr{display:flex;gap:8px;}
+  .kr button{flex:1;height:48px;border-radius:14px;border:1.5px solid var(--chip-line);
+    background:var(--chip);color:var(--dim);font-size:15px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;}
+  .kr button .ic{font-size:18px;}
+  .kr button.keep.on{background:var(--green);border-color:var(--green);color:#04210f;}
+  .kr button.rel.on{background:var(--blue);border-color:var(--blue);color:#04182b;}
+
+  /* depth + lure colors row */
+  .lures{display:flex;gap:6px;flex:1;}
+  .lurechip{flex:1;background:var(--chip);border:1px solid var(--chip-line);border-radius:13px;
+    height:44px;display:flex;align-items:center;justify-content:center;gap:7px;
+    color:var(--txt);font-size:13px;font-weight:700;}
+  .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);}
+  .dot.chartreuse{background:var(--chartreuse);}
+  .dot.purple{background:var(--purple);}
+  .dot.none{background:repeating-linear-gradient(45deg,#33485e,#33485e 3px,#1e3144 3px,#1e3144 6px);}
+
+  .depthchip{flex:0 0 96px;background:var(--chip);border:1px solid var(--chip-line);
+    border-radius:13px;height:44px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;color:var(--txt);}
+  .depthchip .v{font-size:18px;font-weight:800;line-height:1;}
+  .depthchip .v span{font-size:11px;color:var(--dim);font-weight:700;}
+  .depthchip .k{font-size:8.5px;color:var(--dim);font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:1px;}
+
+  /* more / optional drawer trigger row */
+  .more{display:flex;gap:6px;}
+  .more .opt{flex:1;background:#16273a;border:1px dashed #33485e;border-radius:11px;
+    height:34px;display:flex;align-items:center;justify-content:center;gap:6px;
+    color:var(--dim);font-size:11.5px;font-weight:700;}
+  .more .opt .v{color:#cfe0ef;}
+
+  /* save + future-mode rail */
+  .saverow{display:flex;gap:8px;align-items:stretch;}
+  .save{flex:1;height:54px;border-radius:16px;background:var(--accent);border:none;
+    color:#1a1300;font-size:18px;font-weight:800;letter-spacing:.3px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    box-shadow:0 6px 16px rgba(255,207,46,.35);}
+  .save small{font-weight:700;font-size:11px;opacity:.7;}
+  .modebtn{width:54px;height:54px;border-radius:16px;background:var(--chip);
+    border:1px solid var(--chip-line);color:#cfe0ef;font-size:22px;
+    display:flex;align-items:center;justify-content:center;position:relative;}
+  .modebtn .soon{position:absolute;top:-5px;right:-4px;background:#3aa0ff;color:#04182b;
+    font-size:7px;font-weight:800;padding:1px 3px;border-radius:5px;letter-spacing:.3px;}
+
+  /* home indicator */
+  .home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+    width:134px;height:5px;border-radius:3px;background:rgba(255,255,255,.5);z-index:40;}
+
+  /* caption */
+  .cap{width:390px;margin-top:14px;color:#aeb8c4;font-size:12px;line-height:1.5;
+    text-align:center;}
+  .cap b{color:#eef3f8;}
+  .cap .pill{display:inline-block;background:#2a2e35;border:1px solid #3a3f48;
+    color:#cdd5df;border-radius:20px;padding:2px 9px;font-size:11px;margin:0 2px;}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <!-- status bar -->
+      <div class="status">
+        <div>9:41</div>
+        <div class="r"><span>📶</span><span>GPS</span><span>🔋</span></div>
+      </div>
+
+      <!-- ===== MAP ===== -->
+      <div class="map">
+        <svg viewBox="0 0 390 318" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <!-- depth shading bands -->
+          <path d="M0,250 C90,210 180,300 270,240 C320,210 360,250 390,230 L390,318 L0,318 Z" fill="#0c2032" opacity=".9"/>
+          <!-- named area polygon highlighted: North Flat -->
+          <path d="M70,70 C150,40 250,55 320,95 C345,150 320,205 250,215 C170,228 95,205 60,150 C50,118 55,90 70,70 Z"
+                fill="rgba(255,207,46,.10)" stroke="rgba(255,207,46,.55)" stroke-width="2" stroke-dasharray="7 5"/>
+          <!-- shoreline -->
+          <path d="M0,40 C70,70 60,140 30,190 C12,220 6,260 0,290" fill="none" stroke="#27506f" stroke-width="3" opacity=".7"/>
+          <path d="M390,30 C330,55 360,120 380,170 C388,200 390,230 388,260" fill="none" stroke="#27506f" stroke-width="3" opacity=".7"/>
+          <!-- boat track (faint) -->
+          <path d="M40,300 C120,270 150,210 210,200 C260,192 250,190 235,182" fill="none"
+                stroke="rgba(58,160,255,.55)" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+        </svg>
+
+        <!-- app bar -->
+        <div class="appbar">
+          <button class="barbtn">✕ Cancel</button>
+          <div class="title">Log Catch</div>
+          <button class="barbtn">↩︎ Undo</button>
+        </div>
+
+        <!-- trip defaults banner -->
+        <div class="tripbar">
+          <span>📋</span><span>Trip: <b>Oahe • Jun 23</b> · defaults loaded</span>
+          <span class="gear">⚙︎ Edit trip</span>
+        </div>
+
+        <!-- highlighted named area -->
+        <div class="arealabel">📍 NORTH FLAT</div>
+
+        <!-- frozen pin -->
+        <div class="pinwrap">
+          <div class="pulse"></div>
+          <div class="pin"></div>
+          <div class="frozen">❄︎ GPS frozen at landing</div>
+        </div>
+
+        <!-- gps readout (display only) -->
+        <div class="gps">
+          <div class="lab">Frozen position</div>
+          44.456789, −100.345678 · <span class="acc">±4 m</span>
+        </div>
+        <!-- water temp -->
+        <div class="wtemp"><small>Water</small>64°F 🌡️</div>
+      </div>
+
+      <!-- ===== BOTTOM SHEET ===== -->
+      <div class="sheet">
+        <div class="grab"></div>
+
+        <!-- Angler segmented (loads that person's defaults) + species -->
+        <div>
+          <div class="lbl">Angler <span class="auto">loads their defaults</span></div>
+          <div class="row">
+            <div class="seg">
+              <button class="on"><span class="ava">T</span>Tyler</button>
+              <button><span class="ava">B</span>Brian</button>
+              <button><span class="ava">B</span>Brent</button>
+              <button class="add">＋</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Species -->
+        <div class="row">
+          <div class="chip species"><span class="ic">🐟</span>Walleye<span class="dd">▾</span></div>
+          <div class="chip"><span class="sub">Tap to change ·</span> perch · pike · +<span class="dd">▾</span></div>
+        </div>
+
+        <!-- LENGTH primary stepper -->
+        <div class="length">
+          <div class="top">
+            <span class="ttl">Length — primary</span>
+            <span class="hint">hold to repeat · 0.25" steps</span>
+          </div>
+          <div class="lenrow">
+            <button class="step">−</button>
+            <div class="lenval">
+              <div class="num">18.5<span>in</span></div>
+              <div class="unit">DRAG OR TAP ± · 0–60"</div>
+            </div>
+            <button class="step">＋</button>
+          </div>
+        </div>
+
+        <!-- Kept / Released -->
+        <div class="kr">
+          <button class="keep on"><span class="ic">🪣</span>Kept</button>
+          <button class="rel"><span class="ic">🌊</span>Released</button>
+        </div>
+
+        <!-- Depth + lure colors -->
+        <div class="row">
+          <div class="depthchip"><div class="k">Depth</div><div class="v">22<span> ft</span></div></div>
+          <div class="lures">
+            <div class="lurechip"><span class="dot chartreuse"></span>Chartreuse</div>
+            <div class="lurechip"><span class="dot purple"></span>Purple</div>
+          </div>
+        </div>
+
+        <!-- optional / Tier-3 drawer (de-emphasized, dashed) -->
+        <div class="more">
+          <div class="opt">🪱 Bait: <span class="v">crawler</span></div>
+          <div class="opt">📝 Notes <span class="v">＋</span></div>
+          <div class="opt">📍 Area: <span class="v">North Flat ✎</span></div>
+        </div>
+
+        <!-- Save + future modes -->
+        <div class="saverow">
+          <button class="save">✓ Save catch <small>(swipe ↑ for more)</small></button>
+          <button class="modebtn">🎙️<span class="soon">VOICE</span></button>
+          <button class="modebtn">🛰️<span class="soon">BLE</span></button>
+        </div>
+      </div>
+
+      <div class="home"></div>
+    </div>
+  </div>
+
+  <div class="cap">
+    <b>Concept: Map-centric bottom sheet</b> — frozen GPS pin + highlighted named area up top; compact chip sheet captures every field with no scroll.<br>
+    <span class="pill">Tier 1 prominent</span>
+    <span class="pill">Tier 3 dashed/auto</span>
+    <span class="pill">390 × 844 · no scroll</span>
+    <span class="pill">per-angler &amp; trip defaults</span>
+    <span class="pill">VOICE / BLE rail</span>
+  </div>
+</div>
+</body>
+</html>

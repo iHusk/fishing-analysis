@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARC SLIDER — FishingLogger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-top: #0b1220;
+    --bg-bot: #0e2230;
+    /* Disciplined palette: amber = active value (length / keep),
+       aqua = positive / kept / depth, ink = everything else. */
+    --amber: #ffb84d;
+    --amber-soft: rgba(255, 184, 77, 0.14);
+    --aqua: #3fd9c9;
+    --aqua-soft: rgba(63, 217, 201, 0.12);
+    --ink: #eaf2f6;
+    --ink-dim: #8ba3b3;
+    --ink-faint: #5e7585;
+    --line: rgba(255, 255, 255, 0.07);
+    --card: rgba(255, 255, 255, 0.035);
+    --card-2: rgba(255, 255, 255, 0.06);
+    --track: rgba(255, 255, 255, 0.09);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: #06090f;
+    font-family: "Hanken Grotesk", sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 18px;
+    padding: 36px 0;
+  }
+
+  /* ---------- iPhone frame ---------- */
+  .device {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    border-radius: 54px;
+    background: linear-gradient(160deg, #1c2530, #0a0e15);
+    box-shadow:
+      0 0 0 12px #05080c,
+      0 0 0 13px #1a222c,
+      0 50px 120px -30px rgba(0,0,0,0.9);
+  }
+
+  .notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 32px;
+    background: #05080c;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    z-index: 50;
+  }
+
+  /* ---------- Inner screen: EXACTLY 390x844, no scroll ---------- */
+  .screen {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    border-radius: 54px;
+    background:
+      radial-gradient(120% 50% at 50% 104%, rgba(63,217,201,0.10), transparent 60%),
+      linear-gradient(176deg, var(--bg-top) 0%, #0c1a26 58%, var(--bg-bot) 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Status bar ---------- */
+  .statusbar {
+    height: 50px;
+    flex: 0 0 50px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 30px 5px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--ink);
+  }
+  .statusbar .right { display: flex; gap: 6px; align-items: center; opacity: 0.9; }
+
+  /* ===========================================================
+     TOP — CALM SUMMARY. Angler + species live. Everything else
+     is a single quiet collapsed chip that opens on tap.
+     =========================================================== */
+  .top {
+    flex: 0 0 auto;
+    padding: 2px 20px 0;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .title {
+    font-family: "Fraunces", serif;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+  }
+  .area-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--aqua);
+    background: var(--aqua-soft);
+    border: 1px solid rgba(63,217,201,0.18);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+
+  /* angler chips + species on one calm row */
+  .identity {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .angler-pick {
+    display: flex;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
+  }
+  .angler-opt {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-dim);
+    background: var(--card);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .angler-opt.sel {
+    background: var(--card-2);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px rgba(63,217,201,0.42) inset;
+    border-color: transparent;
+  }
+  .angler-add {
+    flex: 0 0 42px;
+    color: var(--ink-faint);
+    border: 1px dashed rgba(255,255,255,0.14);
+    background: transparent;
+  }
+  .angler-add.sel { color: var(--ink); }
+
+  .species {
+    flex: 0 0 116px;
+    display: flex; align-items: center; gap: 8px;
+    height: 42px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0 12px;
+    cursor: pointer;
+  }
+  .species .sval { font-size: 15px; font-weight: 700; letter-spacing: 0.2px; }
+  .species .chev { margin-left: auto; color: var(--ink-faint); }
+
+  /* ----- collapsed secondary chips: one quiet value each ----- */
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 0 11px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  #colorChip { flex: 1.6; }    /* swatch + label + "+" need a little more room */
+  .chip.open { box-shadow: 0 0 0 1px rgba(255,184,77,0.40) inset; border-color: transparent; }
+  .chip .ck { font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint); }
+  .chip .cv { font-size: 13.5px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip .ctext { display: flex; flex-direction: column; gap: 2px; line-height: 1.05; min-width: 0; flex: 1; }
+  .chip .swatch {
+    width: 20px; height: 20px; border-radius: 6px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset;
+    flex: 0 0 20px;
+  }
+  .chip .cadd {
+    margin-left: auto;
+    width: 22px; height: 22px;
+    flex: 0 0 22px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-faint);
+    border: 1px dashed rgba(255,255,255,0.16);
+  }
+  .chip .chev { flex: 0 0 auto; }
+  .chip-temp .cv { font-variant-numeric: tabular-nums; }
+
+  /* ----- popovers (progressive disclosure) ----- */
+  .pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0; right: 0;
+    background: #12222e;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 15px;
+    padding: 12px;
+    box-shadow: 0 22px 50px -16px rgba(0,0,0,0.8);
+    z-index: 40;
+    display: none;
+    animation: popIn .18s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .pop.show { display: block; }
+  @keyframes popIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* color popover: named rail wraps in a calm grid */
+  .pop-colors { left: -4px; }
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 7px;
+  }
+  .color-opt {
+    display: flex; align-items: center; gap: 9px;
+    height: 38px;
+    padding: 0 11px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line);
+    font-size: 13px; font-weight: 700; color: var(--ink-dim);
+    cursor: pointer;
+  }
+  .color-opt .rsw { width: 16px; height: 16px; border-radius: 5px; box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset; flex: 0 0 16px; }
+  .color-opt.sel { color: var(--ink); border-color: transparent; box-shadow: 0 0 0 1px rgba(255,184,77,0.55) inset; background: var(--amber-soft); }
+
+  /* bait popover: 4 radio rows */
+  .bait-list { display: flex; flex-direction: column; gap: 6px; }
+  .bait-row {
+    display: flex; align-items: center; gap: 11px;
+    height: 42px;
+    padding: 0 13px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line);
+    font-size: 14.5px; font-weight: 700; color: var(--ink-dim);
+    cursor: pointer;
+  }
+  .bait-row .radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--ink-faint);
+    flex: 0 0 18px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bait-row.sel { color: var(--ink); border-color: transparent; box-shadow: 0 0 0 1px rgba(63,217,201,0.45) inset; }
+  .bait-row.sel .radio { border-color: var(--aqua); }
+  .bait-row.sel .radio::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--aqua); }
+
+  /* temp popover: inline drag slider */
+  .temp-pop .tp-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .temp-pop .tp-lbl { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint); }
+  .temp-pop .tp-val { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .temp-pop .tp-val .tu { font-size: 13px; color: var(--ink-faint); font-weight: 700; margin-left: 1px; }
+  .temp-slider {
+    position: relative;
+    height: 30px;
+    display: flex; align-items: center;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .temp-rail { position: absolute; left: 0; right: 0; height: 8px; border-radius: 4px; background: var(--track); }
+  .temp-fill { position: absolute; left: 0; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2bb8a9, #5fe7d8); }
+  .temp-knob {
+    position: absolute;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #e7fbf8; border: 4px solid var(--aqua);
+    transform: translateX(-50%);
+    box-shadow: 0 4px 12px -2px rgba(63,217,201,0.5);
+  }
+  .temp-ends { display: flex; justify-content: space-between; margin-top: 7px; font-family: "DM Mono", monospace; font-size: 10px; color: var(--ink-faint); }
+
+  /* ===========================================================
+     STAGE / THUMB ZONE — two stacked arcs, both always live.
+     LENGTH (amber, dominant) + DEPTH (aqua). The ergonomic core.
+     =========================================================== */
+  .stage {
+    flex: 1 1 auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0;
+    padding-bottom: 2px;
+  }
+
+  .arc-block { position: relative; width: 390px; }
+  .arc-svg { display: block; width: 390px; }
+
+  .readout {
+    position: absolute;
+    left: 0; right: 0;
+    text-align: center;
+    pointer-events: none;
+  }
+  .readout .label {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .readout .value {
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .value .unit {
+    font-weight: 600;
+    color: var(--ink-dim);
+    letter-spacing: 0;
+  }
+
+  /* length readout = dominant + amber */
+  .ro-length { top: 26px; }
+  .ro-length .value { font-size: 76px; color: var(--amber); text-shadow: 0 0 40px rgba(255,184,77,0.35); }
+  .ro-length .value .unit { font-size: 26px; margin-left: 3px; }
+
+  /* depth readout = smaller + aqua */
+  .ro-depth { top: 18px; }
+  .ro-depth .label { color: var(--ink-faint); }
+  .ro-depth .value { font-size: 46px; color: var(--aqua); text-shadow: 0 0 30px rgba(63,217,201,0.30); }
+  .ro-depth .value .unit { font-size: 18px; margin-left: 2px; }
+
+  .arc-end-lbl {
+    font-family: "DM Mono", monospace;
+    font-size: 10.5px;
+    fill: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  /* ===========================================================
+     BOTTOM — ONE SWIPE BAR replaces toggle + save.
+     Drag RIGHT = Keep & Log (amber). Drag LEFT = Release & Log (aqua).
+     =========================================================== */
+  .swipebar-wrap {
+    flex: 0 0 auto;
+    padding: 6px 20px 26px;
+  }
+  .swipebar {
+    position: relative;
+    height: 70px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.045);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    touch-action: none;
+  }
+  /* directional intent washes, revealed as you drag */
+  .sb-side {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    pointer-events: none;
+    opacity: 0.5;
+    transition: opacity .15s ease;
+  }
+  .sb-release { left: 0; justify-content: flex-start; padding-left: 22px; color: var(--aqua); }
+  .sb-keep    { right: 0; justify-content: flex-end;  padding-right: 22px; color: var(--amber); }
+  .sb-release svg { margin-right: 8px; }
+  .sb-keep svg    { margin-left: 8px; }
+
+  /* the draggable grip knob, default biased toward Keep */
+  .sb-knob {
+    position: absolute;
+    top: 6px; bottom: 6px;
+    width: 122px;
+    border-radius: 15px;
+    background: linear-gradient(150deg, #ffc262, var(--amber));
+    box-shadow: 0 10px 26px -10px rgba(255,184,77,0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: #20150a;
+    cursor: grab;
+    z-index: 3;
+    transition: background .25s ease, box-shadow .25s ease;
+    will-change: left;
+  }
+  .sb-knob:active { cursor: grabbing; }
+  .sb-knob .kb-action { font-size: 14px; font-weight: 800; letter-spacing: 0.2px; display: flex; align-items: center; gap: 6px; }
+  .sb-grip { display: flex; gap: 3px; opacity: 0.55; }
+  .sb-grip span { width: 3px; height: 3px; border-radius: 50%; background: #20150a; }
+
+  .home-indicator {
+    position: absolute;
+    bottom: 9px; left: 50%;
+    transform: translateX(-50%);
+    width: 134px; height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.22);
+    z-index: 60;
+  }
+
+  /* committed-state flash */
+  .swipebar.committed .sb-knob { width: calc(100% - 12px) !important; }
+
+  /* ---------- caption ---------- */
+  .caption {
+    font-family: "DM Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: #57707f;
+    text-transform: uppercase;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .top { animation: fadeUp 0.7s 0.05s cubic-bezier(.2,.8,.2,1) both; }
+  .stage { animation: fadeUp 0.8s 0.18s cubic-bezier(.2,.8,.2,1) both; }
+  .swipebar-wrap { animation: fadeUp 0.8s 0.3s cubic-bezier(.2,.8,.2,1) both; }
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="notch"></div>
+    <div class="screen" id="screen">
+
+      <!-- status bar -->
+      <div class="statusbar">
+        <div class="time">9:41</div>
+        <div class="right">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#eaf2f6"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#eaf2f6"/><rect x="10" y="1.5" width="3" height="10.5" rx="1" fill="#eaf2f6" opacity="0.4"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#eaf2f6" opacity="0.4"/></svg>
+          <svg width="22" height="12" viewBox="0 0 22 12" fill="none"><rect x="0.5" y="0.5" width="18" height="11" rx="3" stroke="#eaf2f6" opacity="0.5"/><rect x="2" y="2" width="13" height="8" rx="1.5" fill="#3fd9c9"/><rect x="19.5" y="4" width="1.5" height="4" rx="0.75" fill="#eaf2f6" opacity="0.5"/></svg>
+        </div>
+      </div>
+
+      <!-- ===================== TOP: calm summary ===================== -->
+      <div class="top">
+        <div class="header-row">
+          <div class="title">Log catch</div>
+          <div class="area-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.6 7-12A7 7 0 0 0 5 9c0 6.4 7 12 7 12Z" stroke="#3fd9c9" stroke-width="2"/><circle cx="12" cy="9" r="2.4" fill="#3fd9c9"/></svg>
+            North Flat
+          </div>
+        </div>
+
+        <!-- ANGLER chips + SPECIES -->
+        <div class="identity">
+          <div class="angler-pick" id="anglerPick">
+            <div class="angler-opt sel">Tyler</div>
+            <div class="angler-opt">Brian</div>
+            <div class="angler-opt">Brent</div>
+            <div class="angler-opt angler-add">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <div class="species" id="speciesBtn">
+            <svg width="22" height="14" viewBox="0 0 40 22" fill="none"><path d="M3 11c6-8 18-9 26-4 3-2 6-3 9-3-2 3-2 5 0 7-3 0-6-1-9-3-8 5-20 4-26-4Z" fill="#3fd9c9" opacity="0.85"/><circle cx="9" cy="9.5" r="1.3" fill="#0e2230"/></svg>
+            <span class="sval">Walleye</span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 9l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+
+        <!-- COLLAPSED SECONDARY: color · bait · temp -->
+        <div class="chips">
+
+          <!-- COLOR 1 only, "+" adds more -->
+          <div class="chip" id="colorChip">
+            <span class="swatch" id="colorSwatch" style="background:#c8e64a"></span>
+            <div class="ctext">
+              <span class="ck">Color 1</span>
+              <span class="cv" id="colorVal">Chartreuse</span>
+            </div>
+            <div class="cadd" id="colorAdd" title="Add color">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            </div>
+
+            <div class="pop pop-colors" id="colorPop">
+              <div class="color-grid" id="colorGrid">
+                <div class="color-opt sel" data-name="Chartreuse" data-c="#c8e64a"><span class="rsw" style="background:#c8e64a"></span>Chartreuse</div>
+                <div class="color-opt" data-name="Purple" data-c="#8a5cd6"><span class="rsw" style="background:#8a5cd6"></span>Purple</div>
+                <div class="color-opt" data-name="White" data-c="#f4f6f8"><span class="rsw" style="background:#f4f6f8"></span>White</div>
+                <div class="color-opt" data-name="Firetiger" data-c="#ff7a1a"><span class="rsw" style="background:linear-gradient(90deg,#ff7a1a 50%,#33b04a 50%)"></span>Firetiger</div>
+                <div class="color-opt" data-name="Orange" data-c="#ff7a1a"><span class="rsw" style="background:#ff7a1a"></span>Orange</div>
+                <div class="color-opt" data-name="Glow" data-c="#b9f7d0"><span class="rsw" style="background:#b9f7d0"></span>Glow</div>
+                <div class="color-opt" data-name="Gold" data-c="#d9b24a"><span class="rsw" style="background:#d9b24a"></span>Gold</div>
+                <div class="color-opt" data-name="Black" data-c="#1c2530"><span class="rsw" style="background:#1c2530"></span>Black</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BAIT, single value, picker on tap -->
+          <div class="chip chip-bait" id="baitChip">
+            <div class="ctext">
+              <span class="ck">Bait</span>
+              <span class="cv" id="baitVal">Crawler</span>
+            </div>
+
+            <div class="pop bait-pop" id="baitPop">
+              <div class="bait-list" id="baitList">
+                <div class="bait-row sel" data-name="Crawler"><span class="radio"></span>Crawler</div>
+                <div class="bait-row" data-name="Minnow"><span class="radio"></span>Minnow</div>
+                <div class="bait-row" data-name="Lure"><span class="radio"></span>Lure</div>
+                <div class="bait-row" data-name="Jig"><span class="radio"></span>Jig</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WATER TEMP, single value, expands to slider -->
+          <div class="chip chip-temp" id="tempChip">
+            <div class="ctext">
+              <span class="ck">Water temp</span>
+              <span class="cv"><span id="tempVal">64</span>°</span>
+            </div>
+
+            <div class="pop temp-pop" id="tempPop">
+              <div class="tp-head">
+                <span class="tp-lbl">Water temp</span>
+                <span class="tp-val"><span id="tempPopVal">64</span><span class="tu">°F</span></span>
+              </div>
+              <div class="temp-slider" id="tempSlider">
+                <div class="temp-rail"></div>
+                <div class="temp-fill" id="tempFill"></div>
+                <div class="temp-knob" id="tempKnob"></div>
+              </div>
+              <div class="temp-ends"><span>40°</span><span>85°</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ===================== STAGE: two arcs (thumb zone) ===================== -->
+      <div class="stage">
+
+        <!-- LENGTH arc (dominant, amber) -->
+        <div class="arc-block">
+          <div class="readout ro-length">
+            <div class="label">Length</div>
+            <div class="value"><span id="ro-len">18.5</span><span class="unit">in</span></div>
+          </div>
+          <svg class="arc-svg" id="arc-length" viewBox="0 0 390 168" height="168">
+            <defs>
+              <linearGradient id="lenFill" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ff9d36"/>
+                <stop offset="100%" stop-color="#ffd07a"/>
+              </linearGradient>
+              <filter id="glowL" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <radialGradient id="haloL" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0%" stop-color="rgba(255,184,77,0.5)"/>
+                <stop offset="100%" stop-color="rgba(255,184,77,0)"/>
+              </radialGradient>
+            </defs>
+            <g id="ticks-length"></g>
+            <path id="track-length" fill="none" stroke="var(--track)" stroke-width="16" stroke-linecap="round"/>
+            <path id="prog-length" fill="none" stroke="url(#lenFill)" stroke-width="16" stroke-linecap="round" filter="url(#glowL)"/>
+            <circle id="halo-length" r="34" fill="url(#haloL)"/>
+            <circle id="thumb-length" r="16" fill="#fff5e6" stroke="#ffb84d" stroke-width="4"/>
+            <circle id="dot-length" r="5" fill="#ffb84d"/>
+            <text class="arc-end-lbl" id="lmin" text-anchor="start"></text>
+            <text class="arc-end-lbl" id="lmax" text-anchor="end"></text>
+          </svg>
+        </div>
+
+        <!-- DEPTH arc (aqua) -->
+        <div class="arc-block">
+          <div class="readout ro-depth">
+            <div class="label">Depth</div>
+            <div class="value"><span id="ro-dep">22</span><span class="unit">ft</span></div>
+          </div>
+          <svg class="arc-svg" id="arc-depth" viewBox="0 0 390 150" height="150">
+            <defs>
+              <linearGradient id="depFill" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#2bb8a9"/>
+                <stop offset="100%" stop-color="#5fe7d8"/>
+              </linearGradient>
+              <filter id="glowD" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <radialGradient id="haloD" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0%" stop-color="rgba(63,217,201,0.45)"/>
+                <stop offset="100%" stop-color="rgba(63,217,201,0)"/>
+              </radialGradient>
+            </defs>
+            <g id="ticks-depth"></g>
+            <path id="track-depth" fill="none" stroke="var(--track)" stroke-width="14" stroke-linecap="round"/>
+            <path id="prog-depth" fill="none" stroke="url(#depFill)" stroke-width="14" stroke-linecap="round" filter="url(#glowD)"/>
+            <circle id="halo-depth" r="30" fill="url(#haloD)"/>
+            <circle id="thumb-depth" r="14" fill="#e7fbf8" stroke="#3fd9c9" stroke-width="4"/>
+            <circle id="dot-depth" r="4.5" fill="#3fd9c9"/>
+            <text class="arc-end-lbl" id="dmin" text-anchor="start"></text>
+            <text class="arc-end-lbl" id="dmax" text-anchor="end"></text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ===================== BOTTOM: swipe-to-log ===================== -->
+      <div class="swipebar-wrap">
+        <div class="swipebar" id="swipebar">
+          <div class="sb-side sb-release" id="sbRelease">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M3 12c3-5 7-5 9 0 2 5 6 5 9 0M3 12l3-2M3 12l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Release &amp; Log
+          </div>
+          <div class="sb-side sb-keep" id="sbKeep">
+            Keep &amp; Log
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="sb-knob" id="sbKnob">
+            <div class="kb-action" id="kbAction">Keep &amp; Log</div>
+            <div class="sb-grip"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <div class="caption">ARC SLIDER</div>
+
+<script>
+  // =====================================================================
+  // Reusable shallow-arc control (thumb zone). Big radius, center far
+  // below the SVG, so the arc lands as a comfortable shallow sweep.
+  // =====================================================================
+  function makeArc(cfg) {
+    const { svgId, vbH, cy, r, startDeg, endDeg, track, prog, thumb, dot, halo,
+            ticksG, minLbl, maxLbl, valEl, mode } = cfg;
+    const CX = 195, CY = cy, R = r;
+    const A_START = startDeg * Math.PI / 180;
+    const A_END   = endDeg   * Math.PI / 180;
+    const SPAN    = A_END - A_START;
+
+    const svg     = document.getElementById(svgId);
+    const trackEl = document.getElementById(track);
+    const progEl  = document.getElementById(prog);
+    const thumbEl = document.getElementById(thumb);
+    const dotEl   = document.getElementById(dot);
+    const haloEl  = document.getElementById(halo);
+    const ticksEl = document.getElementById(ticksG);
+    const valOut  = document.getElementById(valEl);
+
+    const pt = (a) => [CX + R * Math.cos(a), CY - R * Math.sin(a)];
+    function arcPath(t0, t1) {
+      const [x0,y0] = pt(A_START + SPAN * t0);
+      const [x1,y1] = pt(A_START + SPAN * t1);
+      const large = Math.abs(SPAN * (t1 - t0)) > Math.PI ? 1 : 0;
+      const sweep = SPAN < 0 ? 1 : 0;
+      return `M ${x0} ${y0} A ${R} ${R} 0 ${large} ${sweep} ${x1} ${y1}`;
+    }
+
+    trackEl.setAttribute('d', arcPath(0, 1));
+
+    // ticks (kept minimal — calm)
+    for (let i = 0; i <= 10; i++) {
+      const a = A_START + SPAN * (i/10);
+      const inner = R - 11, outer = R - (i % 5 === 0 ? 22 : 17);
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', CX + inner*Math.cos(a)); ln.setAttribute('y1', CY - inner*Math.sin(a));
+      ln.setAttribute('x2', CX + outer*Math.cos(a)); ln.setAttribute('y2', CY - outer*Math.sin(a));
+      ln.setAttribute('stroke', i % 5 === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.10)');
+      ln.setAttribute('stroke-width', i % 5 === 0 ? 2 : 1.5);
+      ln.setAttribute('stroke-linecap','round');
+      ticksEl.appendChild(ln);
+    }
+
+    // end labels positioned just inside the arc ends
+    const [lx, ly] = pt(A_START); const [rx, ry] = pt(A_END);
+    const minEl = document.getElementById(minLbl), maxEl = document.getElementById(maxLbl);
+    minEl.setAttribute('x', lx + 6); minEl.setAttribute('y', ly + 4); minEl.textContent = mode.min + mode.suffix;
+    maxEl.setAttribute('x', rx - 6); maxEl.setAttribute('y', ry + 4); maxEl.textContent = mode.max + mode.suffix;
+
+    function fmt(v) {
+      if (mode.dec === 0) return Math.round(v).toString();
+      return parseFloat(v.toFixed(mode.dec)).toString();
+    }
+
+    function render() {
+      const t = (mode.value - mode.min) / (mode.max - mode.min);
+      progEl.setAttribute('d', arcPath(0, Math.max(t, 0.001)));
+      const [tx, ty] = pt(A_START + SPAN * t);
+      thumbEl.setAttribute('cx', tx); thumbEl.setAttribute('cy', ty);
+      dotEl.setAttribute('cx', tx);   dotEl.setAttribute('cy', ty);
+      haloEl.setAttribute('cx', tx);  haloEl.setAttribute('cy', ty);
+      valOut.textContent = fmt(mode.value);
+    }
+
+    function svgPoint(ev) {
+      const rect = svg.getBoundingClientRect();
+      return [ (ev.clientX - rect.left) / rect.width * 390,
+               (ev.clientY - rect.top) / rect.height * vbH ];
+    }
+    function updateFromPoint(sx, sy) {
+      const ang = Math.atan2(CY - sy, sx - CX);
+      let t = (ang - A_START) / SPAN;
+      t = Math.max(0, Math.min(1, t));
+      let v = mode.min + t * (mode.max - mode.min);
+      v = Math.round(v / mode.step) * mode.step;
+      v = Math.max(mode.min, Math.min(mode.max, v));
+      mode.value = v;
+      render();
+    }
+
+    let dragging = false;
+    function start(e){ dragging = true; const ev = e.touches ? e.touches[0] : e; const [x,y]=svgPoint(ev); updateFromPoint(x,y); e.preventDefault(); }
+    function move(e){ if(!dragging) return; const ev = e.touches ? e.touches[0] : e; const [x,y]=svgPoint(ev); updateFromPoint(x,y); e.preventDefault(); }
+    function end(){ dragging = false; }
+    svg.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    svg.addEventListener('touchstart', start, { passive:false });
+    svg.addEventListener('touchmove', move, { passive:false });
+    svg.addEventListener('touchend', end);
+
+    return { render, mode };
+  }
+
+  // ---- LENGTH: 8–40", sample 18.5 (no 0.25 snap → 0.5 steps) ----
+  const lengthArc = makeArc({
+    svgId:'arc-length', vbH:168, cy:300, r:250, startDeg:152, endDeg:28,
+    track:'track-length', prog:'prog-length', thumb:'thumb-length',
+    dot:'dot-length', halo:'halo-length', ticksG:'ticks-length',
+    minLbl:'lmin', maxLbl:'lmax', valEl:'ro-len',
+    mode:{ min:8, max:40, step:0.5, value:18.5, dec:1, suffix:'"' }
+  });
+
+  // ---- DEPTH: 0–60 ft, sample 22 ----
+  const depthArc = makeArc({
+    svgId:'arc-depth', vbH:150, cy:270, r:230, startDeg:150, endDeg:30,
+    track:'track-depth', prog:'prog-depth', thumb:'thumb-depth',
+    dot:'dot-depth', halo:'halo-depth', ticksG:'ticks-depth',
+    minLbl:'dmin', maxLbl:'dmax', valEl:'ro-dep',
+    mode:{ min:0, max:60, step:1, value:22, dec:0, suffix:'' }
+  });
+
+  // =====================================================================
+  // Top summary: angler chips
+  // =====================================================================
+  const anglerPick = document.getElementById('anglerPick');
+  anglerPick.querySelectorAll('.angler-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      if (opt.classList.contains('angler-add')) return; // "+" — add flow stub
+      anglerPick.querySelectorAll('.angler-opt').forEach(o => o.classList.remove('sel'));
+      opt.classList.add('sel');
+    });
+  });
+
+  // =====================================================================
+  // Progressive disclosure: only one popover open at a time.
+  // =====================================================================
+  const pops = [
+    { chip: 'colorChip', pop: 'colorPop' },
+    { chip: 'baitChip',  pop: 'baitPop'  },
+    { chip: 'tempChip',  pop: 'tempPop'  },
+  ];
+  function closeAllPops(except) {
+    pops.forEach(p => {
+      if (p.pop === except) return;
+      document.getElementById(p.pop).classList.remove('show');
+      document.getElementById(p.chip).classList.remove('open');
+    });
+  }
+  function togglePop(chipId, popId, e) {
+    if (e) e.stopPropagation();
+    const pop = document.getElementById(popId);
+    const chip = document.getElementById(chipId);
+    const willOpen = !pop.classList.contains('show');
+    closeAllPops(willOpen ? popId : null);
+    pop.classList.toggle('show', willOpen);
+    chip.classList.toggle('open', willOpen);
+  }
+  document.addEventListener('click', () => closeAllPops(null));
+
+  // ---- COLOR (Color 1 only by default; "+" / chip opens named rail) ----
+  const colorChip = document.getElementById('colorChip');
+  const colorPop  = document.getElementById('colorPop');
+  colorChip.addEventListener('click', (e) => {
+    // avoid double-trigger when the inner add button is clicked
+    togglePop('colorChip', 'colorPop', e);
+  });
+  document.getElementById('colorGrid').querySelectorAll('.color-opt').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('colorGrid').querySelectorAll('.color-opt').forEach(o => o.classList.remove('sel'));
+      opt.classList.add('sel');
+      document.getElementById('colorVal').textContent = opt.dataset.name;
+      document.getElementById('colorSwatch').style.background =
+        opt.querySelector('.rsw').style.background;
+      closeAllPops(null);
+    });
+  });
+
+  // ---- BAIT (single value; radio picker on tap) ----
+  document.getElementById('baitChip').addEventListener('click', (e) => togglePop('baitChip','baitPop', e));
+  document.getElementById('baitList').querySelectorAll('.bait-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('baitList').querySelectorAll('.bait-row').forEach(r => r.classList.remove('sel'));
+      row.classList.add('sel');
+      document.getElementById('baitVal').textContent = row.dataset.name;
+      closeAllPops(null);
+    });
+  });
+
+  // ---- TEMP (single value; inline drag slider on tap) ----
+  const TEMP_MIN = 40, TEMP_MAX = 85;
+  let tempV = 64;
+  document.getElementById('tempChip').addEventListener('click', (e) => {
+    togglePop('tempChip','tempPop', e);
+    renderTemp();
+  });
+  const tempSlider = document.getElementById('tempSlider');
+  const tempFill = document.getElementById('tempFill');
+  const tempKnob = document.getElementById('tempKnob');
+  function renderTemp() {
+    const t = (tempV - TEMP_MIN) / (TEMP_MAX - TEMP_MIN);
+    const w = tempSlider.clientWidth || 280;
+    tempFill.style.width = (t * w) + 'px';
+    tempKnob.style.left = (t * w) + 'px';
+    document.getElementById('tempVal').textContent = tempV;
+    document.getElementById('tempPopVal').textContent = tempV;
+  }
+  let tDrag = false;
+  function tempFromX(clientX) {
+    const rect = tempSlider.getBoundingClientRect();
+    let t = (clientX - rect.left) / rect.width;
+    t = Math.max(0, Math.min(1, t));
+    tempV = Math.round(TEMP_MIN + t * (TEMP_MAX - TEMP_MIN));
+    renderTemp();
+  }
+  function tStart(e){ tDrag = true; const ev = e.touches ? e.touches[0] : e; tempFromX(ev.clientX); e.preventDefault(); e.stopPropagation(); }
+  function tMove(e){ if(!tDrag) return; const ev = e.touches ? e.touches[0] : e; tempFromX(ev.clientX); e.preventDefault(); }
+  function tEnd(){ tDrag = false; }
+  tempSlider.addEventListener('mousedown', tStart);
+  window.addEventListener('mousemove', tMove);
+  window.addEventListener('mouseup', tEnd);
+  tempSlider.addEventListener('touchstart', tStart, { passive:false });
+  tempSlider.addEventListener('touchmove', tMove, { passive:false });
+  tempSlider.addEventListener('touchend', tEnd);
+  document.getElementById('tempPop').addEventListener('click', (e) => e.stopPropagation());
+  document.getElementById('colorPop').addEventListener('click', (e) => e.stopPropagation());
+  document.getElementById('baitPop').addEventListener('click', (e) => e.stopPropagation());
+
+  // =====================================================================
+  // SWIPE-TO-LOG bar: drag right = Keep & Log (amber),
+  // drag left = Release & Log (aqua). Default biased toward Keep.
+  // =====================================================================
+  const swipebar = document.getElementById('swipebar');
+  const knob = document.getElementById('sbKnob');
+  const kbAction = document.getElementById('kbAction');
+  const sbKeep = document.getElementById('sbKeep');
+  const sbRelease = document.getElementById('sbRelease');
+
+  const KNOB_W = 122, PAD = 6;
+  let trackW = 0, minLeft = 0, maxLeft = 0, centerLeft = 0, restLeft = 0;
+  function measure() {
+    trackW = swipebar.clientWidth;
+    minLeft = PAD;
+    maxLeft = trackW - KNOB_W - PAD;
+    centerLeft = (minLeft + maxLeft) / 2;
+    restLeft = centerLeft + (maxLeft - centerLeft) * 0.34; // biased toward Keep
+  }
+  function placeKnob(px) {
+    px = Math.max(minLeft, Math.min(maxLeft, px));
+    knob.style.left = px + 'px';
+    // amber when right-of-center (keep), aqua when left (release)
+    const towardKeep = px >= centerLeft;
+    if (towardKeep) {
+      knob.style.background = 'linear-gradient(150deg, #ffc262, var(--amber))';
+      knob.style.boxShadow = '0 10px 26px -10px rgba(255,184,77,0.55)';
+      kbAction.innerHTML = 'Keep &amp; Log';
+      sbKeep.style.opacity = 0.9; sbRelease.style.opacity = 0.4;
+    } else {
+      knob.style.background = 'linear-gradient(150deg, #5fe7d8, var(--aqua))';
+      knob.style.boxShadow = '0 10px 26px -10px rgba(63,217,201,0.55)';
+      kbAction.innerHTML = 'Release &amp; Log';
+      sbRelease.style.opacity = 0.9; sbKeep.style.opacity = 0.4;
+    }
+  }
+
+  let sDrag = false, grabDX = 0, kept = true;
+  function knobLeft() { return parseFloat(knob.style.left) || restLeft; }
+  function sStart(e){
+    sDrag = true;
+    knob.style.transition = 'none';
+    const ev = e.touches ? e.touches[0] : e;
+    grabDX = ev.clientX - swipebar.getBoundingClientRect().left - knobLeft();
+    e.preventDefault();
+  }
+  function sMove(e){
+    if(!sDrag) return;
+    const ev = e.touches ? e.touches[0] : e;
+    const px = ev.clientX - swipebar.getBoundingClientRect().left - grabDX;
+    placeKnob(px);
+    e.preventDefault();
+  }
+  function sEnd(){
+    if(!sDrag) return;
+    sDrag = false;
+    knob.style.transition = 'left .28s cubic-bezier(.2,.8,.2,1), background .25s ease, width .3s ease';
+    const px = knobLeft();
+    const commitKeepAt = maxLeft - (maxLeft - centerLeft) * 0.35;
+    const commitRelAt  = minLeft + (centerLeft - minLeft) * 0.35;
+    if (px >= commitKeepAt) { commit(true); }
+    else if (px <= commitRelAt) { commit(false); }
+    else { placeKnob(restLeft); } // snap back to default
+  }
+  function commit(keepIt) {
+    kept = keepIt;
+    placeKnob(keepIt ? maxLeft : minLeft);
+    swipebar.classList.add('committed');
+    knob.innerHTML = '<div class="kb-action">' +
+      (keepIt
+        ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#20150a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Logged · Kept'
+        : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#07221d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Logged · Released')
+      + '</div>';
+    knob.style.color = keepIt ? '#20150a' : '#07221d';
+    knob.style.cursor = 'default';
+    // demo: reset after a beat so the wireframe stays interactive
+    setTimeout(() => {
+      swipebar.classList.remove('committed');
+      knob.style.color = '#20150a';
+      knob.innerHTML = '<div class="kb-action" id="kbAction">Keep &amp; Log</div><div class="sb-grip"><span></span><span></span><span></span></div>';
+      placeKnob(restLeft);
+    }, 1400);
+  }
+  knob.addEventListener('mousedown', sStart);
+  window.addEventListener('mousemove', sMove);
+  window.addEventListener('mouseup', sEnd);
+  knob.addEventListener('touchstart', sStart, { passive:false });
+  knob.addEventListener('touchmove', sMove, { passive:false });
+  knob.addEventListener('touchend', sEnd);
+
+  // =====================================================================
+  // Count-in on load (length hero), then settle.
+  // =====================================================================
+  function loadIn() {
+    const m = lengthArc.mode;
+    const target = m.value;
+    const dur = 700, t0 = performance.now();
+    function step(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      m.value = Math.round(((m.min + (target - m.min) * ease)) / m.step) * m.step;
+      lengthArc.render();
+      if (p < 1) requestAnimationFrame(step);
+      else { m.value = target; lengthArc.render(); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  lengthArc.render();
+  depthArc.render();
+  measure();
+  placeKnob(restLeft);
+  knob.style.transition = 'left .28s cubic-bezier(.2,.8,.2,1), background .25s ease, width .3s ease';
+  loadIn();
+
+  // ---- assert no scroll/clip in default state ----
+  window.addEventListener('load', () => {
+    measure();
+    placeKnob(restLeft);
+    // assert default (settled) state — entrance transforms must not be mid-flight
+    setTimeout(() => {
+      const s = document.getElementById('screen');
+      console.assert(s.scrollHeight === s.clientHeight,
+        'SCREEN MUST NOT SCROLL: scrollHeight=' + s.scrollHeight + ' clientHeight=' + s.clientHeight);
+    }, 1000);
+  });
+</script>
+</body>
+</html>

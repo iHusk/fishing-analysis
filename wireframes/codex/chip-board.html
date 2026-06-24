@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Wireframe 09 - Tactile Chip Board</title>
+<style>
+  :root {
+    --ink: #f8fbff;
+    --muted: #9baab8;
+    --line: rgba(255,255,255,.16);
+    --panel: rgba(9,18,28,.74);
+    --panel-strong: rgba(14,28,42,.92);
+    --green: #45f28f;
+    --blue: #69d9ff;
+    --amber: #ffb044;
+    --orange: #ff7d2f;
+    --chart: #dcff31;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background:
+      radial-gradient(circle at 50% 0, rgba(69,242,143,.14), transparent 34rem),
+      #06090e;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 0 36px;
+  }
+  .phone {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    overflow: hidden;
+    border-radius: 48px;
+    background: #000;
+    box-shadow: 0 0 0 10px #111820, 0 0 0 12px #2c343d, 0 32px 90px rgba(0,0,0,.6);
+  }
+  .notch {
+    position: absolute;
+    z-index: 8;
+    top: 9px;
+    left: 50%;
+    width: 122px;
+    height: 32px;
+    transform: translateX(-50%);
+    background: #000;
+    border-radius: 0 0 20px 20px;
+  }
+  .status {
+    position: absolute;
+    z-index: 9;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 46px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 28px 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #eff7ff;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    padding: 54px 14px 14px;
+    display: grid;
+    grid-template-rows: 62px 604px 106px;
+    gap: 10px;
+    background:
+      linear-gradient(transparent 31px, rgba(255,255,255,.035) 32px),
+      linear-gradient(90deg, transparent 31px, rgba(255,255,255,.035) 32px),
+      radial-gradient(170px 170px at 15% 14%, rgba(105,217,255,.22), transparent 72%),
+      radial-gradient(210px 210px at 88% 78%, rgba(255,176,68,.18), transparent 70%),
+      linear-gradient(180deg, #102d3a 0%, #07111c 44%, #03070c 100%);
+    background-size: auto, 32px 32px, auto, auto, auto;
+  }
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .kicker {
+    color: var(--amber);
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 4px 0 0;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+  .gps {
+    min-width: 124px;
+    border: 1px solid rgba(105,217,255,.38);
+    border-radius: 18px;
+    padding: 8px 9px;
+    background: rgba(4,14,22,.64);
+    color: var(--muted);
+    text-align: right;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1.18;
+    box-shadow: inset 0 0 24px rgba(105,217,255,.07);
+  }
+  .gps b {
+    display: block;
+    color: var(--ink);
+    font-size: 12px;
+  }
+  .board {
+    position: relative;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 30px;
+    padding: 12px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.08), transparent 34%),
+      rgba(7,15,24,.68);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 18px 42px rgba(0,0,0,.36);
+  }
+  .board-head {
+    display: grid;
+    grid-template-columns: 1fr 92px;
+    gap: 8px;
+    margin-bottom: 9px;
+  }
+  .default-card {
+    min-height: 78px;
+    border-radius: 22px;
+    padding: 12px;
+    background:
+      radial-gradient(circle at 88% 20%, rgba(69,242,143,.24), transparent 40px),
+      var(--panel-strong);
+    border: 1px solid rgba(69,242,143,.34);
+  }
+  .default-card span, .save span, .chip span, .popover b span {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 950;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .default-card strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 21px;
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+  .default-card small {
+    display: block;
+    margin-top: 7px;
+    color: rgba(248,251,255,.68);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .confidence {
+    border-radius: 22px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, #56ff9b, #20cb6c);
+    color: #03170d;
+    box-shadow: 0 14px 24px rgba(69,242,143,.22);
+  }
+  .confidence b {
+    font-size: 28px;
+    line-height: .9;
+    letter-spacing: -.05em;
+  }
+  .confidence span {
+    display: block;
+    margin-top: 5px;
+    color: rgba(3,23,13,.72);
+    font-size: 8px;
+    font-weight: 950;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .length-chip, .status-chip {
+    min-height: 112px;
+    border-radius: 26px;
+    border: 1px solid rgba(255,255,255,.18);
+    overflow: hidden;
+  }
+  .length-chip {
+    padding: 12px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.46), transparent 31%),
+      linear-gradient(180deg, #f4ffe7, #c9ff45);
+    color: #101b08;
+  }
+  .length-chip span {
+    color: rgba(16,27,8,.58);
+    font-size: 9px;
+    font-weight: 950;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .length-chip b {
+    display: block;
+    margin-top: 3px;
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 65px;
+    line-height: .78;
+    letter-spacing: -.09em;
+  }
+  .length-chip em {
+    font-style: normal;
+    font-size: 18px;
+    font-weight: 950;
+  }
+  .ruler {
+    height: 16px;
+    margin-top: 11px;
+    background:
+      linear-gradient(90deg, rgba(16,27,8,.54) 1px, transparent 1px) 0 0 / 13px 100%;
+    opacity: .78;
+  }
+  .status-chip {
+    padding: 12px;
+    background:
+      radial-gradient(circle at 75% 25%, rgba(255,176,68,.25), transparent 44px),
+      var(--panel-strong);
+  }
+  .toggle {
+    height: 48px;
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.07);
+  }
+  .toggle div {
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 950;
+  }
+  .toggle .on {
+    background: var(--amber);
+    color: #1b1102;
+    box-shadow: 0 10px 18px rgba(255,176,68,.18);
+  }
+  .status-chip strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 20px;
+    letter-spacing: -.03em;
+  }
+  .chip-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+  }
+  .chip {
+    position: relative;
+    min-height: 58px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.035)),
+      var(--panel);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 16px rgba(0,0,0,.14);
+    font-size: 13px;
+    line-height: 1.06;
+    font-weight: 950;
+  }
+  .chip.wide { grid-column: span 2; }
+  .chip.full { grid-column: 1 / -1; min-height: 50px; }
+  .chip.active {
+    border-color: rgba(220,255,49,.86);
+    box-shadow: inset 0 0 0 1px rgba(220,255,49,.48), 0 12px 20px rgba(220,255,49,.08);
+  }
+  .check {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(69,242,143,.18);
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 950;
+  }
+  .swatch {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    margin-right: 5px;
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,.35);
+    vertical-align: -2px;
+  }
+  .chartreuse { background: var(--chart); }
+  .orange { background: var(--orange); }
+  .popover {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 74px;
+    border: 1px solid rgba(220,255,49,.72);
+    border-radius: 22px;
+    padding: 10px;
+    background: rgba(7,13,18,.96);
+    box-shadow: 0 18px 30px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .popover:after {
+    content: "";
+    position: absolute;
+    left: 86px;
+    bottom: -9px;
+    border-top: 10px solid rgba(220,255,49,.72);
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+  }
+  .popover b {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .popover b i {
+    font-style: normal;
+    color: var(--chart);
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+  }
+  .choice {
+    min-height: 40px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.07);
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 950;
+    text-align: center;
+  }
+  .choice.on {
+    background: var(--chart);
+    color: #121900;
+  }
+  .save-row {
+    display: grid;
+    grid-template-columns: 86px 1fr;
+    gap: 10px;
+  }
+  .voice, .save {
+    border: 0;
+    border-radius: 24px;
+    font-family: inherit;
+  }
+  .voice {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.08);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 950;
+    line-height: 1.05;
+    text-align: center;
+  }
+  .voice b {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 24px;
+    line-height: .8;
+  }
+  .save {
+    position: relative;
+    overflow: hidden;
+    padding: 16px 18px;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,.42), transparent 34%),
+      linear-gradient(180deg, #62dcff, #24a8e9);
+    color: #02131b;
+    box-shadow: 0 18px 34px rgba(36,168,233,.26), inset 0 1px 0 rgba(255,255,255,.56);
+    text-align: left;
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 950;
+    letter-spacing: -.04em;
+  }
+  .save:after {
+    content: ">";
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-54%);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(2,19,27,.16);
+    font-size: 28px;
+    line-height: 1;
+  }
+  .rationale {
+    width: 390px;
+    margin-top: 14px;
+    border: 1px solid #293746;
+    border-radius: 16px;
+    padding: 14px;
+    background: #111922;
+    color: #d5e1ea;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .rationale h2 { margin: 0 0 8px; color: #fff; font-size: 16px; }
+  .rationale p { margin: 6px 0; }
+  .rationale b { color: var(--amber); }
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="status"><span>7:18</span><span>LTE 100%</span></div>
+    <div class="screen">
+      <header class="top">
+        <div>
+          <div class="kicker">09 / pre-filled control surface</div>
+          <h1>Chip Board</h1>
+        </div>
+        <div class="gps"><b>GPS frozen</b>North Flat<br>+/- 4 m</div>
+      </header>
+
+      <section class="board" aria-label="Tactile chip board">
+        <div class="board-head">
+          <div class="default-card">
+            <span>Trip + Tyler defaults</span>
+            <strong>Everything is already selected</strong>
+            <small>Tap one chip to change only what moved.</small>
+          </div>
+          <div class="confidence"><div><b>96%</b><span>default confidence</span></div></div>
+        </div>
+
+        <div class="hero-grid">
+          <div class="length-chip"><span>Length</span><b>18.5</b><em> in</em><div class="ruler"></div></div>
+          <div class="status-chip">
+            <span>Kept vs Released</span>
+            <strong>Kept</strong>
+            <div class="toggle"><div class="on">Kept</div><div>Release</div></div>
+          </div>
+        </div>
+
+        <div class="chip-grid" aria-label="All selected catch fields">
+          <div class="chip"><span>Angler</span>Tyler<i class="check">✓</i></div>
+          <div class="chip"><span>Species</span>walleye<i class="check">✓</i></div>
+          <div class="chip"><span>Depth</span>22 ft<i class="check">✓</i></div>
+          <div class="chip active"><span>Lure color 1</span><i class="swatch chartreuse"></i>Chartreuse<i class="check">✓</i></div>
+          <div class="chip"><span>Lure color 2</span><i class="swatch orange"></i>Orange<i class="check">✓</i></div>
+          <div class="chip"><span>Water temp</span>64 F<i class="check">✓</i></div>
+          <div class="chip"><span>Bait</span>Crawler<i class="check">✓</i></div>
+          <div class="chip"><span>Location name</span>North Flat<i class="check">✓</i></div>
+          <div class="chip"><span>Notes</span>No notes<i class="check">✓</i></div>
+          <div class="chip full"><span>GPS tag</span>44.4568, -100.3457 +/- 4 m - frozen at Log tap</div>
+        </div>
+
+        <div class="popover" aria-label="Open popover hint for lure color 1">
+          <b><span>Popover hint</span>Lure color 1 <i>Chartreuse</i></b>
+          <div class="choices">
+            <div class="choice on">Chartreuse</div>
+            <div class="choice">Purple</div>
+            <div class="choice">White</div>
+            <div class="choice">+ Add</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="save-row" aria-label="Save controls">
+        <button class="voice"><b>...</b>Voice<br>note</button>
+        <button class="save">Save catch<span>all chips selected, GPS locked</span></button>
+      </section>
+    </div>
+  </main>
+
+  <section class="rationale">
+    <h2>Chip Board Rationale</h2>
+    <p><b>Concept:</b> the catch becomes a tactile tackle tray of already-selected chips, with one visible popover demonstrating fast edits.</p>
+    <p><b>Boat fit:</b> the bottom save target is huge, the high-confidence state is obvious, and every required field stays visible without opening a keyboard.</p>
+  </section>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Wireframe 08 - Map-Centric Sheet</title>
+<style>
+  :root{
+    --lake:#0a3340;
+    --deep:#06131a;
+    --ink:#f6fbff;
+    --muted:#8ca5ad;
+    --paper:#e8f7ef;
+    --nav:#76f7be;
+    --cyan:#54dcff;
+    --lime:#d9ff47;
+    --orange:#ff8d39;
+    --kept:#ff6f4f;
+    --line:rgba(226,255,247,.22);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#06090d;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 0 36px}
+  .phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:48px;background:#000;box-shadow:0 0 0 10px #101820,0 0 0 12px #31404a,0 30px 90px rgba(0,0,0,.62)}
+  .notch{position:absolute;top:9px;left:50%;z-index:9;width:122px;height:32px;transform:translateX(-50%);background:#000;border-radius:0 0 20px 20px}
+  .status{position:absolute;z-index:10;top:0;left:0;right:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:13px 28px 0;font-size:13px;font-weight:800;color:#edf9ff}
+  .screen{
+    position:absolute;inset:0;overflow:hidden;padding:52px 12px 12px;
+    background:
+      linear-gradient(180deg,rgba(84,220,255,.16),transparent 34%),
+      linear-gradient(180deg,#082533 0%,#06131a 52%,#03080d 100%);
+  }
+  .content{height:100%;display:grid;grid-template-rows:46px 356px 298px 58px;gap:9px}
+  .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .eyebrow{font-size:10px;font-weight:950;letter-spacing:.1em;text-transform:uppercase;color:var(--nav)}
+  h1{margin:2px 0 0;font-size:23px;line-height:1;letter-spacing:-.035em}
+  .fix{min-width:138px;padding:8px 10px;border-radius:17px;text-align:right;background:linear-gradient(145deg,rgba(118,247,190,.2),rgba(255,255,255,.06));border:1px solid rgba(118,247,190,.5);font-size:10px;line-height:1.18;font-weight:900;color:#bcd2cf;box-shadow:0 0 24px rgba(118,247,190,.14)}
+  .fix b{display:block;color:#fafffb;font-size:12px}
+  .map{
+    position:relative;overflow:hidden;border-radius:31px;background:#0d3a47;border:1px solid rgba(212,255,246,.26);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 22px 55px rgba(0,0,0,.28);
+  }
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .map:after{
+    content:"";position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),
+      linear-gradient(0deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:46px 46px;mix-blend-mode:screen;opacity:.36;
+  }
+  .depth-pill{position:absolute;display:grid;place-items:center;width:38px;height:25px;border-radius:999px;background:rgba(1,12,16,.48);border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:950;color:#d7faff}
+  .d18{left:42px;top:74px}.d22{left:238px;top:93px}.d24{left:284px;top:236px}.d19{left:83px;top:268px}
+  .pin{position:absolute;left:184px;top:145px;width:46px;height:46px;transform:translate(-50%,-50%) rotate(-45deg);border-radius:50% 50% 50% 8px;background:linear-gradient(135deg,#f9ff69,#76f7be);box-shadow:0 0 0 12px rgba(118,247,190,.14),0 0 0 30px rgba(118,247,190,.065),0 14px 28px rgba(0,0,0,.34);z-index:2}
+  .pin:after{content:"";position:absolute;inset:13px;border-radius:50%;background:#082533;box-shadow:inset 0 0 0 3px rgba(255,255,255,.18)}
+  .boat{position:absolute;left:207px;top:119px;width:46px;height:20px;border-radius:60% 40% 46% 54%;background:#f6fbff;z-index:3;transform:rotate(15deg);box-shadow:0 8px 18px rgba(0,0,0,.25)}
+  .boat:before{content:"";position:absolute;left:15px;top:4px;width:14px;height:8px;border-radius:50%;background:#0b3542}
+  .location{
+    position:absolute;left:14px;right:14px;bottom:12px;z-index:4;display:grid;grid-template-columns:1fr 92px;gap:8px;align-items:end;
+  }
+  .loc-main{padding:11px 12px;border-radius:20px;background:rgba(2,15,19,.72);border:1px solid rgba(226,255,247,.25);box-shadow:0 15px 32px rgba(0,0,0,.24)}
+  .loc-main label,.accuracy label,.field label,.toggle label{display:block;margin-bottom:4px;color:#a9bec2;font-size:8px;font-weight:950;letter-spacing:.09em;text-transform:uppercase}
+  .loc-main strong{font-size:24px;line-height:1;letter-spacing:-.045em}
+  .loc-main span{display:block;margin-top:4px;font-size:10px;font-weight:850;color:#bfe7e1}
+  .accuracy{padding:10px 9px;border-radius:18px;background:rgba(118,247,190,.16);border:1px solid rgba(118,247,190,.38);text-align:center;font-size:22px;font-weight:1000;color:#fff}
+  .accuracy small{font-size:10px;color:#bff0dc}
+  .sheet{
+    position:relative;overflow:hidden;border-radius:30px;background:
+      linear-gradient(180deg,rgba(246,255,250,.96),rgba(206,237,226,.94));
+    color:#071317;padding:11px;box-shadow:0 -18px 50px rgba(0,0,0,.26),inset 0 0 0 1px rgba(255,255,255,.52);
+  }
+  .sheet:before{content:"";position:absolute;left:134px;top:7px;width:98px;height:4px;border-radius:999px;background:rgba(7,19,23,.2)}
+  .sheet-grid{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:98px 1fr 91px;grid-template-rows:80px 64px 56px 56px;gap:7px}
+  .length{
+    grid-row:1/3;border-radius:24px;padding:12px 10px;background:#071317;color:white;position:relative;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 12px 24px rgba(7,19,23,.22);
+  }
+  .length label{display:block;color:#9eb4b8;font-size:8px;font-weight:950;letter-spacing:.1em;text-transform:uppercase}
+  .length strong{display:block;margin-top:8px;font-size:50px;line-height:.82;letter-spacing:-.075em}
+  .length span{font-size:12px;color:#caf8ff;font-weight:900}
+  .ruler{position:absolute;left:9px;right:9px;bottom:10px;height:20px;background:repeating-linear-gradient(90deg,rgba(217,255,71,.95) 0 2px,transparent 2px 12px);opacity:.9}
+  .identity{grid-column:2/4;display:grid;grid-template-columns:1fr 1fr 82px;gap:7px}
+  .field,.toggle{border:1px solid rgba(7,19,23,.12);border-radius:20px;background:rgba(255,255,255,.62);padding:10px 9px;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+  .field b,.toggle b{font-size:16px;line-height:1.02}
+  .toggle{background:linear-gradient(145deg,rgba(255,111,79,.92),rgba(255,141,57,.82));color:#fff;border:0}
+  .toggle label{color:rgba(255,255,255,.72)}
+  .depth{grid-column:2;grid-row:2;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .colors{grid-column:3;grid-row:2/4;display:grid;gap:7px}
+  .swatch{border-radius:18px;padding:9px 8px;font-weight:1000;font-size:12px;line-height:1.05;color:#071317;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+  .swatch label{display:block;margin-bottom:6px;font-size:8px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:rgba(7,19,23,.64)}
+  .chart{background:#d9ff47}.orange{background:#ff8d39;color:#fff}.orange label{color:rgba(255,255,255,.74)}
+  .field.temp{grid-column:1;grid-row:3}.field.bait{grid-column:2;grid-row:3}
+  .field.notes{grid-column:1/3;grid-row:4}.field.gps{grid-column:3;grid-row:4;padding-right:7px}
+  .field.gps b{font-size:11px;line-height:1.1}.field.gps small{display:block;margin-top:3px;font-size:9px;font-weight:900;color:#466064}
+  .sheet .field:after{content:"";position:absolute;right:9px;top:11px;width:7px;height:7px;border-radius:50%;background:rgba(118,247,190,.72);box-shadow:0 0 10px rgba(118,247,190,.35)}
+  .confirm{
+    border:0;border-radius:21px;background:linear-gradient(180deg,#76f7be,#54dcff);color:#041117;font-size:18px;font-weight:1000;letter-spacing:-.02em;display:grid;grid-template-columns:1fr 48px;align-items:center;padding:0 6px 0 20px;box-shadow:0 18px 34px rgba(84,220,255,.24)
+  }
+  .confirm small{display:block;margin-top:2px;font-size:9px;font-weight:950;letter-spacing:.11em;text-transform:uppercase;color:#17454b}
+  .confirm .pinmark{width:44px;height:44px;border-radius:50%;background:#06131a;color:#76f7be;display:grid;place-items:center;font-size:18px;font-weight:1000}
+  .rationale{width:390px;margin-top:14px;padding:14px;border-radius:16px;background:#101720;border:1px solid #293746;color:#d4e2e9;font-size:12px;line-height:1.45}
+  .rationale h2{margin:0 0 8px;color:#fff;font-size:16px}.rationale p{margin:6px 0}.rationale b{color:var(--nav)}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="status"><span>7:18</span><span>LTE 100%</span></div>
+    <div class="screen">
+      <div class="content">
+        <header class="top">
+          <div>
+            <div class="eyebrow">08 / frozen chart pin</div>
+            <h1>North Flat Log</h1>
+          </div>
+          <div class="fix"><b>GPS tag frozen</b>44.4568, -100.3457<br>+/- 4 m</div>
+        </header>
+
+        <section class="map" aria-label="Premium marine chart with frozen catch pin">
+          <svg viewBox="0 0 366 356" aria-hidden="true">
+            <defs>
+              <linearGradient id="water" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#14586b"/>
+                <stop offset=".52" stop-color="#0c3340"/>
+                <stop offset="1" stop-color="#09202b"/>
+              </linearGradient>
+              <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <rect width="366" height="356" fill="url(#water)"/>
+            <path d="M1 56 C39 15,79 30,124 58 S226 86,287 43 S337 30,365 57" fill="none" stroke="rgba(198,246,255,.27)" stroke-width="2"/>
+            <path d="M1 126 C46 81,85 100,139 125 S245 153,303 110 S343 96,365 126" fill="none" stroke="rgba(198,246,255,.34)" stroke-width="2"/>
+            <path d="M1 211 C38 179,105 169,158 198 S248 237,309 195 S343 167,365 194" fill="none" stroke="rgba(198,246,255,.3)" stroke-width="2"/>
+            <path d="M1 292 C49 247,94 269,147 292 S257 320,323 274 S345 256,365 283" fill="none" stroke="rgba(198,246,255,.24)" stroke-width="2"/>
+            <path d="M57 102 C84 59,154 52,211 82 C261 108,284 165,251 219 C214 281,127 285,76 243 C29 204,25 151,57 102Z" fill="rgba(118,247,190,.13)" stroke="rgba(118,247,190,.74)" stroke-width="3" filter="url(#glow)"/>
+            <path d="M77 125 C109 91,166 87,210 113 C244 134,260 178,232 213 C201 253,139 259,99 228 C62 200,51 153,77 125Z" fill="none" stroke="rgba(217,255,71,.38)" stroke-width="2"/>
+            <path d="M112 154 C141 132,183 135,210 159 C232 179,225 211,197 226 C164 243,124 231,109 202 C101 184,98 166,112 154Z" fill="none" stroke="rgba(217,255,71,.45)" stroke-width="2"/>
+            <path d="M105 295 C146 269,174 258,204 234 C233 211,255 185,281 150" fill="none" stroke="#f4fbff" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 12" opacity=".92"/>
+            <path d="M72 44 L53 71 L82 69 Z" fill="rgba(255,255,255,.78)"/>
+          </svg>
+          <div class="depth-pill d18">18 ft</div>
+          <div class="depth-pill d22">22 ft</div>
+          <div class="depth-pill d24">24 ft</div>
+          <div class="depth-pill d19">19 ft</div>
+          <div class="pin"></div>
+          <div class="boat"></div>
+          <div class="location">
+            <div class="loc-main">
+              <label>Location name</label>
+              <strong>North Flat</strong>
+              <span>owner-drawn area matched from frozen point</span>
+            </div>
+            <div class="accuracy"><label>accuracy</label>4<small> m</small></div>
+          </div>
+        </section>
+
+        <section class="sheet" aria-label="Compact high-value catch controls">
+          <div class="sheet-grid">
+            <div class="length"><label>Length</label><strong>18.5</strong><span>in</span><div class="ruler"></div></div>
+            <div class="identity">
+              <div class="field"><label>Angler</label><b>Tyler</b></div>
+              <div class="field"><label>Species</label><b>walleye</b></div>
+              <div class="toggle"><label>Kept / released</label><b>Kept</b></div>
+            </div>
+            <div class="depth">
+              <div class="field"><label>Depth</label><b>22 ft</b></div>
+              <div class="field"><label>Voice</label><b>Ready</b></div>
+            </div>
+            <div class="colors">
+              <div class="swatch chart"><label>Lure color 1</label>Chartreuse</div>
+              <div class="swatch orange"><label>Lure color 2</label>Orange</div>
+            </div>
+            <div class="field temp"><label>Water temp</label><b>64 &deg;F</b></div>
+            <div class="field bait"><label>Bait</label><b>Crawler</b></div>
+            <div class="field notes"><label>Notes</label><b>No notes</b></div>
+            <div class="field gps"><label>GPS tag</label><b>44.4568<br>-100.3457</b><small>display only</small></div>
+          </div>
+        </section>
+
+        <button class="confirm" type="button"><span>Log at frozen pin<small>Tyler defaults applied</small></span><span class="pinmark">PIN</span></button>
+      </div>
+    </div>
+  </main>
+
+  <section class="rationale">
+    <h2>Map-Sheet Rationale</h2>
+    <p><b>Paradigm:</b> the frozen GPS point is the hero; the catch sheet confirms fish data without burying location confidence.</p>
+    <p><b>Boat fit:</b> the map answers "did it capture the right spot?" instantly, while length, kept status, depth, lure, and defaults stay thumb-sized.</p>
+    <p><b>Production note:</b> this is strongest when owner-drawn lake areas are trusted; the compact sheet keeps all fields visible without scrolling.</p>
+  </section>
+</body>
+</html>

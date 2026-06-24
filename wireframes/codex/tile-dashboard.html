@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex Wireframe 02 - Premium Tap-Tile Dashboard</title>
+<style>
+  :root{
+    --ink:#f7fbff;
+    --soft:#a9bdc9;
+    --dim:#6f8795;
+    --deck:#071219;
+    --panel:#0d2530;
+    --glass:rgba(255,255,255,.09);
+    --glass2:rgba(255,255,255,.15);
+    --line:rgba(197,232,255,.24);
+    --wake:#33d8ff;
+    --chart:#caff2f;
+    --orange:#ff8a28;
+    --keep:#ffd257;
+    --danger:#ff6b57;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#05080c;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 0 36px}
+  .phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:48px;background:#000;box-shadow:0 0 0 10px #111922,0 0 0 12px #2f3944,0 28px 80px rgba(0,0,0,.58)}
+  .notch{position:absolute;z-index:20;top:9px;left:50%;width:122px;height:32px;transform:translateX(-50%);background:#000;border-radius:0 0 20px 20px}
+  .status{position:absolute;z-index:21;top:0;left:0;right:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:13px 28px 0;color:#eff8ff;font-size:13px;font-weight:800}
+  .screen{
+    position:absolute;inset:0;overflow:hidden;padding:52px 14px 14px;display:flex;flex-direction:column;gap:9px;
+    background:
+      radial-gradient(170px 170px at 49% 29%,rgba(51,216,255,.13),transparent 68%),
+      radial-gradient(180px 130px at 87% 15%,rgba(255,210,87,.19),transparent 70%),
+      linear-gradient(180deg,#123441 0%,#071921 46%,#041017 100%);
+  }
+  .screen:before{
+    content:"";position:absolute;inset:46px 0 0;pointer-events:none;opacity:.34;
+    background:
+      linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:28px 28px;
+    mask-image:linear-gradient(180deg,#000,transparent 82%);
+  }
+  .screen:after{
+    content:"";position:absolute;left:33px;right:33px;top:184px;height:280px;pointer-events:none;border-radius:999px;
+    border:1px solid rgba(116,220,255,.12);box-shadow:0 0 0 38px rgba(116,220,255,.03),0 0 0 78px rgba(116,220,255,.025);
+  }
+  header,.chips,.cockpit,.field-grid,.dock{position:relative;z-index:2}
+  header{height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .title{min-width:0}
+  .eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:950;color:var(--keep)}
+  h1{font-size:21px;line-height:1;margin:3px 0 0;letter-spacing:-.03em}
+  .gps-pill{
+    width:136px;padding:8px 9px;border-radius:16px;text-align:right;border:1px solid rgba(153,228,255,.28);
+    background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.055));box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+    color:var(--soft);font-size:10px;line-height:1.18;font-weight:800;
+  }
+  .gps-pill b{display:block;color:#fff;font-size:12px}
+  .chips{display:grid;grid-template-columns:1fr 1fr 94px;gap:7px}
+  .chip,.tile,.control,.save{
+    border:1px solid var(--line);background:linear-gradient(180deg,var(--glass2),rgba(255,255,255,.055));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 24px rgba(0,0,0,.18);
+  }
+  .chip{height:54px;border-radius:18px;padding:9px 10px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .label{display:block;color:var(--soft);font-size:9px;line-height:1;letter-spacing:.09em;text-transform:uppercase;font-weight:950;white-space:nowrap}
+  .value{display:block;margin-top:5px;color:#fff;font-size:18px;line-height:1;font-weight:950;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tiny{display:block;margin-top:4px;color:var(--dim);font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kept-chip{background:linear-gradient(180deg,#ffe180,#ffc23e);border-color:rgba(255,235,150,.8);color:#201607}
+  .kept-chip .label,.kept-chip .value{color:#201607}
+  .cockpit{
+    height:288px;border-radius:28px;padding:14px;background:
+      linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.045)),
+      radial-gradient(180px 150px at 50% 36%,rgba(51,216,255,.23),transparent 72%);
+    border:1px solid rgba(190,232,255,.29);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 20px 44px rgba(0,0,0,.31);
+    display:grid;grid-template-columns:77px 1fr 77px;gap:9px;overflow:hidden;
+  }
+  .cockpit:before{
+    content:"";position:absolute;inset:10px;border-radius:23px;border:1px solid rgba(255,255,255,.08);pointer-events:none;
+    background:linear-gradient(120deg,rgba(255,255,255,.08),transparent 34%,rgba(255,255,255,.04) 72%,transparent);
+  }
+  .control{border-radius:20px;min-width:0;padding:10px 8px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center}
+  .control b{font-size:20px;line-height:1;font-weight:950}
+  .control small{color:var(--soft);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+  .minus,.plus{margin-top:8px;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(5,15,22,.46);border:1px solid rgba(255,255,255,.13);font-size:26px;font-weight:900;color:#e8faff}
+  .length{
+    position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0;border-radius:26px;
+    background:radial-gradient(circle at 50% 44%,rgba(51,216,255,.2),rgba(3,17,24,.34) 68%,rgba(0,0,0,.18));
+    border:1px solid rgba(165,231,255,.18);
+  }
+  .length svg{position:absolute;inset:3px;width:100%;height:100%;opacity:.9}
+  .length .label{color:#b7f0ff}
+  .number{position:relative;margin-top:12px;font-size:76px;line-height:.82;font-weight:950;letter-spacing:-.08em;text-shadow:0 10px 26px rgba(0,0,0,.42)}
+  .unit{position:relative;margin-top:8px;display:flex;gap:6px;align-items:center;justify-content:center;color:var(--soft);font-size:12px;font-weight:900}
+  .snap{position:relative;margin-top:12px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.13);font-size:10px;font-weight:950;color:#d8f7ff}
+  .field-grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:62px 62px 62px;gap:7px}
+  .tile{min-width:0;border-radius:18px;padding:9px 10px;position:relative;overflow:hidden}
+  .tile:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.13),transparent 45%);pointer-events:none}
+  .tile .label,.tile .value,.tile .tiny{position:relative}
+  .tile.wide{grid-column:span 2}
+  .tile.gps{grid-column:span 2}
+  .swatch{display:inline-block;width:14px;height:14px;border-radius:5px;margin-right:6px;vertical-align:-2px;border:1px solid rgba(255,255,255,.45);box-shadow:inset 0 1px 2px rgba(255,255,255,.35)}
+  .swatch.chart{background:linear-gradient(135deg,#e8ff55,var(--chart))}
+  .swatch.orange{background:linear-gradient(135deg,#ffbd5c,var(--orange))}
+  .dock{display:grid;grid-template-columns:62px 62px 1fr;gap:8px;margin-top:auto}
+  .icon-btn{height:60px;border-radius:20px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.06));display:flex;flex-direction:column;align-items:center;justify-content:center;color:#eaf9ff;font-size:18px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  .icon-btn span{margin-top:4px;color:var(--soft);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+  .save{height:60px;border-radius:20px;border-color:rgba(255,227,132,.85);background:linear-gradient(180deg,#ffe282,#ffc13c);color:#171008;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:20px;font-weight:950;letter-spacing:-.02em;box-shadow:0 16px 28px rgba(255,194,62,.25),inset 0 1px 0 rgba(255,255,255,.44)}
+  .save small{font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.78}
+  .rationale{width:390px;margin-top:14px;background:#111922;border:1px solid #293746;border-radius:16px;padding:14px;color:#d5e1ea;font-size:12px;line-height:1.45}
+  .rationale h2{font-size:16px;margin:0 0 8px;color:#fff}
+  .rationale p{margin:6px 0}
+  .rationale b{color:var(--keep)}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <div class="status"><span>7:18</span><span>LTE 100%</span></div>
+    <div class="screen">
+      <header>
+        <div class="title">
+          <div class="eyebrow">02 / Marine cockpit</div>
+          <h1>Log Catch</h1>
+        </div>
+        <div class="gps-pill"><b>GPS frozen</b>44.4568, -100.3457<br>+/- 4 m</div>
+      </header>
+
+      <section class="chips" aria-label="Fast defaults">
+        <div class="chip">
+          <span class="label">Angler</span>
+          <span class="value">Tyler</span>
+          <span class="tiny">locked lure defaults</span>
+        </div>
+        <div class="chip">
+          <span class="label">Species</span>
+          <span class="value">walleye</span>
+          <span class="tiny">trip default</span>
+        </div>
+        <div class="chip kept-chip">
+          <span class="label">Kept / Released</span>
+          <span class="value">Kept</span>
+        </div>
+      </section>
+
+      <section class="cockpit" aria-label="Primary catch controls">
+        <div class="control">
+          <small>Depth</small>
+          <b>22 ft</b>
+          <div class="minus">-</div>
+          <small>one tap</small>
+        </div>
+        <div class="length">
+          <svg viewBox="0 0 160 220" aria-hidden="true">
+            <defs>
+              <linearGradient id="arc" x1="0" x2="1">
+                <stop offset="0" stop-color="#33d8ff"/>
+                <stop offset=".72" stop-color="#caff2f"/>
+                <stop offset="1" stop-color="#ffd257"/>
+              </linearGradient>
+            </defs>
+            <path d="M28 140a56 56 0 1 1 104 0" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="12" stroke-linecap="round"/>
+            <path d="M28 140a56 56 0 1 1 104 0" fill="none" stroke="url(#arc)" stroke-width="12" stroke-linecap="round" stroke-dasharray="196 65"/>
+            <g stroke="rgba(255,255,255,.42)" stroke-width="2">
+              <path d="M29 154h13"/><path d="M40 105l11 6"/><path d="M79 82v14"/><path d="M120 105l-11 6"/><path d="M131 154h-13"/>
+            </g>
+          </svg>
+          <span class="label">Length</span>
+          <div class="number">18.5</div>
+          <div class="unit">inches <span>+/- 0.25</span></div>
+          <div class="snap">largest thumb target</div>
+        </div>
+        <div class="control">
+          <small>Adjust</small>
+          <b>Length</b>
+          <div class="plus">+</div>
+          <small>glove safe</small>
+        </div>
+      </section>
+
+      <section class="field-grid" aria-label="All catch fields">
+        <div class="tile">
+          <span class="label">Lure color 1</span>
+          <span class="value"><i class="swatch chart"></i>Chartreuse</span>
+        </div>
+        <div class="tile">
+          <span class="label">Lure color 2</span>
+          <span class="value"><i class="swatch orange"></i>Orange</span>
+        </div>
+        <div class="tile">
+          <span class="label">Water temp</span>
+          <span class="value">64 F</span>
+          <span class="tiny">optional</span>
+        </div>
+        <div class="tile">
+          <span class="label">Bait</span>
+          <span class="value">Crawler</span>
+          <span class="tiny">Tyler default</span>
+        </div>
+        <div class="tile wide">
+          <span class="label">Location name</span>
+          <span class="value">North Flat</span>
+          <span class="tiny">auto-filled from frozen GPS</span>
+        </div>
+        <div class="tile">
+          <span class="label">Notes</span>
+          <span class="value">No notes</span>
+          <span class="tiny">tap to dictate</span>
+        </div>
+        <div class="tile gps">
+          <span class="label">GPS tag</span>
+          <span class="value">44.4568, -100.3457 +/- 4 m</span>
+          <span class="tiny">display-only</span>
+        </div>
+      </section>
+
+      <section class="dock" aria-label="Save controls">
+        <div class="icon-btn">BLE<span>catch</span></div>
+        <div class="icon-btn">Mic<span>voice</span></div>
+        <div class="save">Log catch<small>ready with Tyler defaults</small></div>
+      </section>
+    </div>
+  </main>
+
+  <section class="rationale">
+    <h2>Tap-Tile Dashboard Rationale</h2>
+    <p><b>Premium cockpit:</b> the screen reads like a marine instrument cluster, with length as the main gauge and every other field as glossy status hardware.</p>
+    <p><b>Boat ergonomics:</b> length, depth, kept, voice, BLE, and save are large bottom-half targets for one-handed use in glare or chop.</p>
+    <p><b>No-scroll coverage:</b> angler, species, length, kept/released, depth, lure colors, water temp, bait, location, notes, and GPS tag are all visible at once.</p>
+  </section>
+</body>
+</html>

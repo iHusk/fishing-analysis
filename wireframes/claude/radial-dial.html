@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingLogger - Radial Speed Dial</title>
+<style>
+  :root{
+    --lake:#08131a;
+    --deep:#0d2027;
+    --panel:#111c20;
+    --panel-2:#17272c;
+    --panel-3:#223238;
+    --line:#355059;
+    --ink:#f7fbf2;
+    --muted:#a8bbb8;
+    --chartreuse:#cfff24;
+    --mint:#30e0aa;
+    --amber:#ffbf47;
+    --orange:#f47b43;
+    --ice:#8ed8ff;
+    --danger:#ff675d;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#07090a;color:var(--ink)}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+    padding:24px 0 36px;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+  }
+
+  .phone{
+    width:390px;
+    height:844px;
+    position:relative;
+    overflow:hidden;
+    border-radius:54px;
+    background:#020303;
+    box-shadow:
+      0 0 0 11px #1c1e20,
+      0 0 0 14px #34373a,
+      0 28px 80px rgba(0,0,0,.68);
+  }
+  .notch{
+    position:absolute;
+    z-index:5;
+    top:0;
+    left:50%;
+    width:126px;
+    height:32px;
+    transform:translateX(-50%);
+    border-radius:0 0 20px 20px;
+    background:#000;
+  }
+  .screen{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    border-radius:54px;
+    background:
+      radial-gradient(circle at 78% 14%, rgba(207,255,36,.14), transparent 28%),
+      radial-gradient(circle at 12% 65%, rgba(48,224,170,.13), transparent 34%),
+      linear-gradient(160deg,#142228 0%,#071015 58%,#05080a 100%);
+    display:grid;
+    grid-template-rows:48px 92px 342px 72px 180px 76px 34px;
+  }
+  .screen:before{
+    content:"";
+    position:absolute;
+    inset:100px -120px auto -80px;
+    height:370px;
+    background:
+      repeating-radial-gradient(ellipse at 50% 50%,
+        transparent 0 31px,
+        rgba(255,255,255,.035) 32px 33px);
+    transform:rotate(-13deg);
+    pointer-events:none;
+  }
+
+  .status{
+    position:relative;
+    z-index:1;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    padding:0 28px 7px;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+  }
+  .radios{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:#dfe9e6;
+    font-size:12px;
+    letter-spacing:.1px;
+  }
+  .battery{
+    width:24px;
+    height:11px;
+    border:1.5px solid #dfe9e6;
+    border-radius:3px;
+    position:relative;
+  }
+  .battery:before{
+    content:"";
+    position:absolute;
+    right:-4px;
+    top:3px;
+    width:2px;
+    height:5px;
+    border-radius:0 2px 2px 0;
+    background:#dfe9e6;
+  }
+  .battery:after{
+    content:"";
+    position:absolute;
+    inset:2px 5px 2px 2px;
+    border-radius:1px;
+    background:var(--chartreuse);
+  }
+
+  .top{
+    position:relative;
+    z-index:1;
+    padding:6px 16px 0;
+  }
+  .title-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .kicker{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:1.6px;
+    text-transform:uppercase;
+  }
+  h1{
+    margin:1px 0 0;
+    font-size:27px;
+    line-height:1;
+    letter-spacing:-.6px;
+  }
+  .gps-pill{
+    min-width:112px;
+    padding:8px 10px;
+    border:1px solid rgba(207,255,36,.55);
+    border-radius:14px;
+    background:rgba(207,255,36,.12);
+    color:var(--chartreuse);
+    text-align:left;
+    box-shadow:0 0 18px rgba(207,255,36,.1);
+  }
+  .gps-pill b{
+    display:block;
+    color:var(--ink);
+    font-size:12px;
+    line-height:1.05;
+  }
+  .gps-pill span{
+    display:block;
+    margin-top:2px;
+    color:var(--chartreuse);
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+  }
+
+  .angler-strip{
+    margin-top:9px;
+    display:grid;
+    grid-template-columns:1.2fr 1fr 1fr 38px;
+    gap:6px;
+  }
+  .chip{
+    min-width:0;
+    height:38px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--line);
+    border-radius:13px;
+    background:rgba(17,28,32,.92);
+    color:#d8e5e2;
+  }
+  .chip strong{
+    display:block;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    line-height:1;
+  }
+  .chip span{
+    display:block;
+    margin-top:2px;
+    color:var(--muted);
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+  }
+  .chip.selected{
+    border-color:var(--chartreuse);
+    background:linear-gradient(180deg,rgba(207,255,36,.26),rgba(58,72,18,.42));
+    color:#fff;
+    box-shadow:0 0 0 1px rgba(207,255,36,.55),0 8px 22px rgba(207,255,36,.12);
+  }
+  .chip.selected span{color:var(--chartreuse)}
+  .chip.add{
+    font-size:22px;
+    font-weight:800;
+    color:var(--chartreuse);
+  }
+
+  .dial-zone{
+    position:relative;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .dial-card{
+    width:352px;
+    height:336px;
+    position:relative;
+  }
+  .thumb-zone{
+    position:absolute;
+    left:22px;
+    right:22px;
+    bottom:6px;
+    height:146px;
+    border-radius:92px 92px 36px 36px;
+    background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
+    border:1px dashed rgba(207,255,36,.23);
+  }
+  .thumb-zone span{
+    position:absolute;
+    left:50%;
+    bottom:7px;
+    transform:translateX(-50%);
+    color:rgba(207,255,36,.78);
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+  }
+  .dial-svg{
+    position:absolute;
+    left:23px;
+    top:0;
+    width:306px;
+    height:306px;
+    filter:drop-shadow(0 18px 26px rgba(0,0,0,.28));
+  }
+  .arc-base{
+    fill:none;
+    stroke:rgba(13,31,38,.96);
+    stroke-width:22;
+    stroke-linecap:round;
+  }
+  .arc-fill{
+    fill:none;
+    stroke:url(#dialGradient);
+    stroke-width:22;
+    stroke-linecap:round;
+  }
+  .tick{stroke:#4a6a71;stroke-width:2}
+  .tick.major{stroke:#d6e9e2;stroke-width:2.5}
+  .tick-label{
+    fill:var(--muted);
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.6px;
+  }
+  .center{
+    position:absolute;
+    left:50%;
+    top:124px;
+    width:188px;
+    height:188px;
+    transform:translate(-50%,-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.13);
+    background:
+      radial-gradient(circle at 50% 22%,rgba(255,255,255,.12),transparent 36%),
+      linear-gradient(180deg,#17282e,#09151a);
+    box-shadow:
+      inset 0 -12px 34px rgba(0,0,0,.46),
+      0 0 0 9px rgba(255,255,255,.025);
+  }
+  .center .label{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:2px;
+    text-transform:uppercase;
+  }
+  .length{
+    display:flex;
+    align-items:baseline;
+    gap:4px;
+    margin-top:3px;
+  }
+  .length strong{
+    color:#fff;
+    font-size:70px;
+    line-height:.88;
+    letter-spacing:-3px;
+  }
+  .length span{
+    color:var(--chartreuse);
+    font-size:20px;
+    font-weight:900;
+  }
+  .center .hint{
+    color:#cfddd9;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+  }
+  .stepper{
+    margin-top:8px;
+    display:grid;
+    grid-template-columns:34px 34px;
+    gap:8px;
+  }
+  .stepper div{
+    width:34px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#213137;
+    color:#fff;
+    font-size:20px;
+    font-weight:900;
+  }
+  .knob{
+    position:absolute;
+    left:62px;
+    top:128px;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#fbfff1;
+    border:7px solid var(--chartreuse);
+    box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 20px rgba(207,255,36,.35);
+  }
+  .knob:after{
+    content:"";
+    position:absolute;
+    inset:8px;
+    border-radius:50%;
+    background:#1e2b12;
+  }
+
+  .sat{
+    position:absolute;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    border:1px solid var(--line);
+    border-radius:18px;
+    background:rgba(17,28,32,.96);
+    color:#fff;
+    box-shadow:0 12px 22px rgba(0,0,0,.28);
+  }
+  .sat small{
+    display:block;
+    color:var(--muted);
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.9px;
+    text-transform:uppercase;
+  }
+  .sat b{
+    display:block;
+    margin-top:2px;
+    font-size:17px;
+    line-height:1;
+    letter-spacing:-.1px;
+  }
+  .species{
+    left:0;
+    bottom:82px;
+    width:116px;
+    height:72px;
+    padding:0 12px;
+    border-color:rgba(142,216,255,.58);
+  }
+  .species b{color:var(--ice)}
+  .depth{
+    right:0;
+    bottom:82px;
+    width:102px;
+    height:72px;
+    padding:0 12px;
+    border-color:rgba(255,191,71,.58);
+  }
+  .depth b{color:var(--amber);font-size:22px}
+  .depth b span{font-size:12px;color:#ffe4ad}
+  .keep-toggle{
+    position:absolute;
+    z-index:3;
+    left:50%;
+    bottom:20px;
+    width:218px;
+    height:62px;
+    transform:translateX(-50%);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+    padding:5px;
+    border:1px solid rgba(207,255,36,.44);
+    border-radius:20px;
+    background:#0c171b;
+    box-shadow:0 14px 25px rgba(0,0,0,.32);
+  }
+  .keep-toggle div{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:15px;
+    color:var(--muted);
+    font-size:14px;
+    font-weight:950;
+    letter-spacing:.4px;
+    text-transform:uppercase;
+  }
+  .keep-toggle .on{
+    color:#182006;
+    background:linear-gradient(180deg,#dfff48,#a9e51c);
+    box-shadow:0 0 16px rgba(207,255,36,.36);
+  }
+
+  .quick-fields{
+    position:relative;
+    z-index:1;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:5px 16px 8px;
+  }
+  .field{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:rgba(17,28,32,.94);
+  }
+  .field-label{
+    color:var(--muted);
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:.75px;
+    text-transform:uppercase;
+  }
+  .field-value{
+    margin-top:2px;
+    color:#fff;
+    font-size:13px;
+    font-weight:850;
+    line-height:1.05;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .swatch{
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.28);
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.12);
+  }
+  .swatch.one{background:linear-gradient(135deg,#efff3a,#9ad700)}
+  .swatch.two{background:linear-gradient(135deg,#8f62ff,#5026b7 62%,#190b36)}
+  .iconbox{
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    display:grid;
+    place-items:center;
+    border-radius:10px;
+    background:#223238;
+    color:var(--amber);
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:.4px;
+  }
+
+  .lower-fields{
+    position:relative;
+    z-index:1;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:0 16px;
+  }
+  .lower-fields .field{
+    min-height:48px;
+    padding:8px 10px;
+  }
+  .lower-fields .wide{
+    grid-column:1 / -1;
+    min-height:52px;
+    justify-content:space-between;
+  }
+  .lower-fields .wide .field-value{
+    max-width:238px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:var(--chartreuse);
+    font-size:11px;
+    letter-spacing:-.2px;
+  }
+  .tag{
+    flex:0 0 auto;
+    border:1px solid rgba(207,255,36,.38);
+    border-radius:999px;
+    padding:4px 7px;
+    color:var(--chartreuse);
+    background:rgba(207,255,36,.08);
+    font-size:8px;
+    font-weight:950;
+    letter-spacing:.9px;
+    text-transform:uppercase;
+  }
+
+  .actions{
+    position:relative;
+    z-index:1;
+    display:grid;
+    grid-template-columns:54px 54px 1fr;
+    gap:9px;
+    padding:9px 16px 0;
+  }
+  .square-action{
+    height:54px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border:1px dashed rgba(168,187,184,.6);
+    border-radius:17px;
+    background:rgba(17,28,32,.86);
+    color:#d4e1de;
+    font-size:14px;
+    font-weight:950;
+  }
+  .square-action span{
+    margin-top:2px;
+    color:var(--muted);
+    font-size:8px;
+    letter-spacing:.7px;
+  }
+  .save{
+    height:54px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:17px;
+    background:linear-gradient(180deg,#dfff48,#a3dd14);
+    color:#172100;
+    font-size:17px;
+    font-weight:950;
+    letter-spacing:.2px;
+    box-shadow:0 11px 24px rgba(207,255,36,.28);
+  }
+  .home{
+    position:relative;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .home span{
+    width:134px;
+    height:5px;
+    border-radius:10px;
+    background:rgba(255,255,255,.52);
+  }
+
+  .rationale{
+    width:390px;
+    padding:12px 14px;
+    border:1px solid #26373b;
+    border-radius:14px;
+    background:#10181b;
+    color:#dce7e3;
+    font-size:12px;
+    line-height:1.38;
+  }
+  .rationale h2{
+    margin:0 0 8px;
+    color:#fff;
+    font-size:14px;
+    line-height:1;
+  }
+  .rationale p{margin:5px 0}
+  .rationale b{color:var(--chartreuse)}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="390 by 844 iPhone mockup">
+    <div class="notch"></div>
+    <section class="screen">
+      <div class="status">
+        <span>10:42</span>
+        <span class="radios">OFFLINE <span class="battery"></span></span>
+      </div>
+
+      <header class="top">
+        <div class="title-row">
+          <div>
+            <div class="kicker">Fish #14 - tap opened GPS</div>
+            <h1>Log Catch</h1>
+          </div>
+          <div class="gps-pill">
+            <b>North Flat</b>
+            <span>GPS frozen +/-4m</span>
+          </div>
+        </div>
+
+        <div class="angler-strip" aria-label="Angler picker">
+          <div class="chip selected"><strong>Tyler</strong><span>locked defaults</span></div>
+          <div class="chip"><strong>Brian</strong><span>ready</span></div>
+          <div class="chip"><strong>Brent</strong><span>ready</span></div>
+          <div class="chip add">+</div>
+        </div>
+      </header>
+
+      <section class="dial-zone" aria-label="Radial length speed dial">
+        <div class="dial-card">
+          <div class="thumb-zone"><span>thumb reach satellites</span></div>
+
+          <svg class="dial-svg" viewBox="0 0 306 306" role="img" aria-label="Length dial set to 18.5 inches">
+            <defs>
+              <linearGradient id="dialGradient" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#8ed8ff"/>
+                <stop offset=".62" stop-color="#30e0aa"/>
+                <stop offset="1" stop-color="#cfff24"/>
+              </linearGradient>
+            </defs>
+            <path class="arc-base" d="M 68 236 A 118 118 0 1 1 238 236"/>
+            <path class="arc-fill" d="M 68 236 A 118 118 0 0 1 39 127"/>
+            <g>
+              <line class="tick major" x1="68" y1="236" x2="58" y2="246"/>
+              <text class="tick-label" x="45" y="266">0</text>
+              <line class="tick" x1="39" y1="127" x2="28" y2="124"/>
+              <line class="tick major" x1="153" y1="35" x2="153" y2="22"/>
+              <text class="tick-label" x="145" y="17">30</text>
+              <line class="tick" x1="267" y1="127" x2="278" y2="124"/>
+              <line class="tick major" x1="238" y1="236" x2="248" y2="246"/>
+              <text class="tick-label" x="248" y="266">60</text>
+            </g>
+          </svg>
+
+          <div class="knob" aria-hidden="true"></div>
+
+          <div class="center">
+            <div class="label">Length</div>
+            <div class="length"><strong>18.5</strong><span>in</span></div>
+            <div class="hint">quarter-inch snap</div>
+            <div class="stepper" aria-label="Fine tune length">
+              <div>-</div>
+              <div>+</div>
+            </div>
+          </div>
+
+          <div class="sat species">
+            <small>Species</small>
+            <b>Walleye</b>
+            <small>tap to swap</small>
+          </div>
+
+          <div class="sat depth">
+            <small>Depth</small>
+            <b>22 <span>ft</span></b>
+            <small>twist + drag</small>
+          </div>
+
+          <div class="keep-toggle" aria-label="Kept or released toggle">
+            <div class="on">Kept</div>
+            <div>Released</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="quick-fields" aria-label="Lure color details">
+        <div class="field">
+          <span class="swatch one"></span>
+          <div>
+            <div class="field-label">Lure color 1</div>
+            <div class="field-value">Chartreuse</div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="swatch two"></span>
+          <div>
+            <div class="field-label">Lure color 2</div>
+            <div class="field-value">Purple</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lower-fields" aria-label="Optional and automatic fields">
+        <div class="field">
+          <span class="iconbox">64</span>
+          <div>
+            <div class="field-label">Water temp</div>
+            <div class="field-value">64&deg;F</div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="iconbox">BT</span>
+          <div>
+            <div class="field-label">Bait</div>
+            <div class="field-value">Crawler harness</div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="iconbox">AR</span>
+          <div>
+            <div class="field-label">Location name</div>
+            <div class="field-value">North Flat</div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="iconbox">NT</span>
+          <div>
+            <div class="field-label">Notes</div>
+            <div class="field-value">Tap to add</div>
+          </div>
+        </div>
+        <div class="field wide">
+          <div>
+            <div class="field-label">GPS tag - display only</div>
+            <div class="field-value">44.4567, -100.3457 +/-4m</div>
+          </div>
+          <span class="tag">Frozen</span>
+        </div>
+      </section>
+
+      <footer class="actions">
+        <div class="square-action">MIC<span>voice</span></div>
+        <div class="square-action">BLE<span>2-btn</span></div>
+        <div class="save">Save kept catch</div>
+      </footer>
+
+      <div class="home"><span></span></div>
+    </section>
+  </main>
+
+  <section class="rationale" aria-label="Concept rationale">
+    <h2>Radial Speed-Dial Rationale</h2>
+    <p><b>Paradigm:</b> boat-glove rotary control, with length as the only hero decision.</p>
+    <p><b>How it works:</b> drag the big dial or tap +/-; species, kept/released, and depth sit as thumb-reach satellites around it.</p>
+    <p><b>No-scroll strategy:</b> tier-1 controls occupy the dial, lure defaults use a compact row, and auto/optional fields stay in a short bottom strip.</p>
+    <p><b>Outside-box angle:</b> it treats catch logging like a physical fish finder knob, not an iOS form.</p>
+    <p><b>Risks:</b> rotary precision and dense optional fields need daylight, glove, and rough-water testing.</p>
+  </section>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FishingLogger Log Catch - Parallel Drum Wheels</title>
+<style>
+  :root{
+    --lake:#07141c;
+    --lake-2:#0d202c;
+    --panel:#122b39;
+    --panel-2:#173747;
+    --panel-3:#0d2532;
+    --line:#2b4e5d;
+    --line-soft:#1e3a48;
+    --ink:#f4fbff;
+    --muted:#a4b8c3;
+    --dim:#748995;
+    --chartreuse:#c6e82a;
+    --mint:#36e2ad;
+    --orange:#ff9d42;
+    --purple:#7a55de;
+    --ice:#d7eff7;
+    --danger:#ff6f5f;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+    padding:28px 0 38px;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(54,226,173,.12), transparent 28%),
+      radial-gradient(circle at 84% 18%, rgba(255,157,66,.12), transparent 26%),
+      #1a2026;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+  }
+
+  .phone{
+    width:390px;
+    height:844px;
+    position:relative;
+    overflow:hidden;
+    border-radius:54px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.05), transparent 14%),
+      linear-gradient(180deg, var(--lake), var(--lake-2));
+    box-shadow:
+      0 0 0 10px #05080b,
+      0 0 0 13px #26333a,
+      0 28px 70px rgba(0,0,0,.62);
+  }
+
+  .notch{
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+    width:124px;
+    height:34px;
+    border-radius:22px;
+    background:#05080b;
+    z-index:8;
+  }
+
+  .statusbar{
+    height:50px;
+    padding:0 28px;
+    position:relative;
+    z-index:9;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:14px;
+    font-weight:800;
+    color:var(--ink);
+  }
+
+  .screen{
+    position:absolute;
+    inset:50px 0 0;
+    display:flex;
+    flex-direction:column;
+    padding:0 12px 10px;
+  }
+
+  .top{
+    height:70px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+    padding:6px 2px 6px;
+  }
+
+  .title h1{
+    margin:0;
+    font-size:23px;
+    line-height:1;
+    font-weight:900;
+  }
+
+  .title .sub{
+    margin-top:6px;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .pill{
+    min-height:22px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:999px;
+    padding:3px 8px;
+    background:rgba(255,255,255,.055);
+    border:1px solid var(--line-soft);
+    color:var(--muted);
+    font-size:11px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+
+  .pill strong{color:var(--ink);}
+  .pill.green{
+    color:#07261b;
+    background:var(--mint);
+    border-color:var(--mint);
+  }
+
+  .stamp{
+    width:98px;
+    min-height:52px;
+    border-radius:16px;
+    background:#071f1a;
+    border:1px solid rgba(54,226,173,.52);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:7px 9px;
+    color:var(--mint);
+    box-shadow:0 0 24px rgba(54,226,173,.13) inset;
+  }
+
+  .stamp b{
+    font-size:11px;
+    line-height:1;
+  }
+
+  .stamp span{
+    margin-top:4px;
+    color:#baf8e4;
+    font-size:14px;
+    font-weight:900;
+  }
+
+  .defaults{
+    height:48px;
+    border:1px solid var(--line-soft);
+    border-radius:18px;
+    background:rgba(9,27,36,.82);
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1px;
+    overflow:hidden;
+  }
+
+  .default-card{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 12px;
+    background:rgba(255,255,255,.035);
+  }
+
+  .default-card .k,
+  .mini .k,
+  .action-card .k{
+    color:var(--dim);
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+  }
+
+  .default-card .v{
+    margin-top:2px;
+    color:var(--ice);
+    font-size:13px;
+    font-weight:900;
+    line-height:1.05;
+  }
+
+  .wheels{
+    margin-top:8px;
+    height:256px;
+    position:relative;
+    display:grid;
+    grid-template-columns:84px 82px 112px 86px;
+    border-radius:24px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:
+      linear-gradient(90deg, rgba(198,232,42,.06), transparent 36%, rgba(255,157,66,.06)),
+      linear-gradient(180deg, var(--panel-2), var(--panel));
+    box-shadow:0 16px 34px rgba(0,0,0,.22);
+  }
+
+  .select-band{
+    position:absolute;
+    left:0;
+    right:0;
+    top:102px;
+    height:46px;
+    background:rgba(198,232,42,.12);
+    border-top:2px solid rgba(198,232,42,.72);
+    border-bottom:2px solid rgba(198,232,42,.72);
+    box-shadow:0 0 24px rgba(198,232,42,.08) inset;
+    z-index:3;
+    pointer-events:none;
+  }
+
+  .wheel{
+    position:relative;
+    border-right:1px solid rgba(255,255,255,.08);
+    display:flex;
+    flex-direction:column;
+  }
+
+  .wheel:last-child{border-right:0;}
+  .wheel.primary{
+    background:linear-gradient(180deg, rgba(198,232,42,.11), rgba(198,232,42,0));
+  }
+
+  .wheel-head{
+    height:37px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:900;
+    text-transform:uppercase;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+
+  .wheel.primary .wheel-head{color:var(--chartreuse);}
+
+  .reel{
+    height:176px;
+    position:relative;
+    overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg, transparent, #000 19%, #000 81%, transparent);
+    mask-image:linear-gradient(180deg, transparent, #000 19%, #000 81%, transparent);
+  }
+
+  .items{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .item{
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--dim);
+    font-size:14px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+
+  .item.near{color:var(--muted);}
+  .item.sel{
+    height:46px;
+    color:var(--ink);
+    font-size:18px;
+    font-weight:950;
+  }
+
+  .wheel.primary .item.sel{
+    color:var(--chartreuse);
+    font-size:22px;
+  }
+
+  .unit{
+    margin-left:2px;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:900;
+  }
+
+  .wheel-foot{
+    height:43px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 5px;
+    border-top:1px solid rgba(255,255,255,.08);
+    color:var(--dim);
+    text-align:center;
+    font-size:10.5px;
+    font-weight:850;
+  }
+
+  .wheel-foot.add{color:var(--mint);}
+
+  .kept-row{
+    height:54px;
+    margin-top:8px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .big-toggle{
+    border-radius:18px;
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    font-size:15px;
+    font-weight:950;
+    color:var(--muted);
+    background:var(--panel-3);
+  }
+
+  .big-toggle.on{
+    color:#173000;
+    border-color:var(--chartreuse);
+    background:linear-gradient(180deg, #dcff44, var(--chartreuse));
+    box-shadow:0 10px 24px rgba(198,232,42,.22);
+  }
+
+  .big-toggle .icon{
+    width:25px;
+    height:25px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.13);
+  }
+
+  .quick-grid{
+    height:104px;
+    margin-top:8px;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:8px;
+  }
+
+  .mini{
+    border-radius:16px;
+    border:1px solid var(--line-soft);
+    background:rgba(18,43,57,.95);
+    padding:7px 9px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    min-width:0;
+  }
+
+  .mini .v{
+    margin-top:3px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:var(--ink);
+    font-size:14px;
+    font-weight:950;
+    line-height:1.05;
+    min-width:0;
+  }
+
+  .mini.small .v{font-size:13px;}
+  .mini.wide{grid-column:span 2;}
+
+  .swatch{
+    width:16px;
+    height:16px;
+    border-radius:6px;
+    border:1px solid rgba(255,255,255,.34);
+    flex:0 0 auto;
+    box-shadow:0 1px 0 rgba(0,0,0,.3) inset;
+  }
+
+  .chipline{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .auto-card{
+    height:70px;
+    margin-top:8px;
+    border-radius:18px;
+    border:1px solid var(--line-soft);
+    background:
+      linear-gradient(90deg, rgba(54,226,173,.12), transparent 46%),
+      rgba(10,30,40,.95);
+    display:grid;
+    grid-template-columns:1fr 128px;
+    overflow:hidden;
+  }
+
+  .location{
+    padding:9px 12px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    min-width:0;
+  }
+
+  .location .k,
+  .gps .k{
+    color:var(--dim);
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+  }
+
+  .location .name{
+    margin-top:4px;
+    color:var(--ink);
+    font-size:18px;
+    font-weight:950;
+    line-height:1;
+  }
+
+  .location .edit{
+    margin-top:4px;
+    color:var(--mint);
+    font-size:11px;
+    font-weight:850;
+  }
+
+  .gps{
+    border-left:1px solid rgba(255,255,255,.08);
+    padding:8px 10px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:flex-end;
+    text-align:right;
+  }
+
+  .gps .coords{
+    margin-top:4px;
+    color:var(--muted);
+    font-size:10.5px;
+    line-height:1.22;
+    font-weight:850;
+  }
+
+  .gps .acc{
+    margin-top:3px;
+    color:var(--mint);
+    font-size:11px;
+    font-weight:950;
+  }
+
+  .bottom{
+    height:111px;
+    margin-top:auto;
+    display:grid;
+    grid-template-rows:42px 62px;
+    gap:7px;
+  }
+
+  .actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .action-card{
+    border-radius:16px;
+    border:1px dashed var(--line);
+    background:rgba(18,43,57,.72);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:900;
+  }
+
+  .action-card b{
+    color:var(--ink);
+    font-size:15px;
+  }
+
+  .save{
+    width:100%;
+    border:0;
+    border-radius:22px;
+    background:linear-gradient(180deg, #f4ff67, var(--chartreuse));
+    color:#183200;
+    font-size:18px;
+    font-weight:950;
+    box-shadow:0 14px 32px rgba(198,232,42,.27);
+  }
+
+  .save span{
+    display:block;
+    margin-top:2px;
+    font-size:12px;
+    font-weight:900;
+    opacity:.76;
+  }
+
+  .homebar{
+    position:absolute;
+    left:50%;
+    bottom:8px;
+    transform:translateX(-50%);
+    width:135px;
+    height:5px;
+    border-radius:5px;
+    background:rgba(255,255,255,.48);
+  }
+
+  .rationale{
+    width:390px;
+    border-radius:22px;
+    padding:16px 17px;
+    background:#101820;
+    border:1px solid #2a3740;
+    color:#c3d0d7;
+    font-size:13px;
+    line-height:1.42;
+    box-shadow:0 14px 36px rgba(0,0,0,.22);
+  }
+
+  .rationale h2{
+    margin:0 0 10px;
+    color:#f3fbff;
+    font-size:16px;
+    line-height:1.1;
+  }
+
+  .rationale p{
+    margin:7px 0 0;
+  }
+
+  .rationale b{color:#f3fbff;}
+</style>
+</head>
+<body>
+  <main class="phone" aria-label="iPhone mockup of FishingLogger Log Catch">
+    <div class="notch"></div>
+    <div class="statusbar">
+      <span>9:41</span>
+      <span>LTE&nbsp;&nbsp;100%</span>
+    </div>
+
+    <section class="screen">
+      <div class="top">
+        <div class="title">
+          <h1>Log Catch</h1>
+          <div class="sub">
+            <span class="pill green">GPS frozen</span>
+            <span class="pill">Trip <strong>Oahe AM</strong></span>
+          </div>
+        </div>
+        <div class="stamp">
+          <b>TAP TIME</b>
+          <span>9:41:07</span>
+        </div>
+      </div>
+
+      <div class="defaults" aria-label="Current defaults">
+        <div class="default-card">
+          <span class="k">Angler defaults</span>
+          <span class="v">Tyler loads chartreuse + 22 ft</span>
+        </div>
+        <div class="default-card">
+          <span class="k">Fast path</span>
+          <span class="v">Flick length, hit save</span>
+        </div>
+      </div>
+
+      <div class="wheels" aria-label="Parallel picker drum bank">
+        <div class="select-band"></div>
+
+        <div class="wheel">
+          <div class="wheel-head">Angler</div>
+          <div class="reel">
+            <div class="items">
+              <div class="item">Brent</div>
+              <div class="item near">Brian</div>
+              <div class="item sel">Tyler</div>
+              <div class="item near">Add</div>
+              <div class="item">Guest</div>
+            </div>
+          </div>
+          <div class="wheel-foot add">+ person</div>
+        </div>
+
+        <div class="wheel">
+          <div class="wheel-head">Species</div>
+          <div class="reel">
+            <div class="items">
+              <div class="item">perch</div>
+              <div class="item near">pike</div>
+              <div class="item sel">walleye</div>
+              <div class="item near">smallie</div>
+              <div class="item">catfish</div>
+            </div>
+          </div>
+          <div class="wheel-foot add">+ species</div>
+        </div>
+
+        <div class="wheel primary">
+          <div class="wheel-head">Length</div>
+          <div class="reel">
+            <div class="items">
+              <div class="item">18.00<span class="unit">in</span></div>
+              <div class="item near">18.25<span class="unit">in</span></div>
+              <div class="item sel">18.5<span class="unit">in</span></div>
+              <div class="item near">18.75<span class="unit">in</span></div>
+              <div class="item">19.00<span class="unit">in</span></div>
+            </div>
+          </div>
+          <div class="wheel-foot">0-60 in<br>0.25 step</div>
+        </div>
+
+        <div class="wheel">
+          <div class="wheel-head">Depth</div>
+          <div class="reel">
+            <div class="items">
+              <div class="item">20<span class="unit">ft</span></div>
+              <div class="item near">21<span class="unit">ft</span></div>
+              <div class="item sel">22<span class="unit">ft</span></div>
+              <div class="item near">23<span class="unit">ft</span></div>
+              <div class="item">24<span class="unit">ft</span></div>
+            </div>
+          </div>
+          <div class="wheel-foot">0-300 ft<br>1 step</div>
+        </div>
+      </div>
+
+      <div class="kept-row" aria-label="Kept or released toggle">
+        <div class="big-toggle on"><span class="icon">✓</span>Kept</div>
+        <div class="big-toggle"><span class="icon">↩</span>Released</div>
+      </div>
+
+      <div class="quick-grid" aria-label="Common and optional catch fields">
+        <div class="mini">
+          <span class="k">Lure color 1</span>
+          <span class="v"><span class="swatch" style="background:var(--chartreuse)"></span><span class="chipline">chartreuse</span></span>
+        </div>
+        <div class="mini">
+          <span class="k">Lure color 2</span>
+          <span class="v"><span class="swatch" style="background:var(--purple)"></span><span class="chipline">purple</span></span>
+        </div>
+        <div class="mini small">
+          <span class="k">Water temp</span>
+          <span class="v">64°F</span>
+        </div>
+        <div class="mini small">
+          <span class="k">Bait</span>
+          <span class="v chipline">crawler</span>
+        </div>
+        <div class="mini wide small">
+          <span class="k">Notes</span>
+          <span class="v chipline">+ add boat-side note</span>
+        </div>
+      </div>
+
+      <div class="auto-card" aria-label="Auto location and GPS tag">
+        <div class="location">
+          <span class="k">Location name</span>
+          <span class="name">North Flat</span>
+          <span class="edit">auto from frozen GPS · tap to edit</span>
+        </div>
+        <div class="gps">
+          <span class="k">GPS tag</span>
+          <span class="coords">44.45679<br>-100.34568</span>
+          <span class="acc">±4 m locked</span>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <div class="actions">
+          <div class="action-card"><b>Voice</b> ready</div>
+          <div class="action-card"><b>BLE</b> catch key</div>
+        </div>
+        <button class="save" type="button">Save Catch <span>Tyler · walleye · 18.5 in · 22 ft</span></button>
+      </div>
+    </section>
+
+    <div class="homebar"></div>
+  </main>
+
+  <section class="rationale" aria-label="Concept rationale">
+    <h2>Concept 7: Parallel Drum Wheels</h2>
+    <p><b>Paradigm:</b> a bank of always-visible iOS picker drums, with length promoted as the bright primary wheel.</p>
+    <p><b>How it works:</b> Tyler, walleye, 18.5 in, and 22 ft sit on the shared center band; Tyler's locked defaults fill chartreuse, bait, and typical depth.</p>
+    <p><b>No-scroll strategy:</b> four wheels handle tier-1 speed, while compact cards below cover kept/released, lure colors, water temp, bait, notes, location, and GPS inside 390x844.</p>
+    <p><b>Outside-box angle:</b> it treats catch logging like tuning a cockpit instrument panel instead of filling a form.</p>
+    <p><b>Risks:</b> tiny wheel columns may be hard with gloves, and adding new values needs a secondary flow.</p>
+  </section>
+</body>
+</html>
