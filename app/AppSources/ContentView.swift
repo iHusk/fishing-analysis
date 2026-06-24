@@ -8,6 +8,7 @@ import CoreLocation
 struct ContentView: View {
     @EnvironmentObject private var store: Store
     @EnvironmentObject private var loc: LocationManager
+    @EnvironmentObject private var profiles: AnglerProfileStore
 
     @State private var showCatchEntry = false
     @State private var showDayLog = false
@@ -50,13 +51,14 @@ struct ContentView: View {
                     }
                 }
             }
-            // Catch entry
-            .sheet(isPresented: $showCatchEntry) {
+            // Catch entry — full-screen immersive dark "Tape Wheel" (ADR 0006).
+            .fullScreenCover(isPresented: $showCatchEntry) {
                 CatchEntryView { newCatch in
                     handleSaved(newCatch)
                 }
                 .environmentObject(store)
                 .environmentObject(loc)
+                .environmentObject(profiles)
             }
             // Day log
             .sheet(isPresented: $showDayLog) {

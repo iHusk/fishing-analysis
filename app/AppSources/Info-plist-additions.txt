@@ -71,6 +71,18 @@ the display name are listed so you can find them either way.
    not at launch — so a misconfigured build fails loudly only when you press Start
    Track, never silently.)
 
+--------------------------------------------------------------------------------
+6. UIAppFonts  ->  [ Sora.ttf, DMMono-Regular.ttf, DMMono-Medium.ttf ]
+   (display name: "Fonts provided by application")
+   Type:  Array of String
+
+   Registers the bundled Tape-Wheel fonts (Sora display + DM Mono labels, both OFL).
+   The .ttf files live in app/AppSources/Fonts/ and are copied into the Xcode
+   synchronized folder; the synchronized-folder group auto-adds them as bundle
+   resources. FishTheme.display() looks up family "Sora"; FishTheme.mono() looks up
+   PostScript faces "DMMono-Regular" / "DMMono-Medium". If unregistered, iOS silently
+   falls back to the system font (acceptable degradation).
+
 ================================================================================
 Raw plist snippet (reference only)
 ================================================================================
@@ -92,5 +104,12 @@ look like this inside the top-level <dict>:
     <key>UIBackgroundModes</key>
     <array>
         <string>location</string>
+    </array>
+
+    <key>UIAppFonts</key>
+    <array>
+        <string>Sora.ttf</string>
+        <string>DMMono-Regular.ttf</string>
+        <string>DMMono-Medium.ttf</string>
     </array>
 ================================================================================
