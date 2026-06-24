@@ -16,12 +16,14 @@ import SwiftUI
 struct FishingLoggerApp: App {
     @StateObject private var store = Store()
     @StateObject private var loc = LocationManager()
+    @StateObject private var profiles = AnglerProfileStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(loc)
+                .environmentObject(profiles)
                 .onAppear {
                     // The track sink is the bridge from Core Location to disk: every
                     // good fix the LocationManager produces while recording is handed
