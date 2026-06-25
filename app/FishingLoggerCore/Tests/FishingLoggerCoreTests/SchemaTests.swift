@@ -18,7 +18,8 @@ final class SchemaTests: XCTestCase {
         fisherman: String = "Tyler",
         lureColor1: String = "chartreuse",
         locationName: String = "north flat",
-        notes: String = "good fish"
+        notes: String = "good fish",
+        measuredWtLbs: Double? = nil
     ) -> FishCatch {
         FishCatch(
             id: id,
@@ -40,7 +41,8 @@ final class SchemaTests: XCTestCase {
             lon: lon,
             gpsAccuracyM: gpsAccuracyM,
             headingDeg: headingDeg,
-            notes: notes
+            notes: notes,
+            measuredWtLbs: measuredWtLbs
         )
     }
 
@@ -49,7 +51,7 @@ final class SchemaTests: XCTestCase {
     func testCatchesHeaderExact() {
         XCTAssertEqual(
             Schema.catchesHeader,
-            "id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes"
+            "id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,measured_wt_lbs,notes"
         )
     }
 
@@ -107,6 +109,7 @@ final class SchemaTests: XCTestCase {
             "-100.336987",
             "5",
             "270",
+            "",          // measured_wt_lbs (nil by default)
             "good fish"
         ].joined(separator: ",")
         XCTAssertEqual(row, expected)
@@ -141,6 +144,18 @@ final class SchemaTests: XCTestCase {
         let cols = line.components(separatedBy: ",")
         XCTAssertEqual(cols[17], "44.300000")
         XCTAssertEqual(cols[18], "-100.000000")
+    }
+
+    func testWeightColumnRendersAndBlank() {
+        // measured_wt_lbs is the 22nd column (index 21), immediately before notes (22).
+        let withWeight = Schema.catchLine(sampleCatch(measuredWtLbs: 1.8))
+            .components(separatedBy: ",")
+        XCTAssertEqual(withWeight[21], "1.8")   // measured_wt_lbs
+        XCTAssertEqual(withWeight[22], "good fish") // notes stays the final column
+
+        let noWeight = Schema.catchLine(sampleCatch(measuredWtLbs: nil))
+            .components(separatedBy: ",")
+        XCTAssertEqual(noWeight[21], "")        // blank when nil
     }
 
     func testKeptTrueFalse() {
