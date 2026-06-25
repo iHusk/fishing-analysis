@@ -28,24 +28,30 @@ struct TapeInput: View {
     let majorEvery: Int
     /// Number formatting for the readout & major-tick labels (e.g. "%g").
     var format: String = "%g"
+    /// Point size of the big numeric readout — Length is the hero, Depth compact.
+    var readoutSize: CGFloat = 48
+    /// Height of the scrubbable tape band.
+    var tapeHeight: CGFloat = 86
 
     /// Spacing in points between adjacent `step` ticks.
     private let pointsPerStep: CGFloat = 24
-    /// Height of the scrubbable tape band.
-    private let tapeHeight: CGFloat = 86
 
     init(value: Binding<Double>,
          range: ClosedRange<Double>,
          step: Double,
          unit: String,
          majorEvery: Int,
-         format: String = "%g") {
+         format: String = "%g",
+         readoutSize: CGFloat = 48,
+         tapeHeight: CGFloat = 86) {
         self._value = value
         self.range = range
         self.step = step
         self.unit = unit
         self.majorEvery = majorEvery
         self.format = format
+        self.readoutSize = readoutSize
+        self.tapeHeight = tapeHeight
     }
 
     // MARK: - State
@@ -131,12 +137,12 @@ struct TapeInput: View {
     private var readout: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(String(format: format, displayValue))
-                .font(FishTheme.display(48, .bold))
+                .font(FishTheme.display(readoutSize, .bold))
                 .monospacedDigit()
                 .foregroundStyle(FishTheme.ink)
-                .shadow(color: FishTheme.accentGlow.opacity(0.6), radius: 18, y: 2)
+                .shadow(color: FishTheme.accentGlow.opacity(0.6), radius: readoutSize * 0.35, y: 2)
             Text(unit)
-                .font(FishTheme.display(18, .semibold))
+                .font(FishTheme.display(max(13, readoutSize * 0.36), .semibold))
                 .foregroundStyle(FishTheme.inkDim)
                 .alignmentGuide(.firstTextBaseline) { d in d[.firstTextBaseline] }
         }

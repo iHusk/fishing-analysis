@@ -22,6 +22,10 @@ public struct FishCatch: Codable, Equatable, Identifiable {
     public var gpsAccuracyM: Double?
     public var headingDeg: Double?
     public var notes: String
+    /// Measured per-catch weight in pounds (optional; blank in all pre-2026 data).
+    /// Go-forward schema addition (2026-06) — NOT computed; ground-truth for the
+    /// length→weight model calibration.
+    public var measuredWtLbs: Double?
 
     public init(
         id: Int,
@@ -43,7 +47,8 @@ public struct FishCatch: Codable, Equatable, Identifiable {
         lon: Double?,
         gpsAccuracyM: Double?,
         headingDeg: Double?,
-        notes: String
+        notes: String,
+        measuredWtLbs: Double? = nil
     ) {
         self.id = id
         self.uuid = uuid
@@ -65,6 +70,7 @@ public struct FishCatch: Codable, Equatable, Identifiable {
         self.gpsAccuracyM = gpsAccuracyM
         self.headingDeg = headingDeg
         self.notes = notes
+        self.measuredWtLbs = measuredWtLbs
     }
 }
 

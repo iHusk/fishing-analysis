@@ -29,10 +29,14 @@ struct CatchEntryView: View {
     @State private var bait = "Crawler"
     @State private var locationName = ""
 
-    // Water temp lives behind a disclosure (collapsed by default).
+    // Water temp + per-catch weight live behind disclosures (collapsed by default).
     @State private var waterTempOn = false
     @State private var waterTempF: Double = 64
     @State private var tempExpanded = false
+
+    @State private var weightOn = false
+    @State private var weightLbsValue: Double = 2.0
+    @State private var weightExpanded = false
 
     // Lure disclosure: color 2 only appears once the angler asks for it.
     @State private var showColor2 = false
@@ -60,7 +64,7 @@ struct CatchEntryView: View {
 
                 lureRow
                 RadialBaitPicker(selection: $bait)
-                waterTempRow
+                secondaryRow
 
                 Spacer(minLength: 4)
 
@@ -184,11 +188,15 @@ struct CatchEntryView: View {
 
     private var measures: some View {
         VStack(spacing: 10) {
+            // Length is the hero — big readout, tall tape.
             tapeCard(title: "LENGTH") {
-                TapeInput(value: $lengthIn, range: 0...60, step: 0.25, unit: "in", majorEvery: 4)
+                TapeInput(value: $lengthIn, range: 0...60, step: 0.25, unit: "in",
+                          majorEvery: 4, readoutSize: 56, tapeHeight: 92)
             }
+            // Depth is the supporting value — compact readout, shorter tape.
             tapeCard(title: "DEPTH") {
-                TapeInput(value: $depthFt, range: 0...300, step: 0.5, unit: "ft", majorEvery: 2)
+                TapeInput(value: $depthFt, range: 0...300, step: 0.5, unit: "ft",
+                          majorEvery: 2, readoutSize: 30, tapeHeight: 54)
             }
         }
     }
@@ -212,7 +220,8 @@ struct CatchEntryView: View {
             if showColor2 || !lure2.isEmpty {
                 colorSlot(value: lure2, isColor2: true)
             } else {
-                Button { showColor2 = true } label: {
+                // The ＋ IS the color-2 picker: one tap opens the menu directly.
+                colorMenu(isColor2: true) {
                     Image(systemName: "plus")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(FishTheme.inkDim)
@@ -220,7 +229,6 @@ struct CatchEntryView: View {
                         .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous)
                             .strokeBorder(FishTheme.line, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
                 }
-                .buttonStyle(.plain)
             }
             Spacer()
         }
@@ -229,64 +237,136 @@ struct CatchEntryView: View {
         .fishPanel()
     }
 
-    private func colorSlot(value: String, isColor2: Bool) -> some View {
+    /// A Menu of known lure colors that writes to color 1 or color 2, wrapping any label.
+    private func colorMenu<L: View>(isColor2: Bool, @ViewBuilder _ label: () -> L) -> some View {
         Menu {
-            Button("— none —") { isColor2 ? (lure2 = "") : (lure1 = "") }
+            Button("— none —") {
+                if isColor2 { lure2 = "" } else { lure1 = "" }
+            }
             ForEach(store.knownLureColors, id: \.self) { c in
-                Button(c) { isColor2 ? (lure2 = c) : (lure1 = c) }
+                Button { isColor2 ? (lure2 = c) : (lure1 = c); if isColor2 { showColor2 = true } } label: {
+                    if let _ = lureSwatch(c) {
+                        Label { Text(c) } icon: { Image(systemName: "circle.fill") }
+                    } else {
+                        Text(c)
+                    }
+                }
             }
             Divider()
             Button("Add new…", systemImage: "plus") { addTarget = isColor2 ? .lure2 : .lure1 }
-        } label: {
-            Text(value.isEmpty ? "Color \(isColor2 ? 2 : 1)" : value)
-                .font(FishTheme.display(15, .semibold))
-                .foregroundStyle(value.isEmpty ? FishTheme.inkFaint : FishTheme.ink)
-                .padding(.horizontal, 14)
-                .frame(height: 36)
-                .background(Capsule().fill(FishTheme.panelHi))
-                .overlay(Capsule().strokeBorder(FishTheme.line, lineWidth: 1))
+        } label: { label() }
+    }
+
+    private func colorSlot(value: String, isColor2: Bool) -> some View {
+        colorMenu(isColor2: isColor2) {
+            HStack(spacing: 7) {
+                if let swatch = lureSwatch(value) {
+                    Circle().fill(swatch)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().strokeBorder(FishTheme.line, lineWidth: 1))
+                }
+                Text(value.isEmpty ? "Color \(isColor2 ? 2 : 1)" : value)
+                    .font(FishTheme.display(15, .semibold))
+                    .foregroundStyle(value.isEmpty ? FishTheme.inkFaint : FishTheme.ink)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .background(Capsule().fill(FishTheme.panelHi))
+            .overlay(Capsule().strokeBorder(FishTheme.line, lineWidth: 1))
+        }
+    }
+
+    /// Representative swatch color for a known lure-color name (nil → no pip).
+    private func lureSwatch(_ name: String) -> Color? {
+        switch name.lowercased() {
+        case "bare", "white":   return Color(hex: 0xF2F2F2)
+        case "red hooks", "red": return Color(hex: 0xE5453B)
+        case "chartreuse":      return Color(hex: 0xCDEB1E)
+        case "firetiger":       return Color(hex: 0xE8A317)
+        case "gold":            return Color(hex: 0xE7B53B)
+        case "silver":          return Color(hex: 0xC7CCD1)
+        case "purple":          return Color(hex: 0x8A4FC4)
+        case "pink":            return Color(hex: 0xF06FA8)
+        case "orange":          return Color(hex: 0xF07F22)
+        case "glow":            return Color(hex: 0xD7F0A8)
+        case "black":           return Color(hex: 0x2A2E35)
+        case "blue":            return Color(hex: 0x3E7FD6)
+        case "green":           return Color(hex: 0x3FA85B)
+        case "perch":           return Color(hex: 0x7E8A3A)
+        case "clown":           return Color(hex: 0xEF6A3D)
+        default:                return nil
         }
     }
 
     // MARK: - Water temp (disclosure)
 
-    private var waterTempRow: some View {
-        VStack(spacing: 8) {
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    tempExpanded.toggle()
-                    if tempExpanded { waterTempOn = true }
+    /// Water temp + per-catch weight, two compact disclosure pills sharing one panel.
+    /// Only one expands at a time (inline slider) so the screen never scrolls.
+    private var secondaryRow: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                discPill(title: "WATER TEMP",
+                         value: waterTempOn ? "\(Int(waterTempF))°" : "—",
+                         expanded: tempExpanded) {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        tempExpanded.toggle()
+                        if tempExpanded { waterTempOn = true; weightExpanded = false }
+                    }
                 }
-            } label: {
-                HStack {
-                    Text("WATER TEMP").fishEyebrow()
-                    Spacer()
-                    Text(waterTempOn ? "\(Int(waterTempF))°" : "—")
-                        .font(FishTheme.display(16, .semibold))
-                        .foregroundStyle(waterTempOn ? FishTheme.ink : FishTheme.inkFaint)
-                    Image(systemName: tempExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(FishTheme.inkFaint)
+                discPill(title: "WEIGHT",
+                         value: weightOn ? String(format: "%.1f lb", weightLbsValue) : "—",
+                         expanded: weightExpanded) {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        weightExpanded.toggle()
+                        if weightExpanded { weightOn = true; tempExpanded = false }
+                    }
                 }
             }
-            .buttonStyle(.plain)
-
             if tempExpanded {
-                HStack(spacing: 12) {
-                    Slider(value: $waterTempF, in: 32...90, step: 1)
-                        .tint(FishTheme.accent)
-                    Button {
-                        waterTempOn = false; tempExpanded = false
-                    } label: {
-                        Text("Clear").font(FishTheme.mono(11, .medium)).foregroundStyle(FishTheme.inkDim)
-                    }
-                    .buttonStyle(.plain)
+                sliderRow(value: $waterTempF, range: 32...90, step: 1) {
+                    waterTempOn = false; tempExpanded = false
+                }
+            }
+            if weightExpanded {
+                sliderRow(value: $weightLbsValue, range: 0...15, step: 0.1) {
+                    weightOn = false; weightExpanded = false
                 }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .fishPanel()
+    }
+
+    private func discPill(title: String, value: String, expanded: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(title).fishEyebrow()
+                Spacer(minLength: 4)
+                Text(value)
+                    .font(FishTheme.display(15, .semibold))
+                    .foregroundStyle(value == "—" ? FishTheme.inkFaint : FishTheme.ink)
+                Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(FishTheme.inkFaint)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background(Capsule().fill(FishTheme.panelHi))
+            .overlay(Capsule().strokeBorder(expanded ? FishTheme.accent.opacity(0.5) : FishTheme.line, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func sliderRow(value: Binding<Double>, range: ClosedRange<Double>, step: Double,
+                           clear: @escaping () -> Void) -> some View {
+        HStack(spacing: 12) {
+            Slider(value: value, in: range, step: step).tint(FishTheme.accent)
+            Button(action: clear) {
+                Text("Clear").font(FishTheme.mono(11, .medium)).foregroundStyle(FishTheme.inkDim)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: - Seed + Save
@@ -360,6 +440,7 @@ struct CatchEntryView: View {
             lure2: lure2.trimmingCharacters(in: .whitespaces),
             bait: bait.trimmingCharacters(in: .whitespaces),
             locationName: locationName.trimmingCharacters(in: .whitespaces),
+            measuredWtLbs: weightOn ? weightLbsValue : nil,
             loc: taggedFix
         )
         profiles.remember(from: newCatch)
@@ -396,12 +477,15 @@ private struct SwipeToLogBar: View {
     @State private var dragX: CGFloat = 0
     @State private var committing = false
 
-    private let height: CGFloat = 66
+    private let height: CGFloat = 70
+    private let thumbW: CGFloat = 184
+    private let thumbH: CGFloat = 56
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let threshold = w * 0.32
+            let maxOffset = max(40, (w - thumbW) / 2 - 6)
+            let threshold = max(56, maxOffset * 0.72)
             let progress = min(1, abs(dragX) / threshold)
             let goingRight = dragX >= 0
 
@@ -410,28 +494,21 @@ private struct SwipeToLogBar: View {
                 Capsule().fill(FishTheme.panel)
                 Capsule().strokeBorder(FishTheme.line, lineWidth: 1)
                 Capsule()
-                    .fill((goingRight ? FishTheme.accent : FishTheme.cyan).opacity(0.18 + 0.22 * progress))
+                    .fill((goingRight ? FishTheme.accent : FishTheme.cyan).opacity(0.10 + 0.20 * progress))
 
-                // Edge labels.
+                // Faint directional targets at the edges.
                 HStack {
-                    label("RELEASE", icon: "arrow.uturn.left", color: FishTheme.cyan,
-                          active: !goingRight && progress > 0.1)
+                    edge("RELEASE", icon: "arrow.uturn.left", color: FishTheme.cyan,
+                         active: !goingRight && progress > 0.15)
                     Spacer()
-                    label("KEEP", icon: "checkmark", color: FishTheme.accent,
-                          active: goingRight && progress > 0.1)
+                    edge("KEEP", icon: "checkmark", color: FishTheme.accent,
+                         active: goingRight && progress > 0.15)
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, 20)
 
-                // Center hint + thumb.
-                Text(progress > 0.1
-                     ? (goingRight ? "KEEP & LOG" : "RELEASE & LOG")
-                     : "SWIPE TO LOG")
-                    .font(FishTheme.mono(12, .medium))
-                    .tracking(1.5)
-                    .foregroundStyle(FishTheme.inkDim)
-
+                // The label lives INSIDE the (larger) thumb, so it's never occluded.
                 thumb(goingRight: goingRight, progress: progress)
-                    .offset(x: dragX)
+                    .offset(x: max(-maxOffset, min(maxOffset, dragX)))
             }
             .frame(height: height)
             .contentShape(Capsule())
@@ -439,8 +516,7 @@ private struct SwipeToLogBar: View {
                 DragGesture()
                     .onChanged { g in
                         guard !committing else { return }
-                        // Clamp so the thumb stays within the track.
-                        dragX = max(-w/2 + 33, min(w/2 - 33, g.translation.width))
+                        dragX = max(-maxOffset, min(maxOffset, g.translation.width))
                     }
                     .onEnded { _ in
                         if abs(dragX) >= threshold {
@@ -450,7 +526,7 @@ private struct SwipeToLogBar: View {
                             #endif
                             let right = dragX >= 0
                             withAnimation(.easeOut(duration: 0.18)) {
-                                dragX = right ? (w/2 - 33) : -(w/2 - 33)
+                                dragX = right ? maxOffset : -maxOffset
                             }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
                                 right ? onKeep() : onRelease()
@@ -464,7 +540,7 @@ private struct SwipeToLogBar: View {
         .frame(height: height)
     }
 
-    private func label(_ text: String, icon: String, color: Color, active: Bool) -> some View {
+    private func edge(_ text: String, icon: String, color: Color, active: Bool) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon).font(.system(size: 12, weight: .bold))
             Text(text).font(FishTheme.mono(11, .medium)).tracking(1)
@@ -473,18 +549,27 @@ private struct SwipeToLogBar: View {
     }
 
     private func thumb(goingRight: Bool, progress: CGFloat) -> some View {
+        let active = progress > 0.15
         let color = goingRight ? FishTheme.accent : FishTheme.cyan
-        return ZStack {
-            Circle().fill(
-                LinearGradient(colors: [color, color.opacity(0.8)],
-                               startPoint: .top, endPoint: .bottom)
-            )
-            Image(systemName: progress > 0.1 ? (goingRight ? "checkmark" : "arrow.uturn.left")
-                                             : "chevron.left.chevron.right")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(goingRight ? FishTheme.accentInk : FishTheme.bg)
+        let text = !active ? "SWIPE TO LOG" : (goingRight ? "KEEP & LOG" : "RELEASE & LOG")
+        let icon = !active ? "chevron.left.chevron.right" : (goingRight ? "checkmark" : "arrow.uturn.left")
+        return HStack(spacing: 8) {
+            Image(systemName: icon).font(.system(size: 15, weight: .bold))
+            Text(text).font(FishTheme.mono(13, .medium)).tracking(1)
         }
-        .frame(width: 56, height: 56)
-        .shadow(color: color.opacity(0.5), radius: progress > 0.1 ? 14 : 6)
+        .foregroundStyle(active ? FishTheme.accentInk : FishTheme.ink)
+        .frame(width: thumbW, height: thumbH)
+        .background(
+            Capsule().fill(
+                active
+                ? AnyShapeStyle(LinearGradient(colors: [color.opacity(0.92), color],
+                                               startPoint: .top, endPoint: .bottom))
+                : AnyShapeStyle(LinearGradient(colors: [FishTheme.panelHi, FishTheme.panel],
+                                               startPoint: .top, endPoint: .bottom))
+            )
+        )
+        .overlay(Capsule().strokeBorder(active ? .clear : FishTheme.accent.opacity(0.5), lineWidth: 1.5))
+        .shadow(color: active ? color.opacity(0.5) : .black.opacity(0.4),
+                radius: active ? 14 : 8, y: 3)
     }
 }

@@ -39,8 +39,11 @@ public enum Schema {
 
     // MARK: - catches.csv
 
+    // NOTE: `measured_wt_lbs` (2026-06 addition) is inserted just before `notes` so the
+    // free-text `notes` stays the final column. Readers MUST key by header name, not
+    // position — pre-2026 files lack this column and have `notes` one slot earlier.
     public static let catchesHeader =
-        "id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,notes"
+        "id,uuid,timestamp_local,timestamp_utc,year,weigh_session_id,trip,fisherman,species,kept,length_in,depth_ft,water_temp_f,lure_color1,lure_color2,bait,location_name,lat,lon,gps_accuracy_m,heading_deg,measured_wt_lbs,notes"
 
     public static func catchLine(_ c: FishCatch) -> String {
         let fields: [String] = [
@@ -65,6 +68,7 @@ public enum Schema {
             coordOpt(c.lon),
             numOpt(c.gpsAccuracyM),
             numOpt(c.headingDeg),
+            numOpt(c.measuredWtLbs),
             escape(c.notes)
         ]
         return row(fields)

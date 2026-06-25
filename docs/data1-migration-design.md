@@ -74,7 +74,12 @@ GPS** in any historical year.
 ### catches.csv (target header)
 `id, uuid, timestamp_local, timestamp_utc, year, weigh_session_id, trip, fisherman, species,
 kept, length_in, depth_ft, water_temp_f, lure_color1, lure_color2, bait, location_name, lat,
-lon, gps_accuracy_m, heading_deg, notes`
+lon, gps_accuracy_m, heading_deg, measured_wt_lbs, notes`
+
+> **Schema evolution (2026-06):** `measured_wt_lbs` was added (inserted **before** `notes`, so
+> `notes` stays the free-text final column). It is **blank in all historical + pre-2026 rows**.
+> Readers MUST key by header name, not column position — old files have one fewer column and
+> `notes` one slot earlier. See `app/FishingLoggerCore/.../Schema.swift`.
 
 | NEW field | OLD source | Transform / synthesis |
 |---|---|---|
@@ -99,6 +104,7 @@ lon, gps_accuracy_m, heading_deg, notes`
 | `lon` | — (none) | **Blank.** |
 | `gps_accuracy_m` | — (none) | **Blank.** |
 | `heading_deg` | — (none) | **Blank.** |
+| `measured_wt_lbs` | — (none) | **Blank** historically (per-catch weighing started with the app, 2026-06). Distinct from the dropped computed `weight_calc`; this is ground-truth measured weight for length→weight calibration. |
 | `notes` | — (none) | **Blank** (or a migration provenance tag like `"migrated:xlsx-Sheet1"`). |
 
 Dropped legacy field: `weight_calc` (superseded linear estimate — not carried; `day` weekday
