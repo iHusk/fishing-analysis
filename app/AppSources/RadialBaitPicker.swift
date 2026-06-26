@@ -13,7 +13,7 @@
 //                            the scrim + petals + hub at the touch point (global coords).
 //
 //  Interaction: hold ~0.32s → bloom from the touch point → flick to a cardinal
-//  direction (Minnow up / Lure right / Jig down / Crawler left) → release commits;
+//  direction (Crawler right / Minnow left / Lure down / Jig up) → release commits;
 //  releasing on center cancels. Haptics: light on bloom, selection on hover change,
 //  success on commit.
 //
@@ -21,6 +21,41 @@
 import SwiftUI
 import UIKit
 import Combine
+
+// MARK: - Cardinal direction mapping (single source of truth)
+//
+// Owner request: Crawler=RIGHT, Minnow=LEFT, Lure=DOWN, Jig=UP.
+// With options [Crawler, Minnow, Lure, Jig] the index→direction map is:
+//   0(Crawler)=right, 1(Minnow)=left, 2(Lure)=down, 3(Jig)=up.
+// Both petalPosition(...) (overlay) and updateHover(...) (gesture) read this same
+// table so petals are drawn exactly where the gesture expects them.
+enum RadialDirection {
+    case right, down, left, up
+
+    /// Screen-coordinate angle of this direction's center, in radians.
+    /// Screen space has +y pointing DOWN, so: right=0, down=+90, left=±180, up=-90.
+    var angle: Double {
+        switch self {
+        case .right: return 0
+        case .down:  return .pi / 2
+        case .left:  return .pi
+        case .up:    return -.pi / 2
+        }
+    }
+
+    /// Unit offset (x right, y down) used to place petals.
+    var unit: CGPoint {
+        switch self {
+        case .right: return CGPoint(x: 1, y: 0)
+        case .down:  return CGPoint(x: 0, y: 1)
+        case .left:  return CGPoint(x: -1, y: 0)
+        case .up:    return CGPoint(x: 0, y: -1)
+        }
+    }
+}
+
+/// index → direction for the 4-petal layout. options[0]=Crawler … options[3]=Jig.
+private let directionForIndex: [RadialDirection] = [.right, .left, .down, .up]
 
 // MARK: - Shared controller (bridges the row gesture → the full-screen overlay)
 
@@ -164,27 +199,61 @@ struct RadialBaitPicker: View {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) { controller.armed = true }
     }
 
+    /// Hysteresis margin: the currently-hovered direction's acceptance arc is widened
+    /// by this many radians on each side, so the touch must move clearly past a sector
+    /// boundary before switching. ~15° kills the diagonal flicker the owner reported.
+    private let hysteresis: Double = 15 * .pi / 180   // ~0.262 rad
+
     private func updateHover(to point: CGPoint) {
         let dx = point.x - controller.pressPoint.x
         let dy = point.y - controller.pressPoint.y
         let dist = hypot(dx, dy)
-        let newHover: String?
+
+        // Center dead-zone cancels.
         if dist < deadZone {
-            newHover = nil
-        } else if options.count == 4 {
-            // cardinal: [0]=left, [1]=up, [2]=right, [3]=down
-            if abs(dx) > abs(dy) { newHover = dx > 0 ? options[2] : options[0] }
-            else { newHover = dy > 0 ? options[3] : options[1] }
+            setHover(nil)
+            return
+        }
+
+        let ang = atan2(dy, dx)   // screen space: +x right, +y down
+
+        let newHover: String?
+        if options.count == 4 {
+            // Angle-sector selection over the 4 cardinals, with hysteresis.
+            // Each cardinal owns a 90° sector centered on its angle.
+            //
+            // Resolve which index is currently hovered (if any) so we can widen its arc.
+            let currentIdx = controller.hovered.flatMap { options.firstIndex(of: $0) }
+
+            // If we already own a direction and the touch is still within its widened
+            // arc (half-sector 45° + hysteresis margin), keep it — no flicker.
+            if let cur = currentIdx,
+               cur < directionForIndex.count,
+               abs(angleDelta(directionForIndex[cur].angle, ang)) <= (.pi / 4) + hysteresis {
+                newHover = options[cur]
+            } else {
+                // Otherwise snap to the nearest cardinal.
+                let best = directionForIndex.indices.min(by: {
+                    abs(angleDelta(directionForIndex[$0].angle, ang))
+                        < abs(angleDelta(directionForIndex[$1].angle, ang))
+                })
+                newHover = best.map { options[$0] }
+            }
         } else {
-            let ang = atan2(dy, dx)
-            newHover = options.enumerated().min(by: { a, b in
-                abs(angleDelta(angleFor(a.offset), ang)) < abs(angleDelta(angleFor(b.offset), ang))
-            }).map { $0.element }
+            // Fallback for non-4 option counts: nearest evenly-spaced petal (no hysteresis).
+            newHover = options.indices.min(by: {
+                abs(angleDelta(angleFor($0), ang)) < abs(angleDelta(angleFor($1), ang))
+            }).map { options[$0] }
         }
-        if newHover != controller.hovered {
-            controller.hovered = newHover
-            selectionHaptic.selectionChanged(); selectionHaptic.prepare()
-        }
+
+        setHover(newHover)
+    }
+
+    /// Updates the hovered petal and fires the selection haptic only on actual change.
+    private func setHover(_ newHover: String?) {
+        guard newHover != controller.hovered else { return }
+        controller.hovered = newHover
+        selectionHaptic.selectionChanged(); selectionHaptic.prepare()
     }
 
     private func angleFor(_ idx: Int) -> Double {
@@ -306,13 +375,11 @@ struct BaitRadialOverlay: View {
     private func petalPosition(_ idx: Int, center: CGPoint, hot: Bool) -> CGPoint {
         let r = hot ? hotRadius : petalRadius
         let n = max(controller.options.count, 1)
-        if n == 4 {
-            switch idx {
-            case 0: return CGPoint(x: center.x - r, y: center.y)  // left
-            case 1: return CGPoint(x: center.x, y: center.y - r)  // up
-            case 2: return CGPoint(x: center.x + r, y: center.y)  // right
-            default: return CGPoint(x: center.x, y: center.y + r) // down
-            }
+        if n == 4, idx < directionForIndex.count {
+            // Same single source of truth the gesture uses, so petals sit where the
+            // touch direction expects them: Crawler=right, Minnow=left, Lure=down, Jig=up.
+            let u = directionForIndex[idx].unit
+            return CGPoint(x: center.x + u.x * r, y: center.y + u.y * r)
         }
         let a = -.pi / 2 + Double(idx) / Double(n) * 2 * .pi
         return CGPoint(x: center.x + CGFloat(cos(a)) * r, y: center.y + CGFloat(sin(a)) * r)
