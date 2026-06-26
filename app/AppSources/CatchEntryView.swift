@@ -104,6 +104,11 @@ struct CatchEntryView: View {
         .overlay { swipeTint }
         .overlay { BaitRadialOverlay(controller: baitRadial).ignoresSafeArea() }
         .preferredColorScheme(.dark)
+        // The swipe-to-log bar lives near the bottom edge, where iOS's horizontal
+        // "switch apps along the home indicator" gesture lives. Deferring the bottom
+        // system gesture means the FIRST swipe goes to our keep/release bar; a
+        // deliberate second swipe still lets the user switch apps.
+        .defersSystemGestures(on: .bottom)
         .onAppear(perform: seedOnce)
         .alert("Add new", isPresented: Binding(
             get: { addTarget != nil },
