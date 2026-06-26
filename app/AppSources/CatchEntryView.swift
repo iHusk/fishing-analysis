@@ -44,6 +44,10 @@ struct CatchEntryView: View {
 
     @State private var didSeed = false
 
+    /// Top safe-area inset (status bar / Dynamic Island height), read at runtime
+    /// so the first row always clears the notch even inside a .fullScreenCover.
+    @State private var safeTop: CGFloat = 0
+
     /// GPS fix captured at open and held for the lifetime of this entry.
     @State private var taggedFix: CLLocation?
 
@@ -58,6 +62,12 @@ struct CatchEntryView: View {
 
     var body: some View {
         VStack(spacing: 14) {
+            // Push everything clear of the status bar / Dynamic Island. The
+            // background still paints under the notch (ignoresSafeArea below),
+            // but no interactive element ever sits beneath the status icons.
+            Color.clear
+                .frame(height: max(safeTop, 8))
+                .frame(maxWidth: .infinity)
             topBar
             anglerRow
             speciesRow
@@ -77,12 +87,20 @@ struct CatchEntryView: View {
             )
         }
         .padding(.horizontal, 18)
-        .padding(.top, 6)
         .padding(.bottom, 14)
         // VStack respects the top safe area (clears the notch/status bar); the
         // background paints behind it, under the notch.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(FishTheme.bg.ignoresSafeArea())
+        // Read the real top safe-area inset (status bar / Dynamic Island) and
+        // feed it to the leading spacer so the first row clears the notch.
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { safeTop = proxy.safeAreaInsets.top }
+                    .onChange(of: proxy.safeAreaInsets.top) { _, new in safeTop = new }
+            }
+        )
         .overlay { swipeTint }
         .overlay { BaitRadialOverlay(controller: baitRadial).ignoresSafeArea() }
         .preferredColorScheme(.dark)
@@ -109,7 +127,7 @@ struct CatchEntryView: View {
             .animation(.easeOut(duration: 0.12), value: swipeSignal)
     }
 
-    // MARK: - Top bar (close + spot)
+    // MARK: - Top bar (close only — nothing wide rides up by the notch)
 
     private var topBar: some View {
         HStack {
@@ -121,30 +139,33 @@ struct CatchEntryView: View {
                     .background(Circle().fill(FishTheme.panel))
                     .overlay(Circle().strokeBorder(FishTheme.line, lineWidth: 1))
             }
-
             Spacer()
+        }
+    }
 
-            // Spot pill. Auto-naming (HAY-130) isn't built yet, so this is the
-            // free-text / carry-forward location, tappable to edit.
-            Menu {
-                if !store.lastLocationName.isEmpty {
-                    Button(store.lastLocationName) { locationName = store.lastLocationName }
-                }
-                Button("Clear") { locationName = "" }
-                Button("Type a spot…") { addTarget = nil /* keep simple: edit via field below */ }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: taggedFix == nil ? "location.slash" : "location.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(locationName.isEmpty ? "Add spot" : locationName)
-                        .font(FishTheme.mono(12, .medium))
-                }
-                .foregroundStyle(FishTheme.cyan)
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(Capsule().fill(FishTheme.cyan.opacity(0.12)))
-                .overlay(Capsule().strokeBorder(FishTheme.cyan.opacity(0.3), lineWidth: 1))
+    /// Spot pill (GPS / carry-forward location). Auto-naming (HAY-130) isn't built
+    /// yet, so this is the free-text / carry-forward location, tappable to edit.
+    /// Relocated off the notch row onto the species row.
+    private var spotPill: some View {
+        Menu {
+            if !store.lastLocationName.isEmpty {
+                Button(store.lastLocationName) { locationName = store.lastLocationName }
             }
+            Button("Clear") { locationName = "" }
+            Button("Type a spot…") { addTarget = nil /* keep simple: edit via field below */ }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: taggedFix == nil ? "location.slash" : "location.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(locationName.isEmpty ? "Add spot" : locationName)
+                    .font(FishTheme.mono(12, .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(FishTheme.cyan)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(Capsule().fill(FishTheme.cyan.opacity(0.12)))
+            .overlay(Capsule().strokeBorder(FishTheme.cyan.opacity(0.3), lineWidth: 1))
         }
     }
 
@@ -185,22 +206,27 @@ struct CatchEntryView: View {
     // MARK: - Species
 
     private var speciesRow: some View {
-        Menu {
-            ForEach(store.knownSpecies, id: \.self) { s in
-                Button(s.capitalized) { species = s.lowercased() }
+        HStack(spacing: 10) {
+            Menu {
+                ForEach(store.knownSpecies, id: \.self) { s in
+                    Button(s.capitalized) { species = s.lowercased() }
+                }
+                Divider()
+                Button("Add new…", systemImage: "plus") { addTarget = .species }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(species.capitalized)
+                        .font(FishTheme.display(28, .bold))
+                        .foregroundStyle(FishTheme.ink)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(FishTheme.inkFaint)
+                }
             }
-            Divider()
-            Button("Add new…", systemImage: "plus") { addTarget = .species }
-        } label: {
-            HStack(spacing: 10) {
-                Text(species.capitalized)
-                    .font(FishTheme.display(28, .bold))
-                    .foregroundStyle(FishTheme.ink)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(FishTheme.inkFaint)
-                Spacer()
-            }
+            Spacer(minLength: 8)
+            // Spot pill lives here now — clear of the status bar / notch.
+            spotPill
+                .layoutPriority(1)
         }
     }
 

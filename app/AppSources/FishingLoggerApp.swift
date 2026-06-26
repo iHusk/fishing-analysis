@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 /// App shell for FishingLogger.
 ///
@@ -18,6 +19,13 @@ struct FishingLoggerApp: App {
     @StateObject private var loc = LocationManager()
     @StateObject private var profiles = AnglerProfileStore()
 
+    /// Launch-timing channel. Mirrors Store.swift so the whole boot story shows up
+    /// under one subsystem in Console / Instruments (subsystem "FishingLogger",
+    /// category "launch").
+    private static let launchLog = Logger(subsystem: "FishingLogger", category: "launch")
+    /// Process start, captured once so first-appear can be reported relative to it.
+    private static let processStart = CFAbsoluteTimeGetCurrent()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -25,6 +33,12 @@ struct FishingLoggerApp: App {
                 .environmentObject(loc)
                 .environmentObject(profiles)
                 .onAppear {
+                    // First-appear marker: how long from process start until the root
+                    // view is on screen and interactive. Logged to the Xcode console so
+                    // the owner can read total perceived launch latency at a glance.
+                    let ms = (CFAbsoluteTimeGetCurrent() - Self.processStart) * 1000
+                    Self.launchLog.log("launch: ContentView first-appear at \(ms, format: .fixed(precision: 1)) ms from process start")
+
                     // The track sink is the bridge from Core Location to disk: every
                     // good fix the LocationManager produces while recording is handed
                     // to the Store, which appends one line to track.csv. Keeping this

@@ -1,6 +1,13 @@
 import Foundation
 import Combine
 import CoreLocation
+import os
+
+/// Lightweight launch-timing channel. View it in Console.app / the Xcode console
+/// (subsystem "FishingLogger", category "launch") and as signpost intervals in
+/// Instruments (os_signpost / Time Profiler), e.g. the "Store.load" interval.
+private let launchLog = Logger(subsystem: "FishingLogger", category: "launch")
+private let launchSignpost = OSSignposter(subsystem: "FishingLogger", category: "launch")
 
 /// The app's single source of truth for catches and weigh sessions.
 ///
@@ -69,6 +76,14 @@ final class Store: ObservableObject {
     // MARK: - Init
 
     init() {
+        let t0 = CFAbsoluteTimeGetCurrent()
+        let initState = launchSignpost.beginInterval("Store.init")
+        defer {
+            launchSignpost.endInterval("Store.init", initState)
+            let ms = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+            launchLog.log("launch: Store.init took \(ms, format: .fixed(precision: 1)) ms")
+        }
+
         let fm = FileManager.default
         // Documents is sandboxed and Files-app-visible (UIFileSharingEnabled).
         self.docs = (try? fm.url(for: .documentDirectory,
@@ -93,7 +108,15 @@ final class Store: ObservableObject {
     // MARK: - Loading
 
     /// Load the JSON source-of-truth files (if present) and rebuild carry-forward.
+    ///
+    /// Instrumented for launch profiling: a "Store.load" signpost interval (visible
+    /// in Instruments / Time Profiler) wraps the whole step, and per-phase elapsed-ms
+    /// lines are logged to the Xcode console so the read+decode vs. rebuild split is
+    /// readable without attaching Instruments.
     private func load() {
+        let loadState = launchSignpost.beginInterval("Store.load")
+        let t0 = CFAbsoluteTimeGetCurrent()
+
         if let data = try? Data(contentsOf: catchesJSONURL),
            let rows = try? CatchStore.decode(data) {
             catches = rows
@@ -102,28 +125,39 @@ final class Store: ObservableObject {
            let rows = try? WeightStore.decode(data) {
             weights = rows
         }
+        let tDecoded = CFAbsoluteTimeGetCurrent()
+
         rebuildCarryForward()
+        let tDone = CFAbsoluteTimeGetCurrent()
+
+        launchSignpost.endInterval("Store.load", loadState)
+        let readMs = (tDecoded - t0) * 1000
+        let rebuildMs = (tDone - tDecoded) * 1000
+        let totalMs = (tDone - t0) * 1000
+        launchLog.log("launch: Store.load took \(totalMs, format: .fixed(precision: 1)) ms (read+decode \(readMs, format: .fixed(precision: 1)) ms, rebuildCarryForward \(rebuildMs, format: .fixed(precision: 1)) ms, \(self.catches.count) catches, \(self.weights.count) weights)")
     }
 
     /// Restore carry-forward defaults + known-fishermen list from the most recent catch.
     private func rebuildCarryForward() {
-        // Known fishermen: stable de-duplicated list, in first-seen order.
+        // Single pass over `catches`: build the de-duplicated known-fishermen list
+        // (stable, first-seen order) AND fold any species / lure colors into the
+        // option lists at the same time. Both were previously separate loops over the
+        // same array; merging halves the launch-time iteration. Results are identical:
+        // the fishermen de-dupe order is unchanged, and noteSpecies/noteLureColor are
+        // order-independent and idempotent.
         var seen = Set<String>()
         var names: [String] = []
         for c in catches {
             let name = c.fisherman.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !name.isEmpty, !seen.contains(name) else { continue }
-            seen.insert(name)
-            names.append(name)
-        }
-        knownFishermen = names
-
-        // Fold any species / lure colors seen in saved catches into the option lists.
-        for c in catches {
+            if !name.isEmpty, !seen.contains(name) {
+                seen.insert(name)
+                names.append(name)
+            }
             noteSpecies(c.species)
             noteLureColor(c.lureColor1)
             noteLureColor(c.lureColor2)
         }
+        knownFishermen = names
 
         // Carry-forward from the newest catch by timestamp.
         if let last = catches.max(by: { $0.timestamp < $1.timestamp }) {

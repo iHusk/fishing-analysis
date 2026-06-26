@@ -84,6 +84,8 @@ struct TapeInput: View {
 
     #if canImport(UIKit) && !os(watchOS)
     private let selectionHaptic = UISelectionFeedbackGenerator()
+    /// Stronger thunk for MAJOR ticks (whole inch / whole foot).
+    private let majorHaptic = UIImpactFeedbackGenerator(style: .rigid)
     #endif
 
     // MARK: - Derived
@@ -300,6 +302,7 @@ struct TapeInput: View {
         dragStartPosition = position.isNaN ? clamp(value) : position
         #if canImport(UIKit) && !os(watchOS)
         selectionHaptic.prepare()
+        majorHaptic.prepare()
         #endif
     }
 
@@ -406,8 +409,16 @@ struct TapeInput: View {
         if force || lastTickedValue != snapped {
             lastTickedValue = snapped
             #if canImport(UIKit) && !os(watchOS)
-            selectionHaptic.selectionChanged()
-            selectionHaptic.prepare()
+            // Differentiate tick weight: a stronger thunk lands on each major
+            // tick (whole inch / whole foot), a light selection on each minor.
+            let index = Int(((snapped - range.lowerBound) / step).rounded())
+            if majorEvery > 0 && index % majorEvery == 0 {
+                majorHaptic.impactOccurred()
+                majorHaptic.prepare()
+            } else {
+                selectionHaptic.selectionChanged()
+                selectionHaptic.prepare()
+            }
             #endif
         }
     }
