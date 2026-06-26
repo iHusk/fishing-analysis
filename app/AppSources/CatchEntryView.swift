@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import UIKit
 
 /// The "Tape Wheel" catch-entry screen (ADR 0006 / HAY-133).
 ///
@@ -51,32 +52,39 @@ struct CatchEntryView: View {
     @State private var addTarget: AddTarget?
     @State private var newOptionText = ""
 
+    // Bait radial (hoisted to a full-screen overlay) + swipe-to-log screen tint.
+    @StateObject private var baitRadial = BaitRadialController()
+    @State private var swipeSignal: Double = 0   // -1 = releasing(red) … +1 = keeping(green)
+
     var body: some View {
-        ZStack {
-            FishTheme.bg.ignoresSafeArea()
+        VStack(spacing: 14) {
+            topBar
+            anglerRow
+            speciesRow
 
-            VStack(spacing: 14) {
-                topBar
-                anglerRow
-                speciesRow
+            measures
 
-                measures
+            lureRow
+            RadialBaitPicker(selection: $bait, controller: baitRadial)
+            secondaryRow
 
-                lureRow
-                RadialBaitPicker(selection: $bait)
-                secondaryRow
+            Spacer(minLength: 4)
 
-                Spacer(minLength: 4)
-
-                SwipeToLogBar(
-                    onKeep: { commit(kept: true) },
-                    onRelease: { commit(kept: false) }
-                )
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .padding(.bottom, 14)
+            SwipeToLogBar(
+                signal: $swipeSignal,
+                onKeep: { commit(kept: true) },
+                onRelease: { commit(kept: false) }
+            )
         }
+        .padding(.horizontal, 18)
+        .padding(.top, 6)
+        .padding(.bottom, 14)
+        // VStack respects the top safe area (clears the notch/status bar); the
+        // background paints behind it, under the notch.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(FishTheme.bg.ignoresSafeArea())
+        .overlay { swipeTint }
+        .overlay { BaitRadialOverlay(controller: baitRadial).ignoresSafeArea() }
         .preferredColorScheme(.dark)
         .onAppear(perform: seedOnce)
         .alert("Add new", isPresented: Binding(
@@ -87,6 +95,18 @@ struct CatchEntryView: View {
             Button("Add") { commitNewOption() }
             Button("Cancel", role: .cancel) { addTarget = nil; newOptionText = "" }
         }
+    }
+
+    /// Subtle full-screen edge tint while swiping the log bar: green = keeping, red = releasing.
+    private var swipeTint: some View {
+        let p = min(1, abs(swipeSignal))
+        let color = swipeSignal >= 0 ? Color(hex: 0x34C759) : Color(hex: 0xFF453A)
+        return RadialGradient(colors: [.clear, color.opacity(0.26 * p)],
+                              center: .center, startRadius: 170, endRadius: 540)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .opacity(p > 0.02 ? 1 : 0)
+            .animation(.easeOut(duration: 0.12), value: swipeSignal)
     }
 
     // MARK: - Top bar (close + spot)
@@ -245,8 +265,10 @@ struct CatchEntryView: View {
             }
             ForEach(store.knownLureColors, id: \.self) { c in
                 Button { isColor2 ? (lure2 = c) : (lure1 = c); if isColor2 { showColor2 = true } } label: {
-                    if let _ = lureSwatch(c) {
-                        Label { Text(c) } icon: { Image(systemName: "circle.fill") }
+                    if let s = lureSwatch(c) {
+                        // Menus ignore SF-symbol foreground colors, so render a real
+                        // colored-circle image (kept in .original rendering mode).
+                        Label { Text(c) } icon: { swatchImage(s) }
                     } else {
                         Text(c)
                     }
@@ -274,6 +296,17 @@ struct CatchEntryView: View {
             .background(Capsule().fill(FishTheme.panelHi))
             .overlay(Capsule().strokeBorder(FishTheme.line, lineWidth: 1))
         }
+    }
+
+    /// A small filled-circle image in the given color, rendered in `.original` mode so
+    /// it keeps its color inside a SwiftUI `Menu` (which tints template symbols).
+    private func swatchImage(_ color: Color) -> Image {
+        let size = CGSize(width: 14, height: 14)
+        let img = UIGraphicsImageRenderer(size: size).image { ctx in
+            UIColor(color).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(origin: .zero, size: size))
+        }
+        return Image(uiImage: img.withRenderingMode(.alwaysOriginal))
     }
 
     /// Representative swatch color for a known lure-color name (nil → no pip).
@@ -323,12 +356,12 @@ struct CatchEntryView: View {
                 }
             }
             if tempExpanded {
-                sliderRow(value: $waterTempF, range: 32...90, step: 1) {
+                compactTape(value: $waterTempF, range: 32...90, step: 1, unit: "°", majorEvery: 5) {
                     waterTempOn = false; tempExpanded = false
                 }
             }
             if weightExpanded {
-                sliderRow(value: $weightLbsValue, range: 0...15, step: 0.1) {
+                compactTape(value: $weightLbsValue, range: 0...15, step: 0.1, unit: "lb", majorEvery: 10) {
                     weightOn = false; weightExpanded = false
                 }
             }
@@ -358,10 +391,13 @@ struct CatchEntryView: View {
         .buttonStyle(.plain)
     }
 
-    private func sliderRow(value: Binding<Double>, range: ClosedRange<Double>, step: Double,
-                           clear: @escaping () -> Void) -> some View {
-        HStack(spacing: 12) {
-            Slider(value: value, in: range, step: step).tint(FishTheme.accent)
+    /// A small momentum tape (same control as Length/Depth, sized down) shown inline
+    /// when a disclosure pill is tapped, plus a Clear button.
+    private func compactTape(value: Binding<Double>, range: ClosedRange<Double>, step: Double,
+                             unit: String, majorEvery: Int, clear: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            TapeInput(value: value, range: range, step: step, unit: unit,
+                      majorEvery: majorEvery, readoutSize: 24, tapeHeight: 46)
             Button(action: clear) {
                 Text("Clear").font(FishTheme.mono(11, .medium)).foregroundStyle(FishTheme.inkDim)
             }
@@ -471,6 +507,7 @@ struct CatchEntryView: View {
 /// Disposition folded into Save: drag RIGHT past the threshold to **Keep & Log**,
 /// LEFT to **Release & Log**. Releasing before the threshold springs back.
 private struct SwipeToLogBar: View {
+    @Binding var signal: Double
     var onKeep: () -> Void
     var onRelease: () -> Void
 
@@ -478,8 +515,10 @@ private struct SwipeToLogBar: View {
     @State private var committing = false
 
     private let height: CGFloat = 70
-    private let thumbW: CGFloat = 184
+    private let thumbW: CGFloat = 138
     private let thumbH: CGFloat = 56
+    private let keepColor = Color(hex: 0x34C759)
+    private let releaseColor = Color(hex: 0xFF453A)
 
     var body: some View {
         GeometryReader { geo in
@@ -488,26 +527,26 @@ private struct SwipeToLogBar: View {
             let threshold = max(56, maxOffset * 0.72)
             let progress = min(1, abs(dragX) / threshold)
             let goingRight = dragX >= 0
+            let active = progress > 0.12
+            let dirColor = goingRight ? keepColor : releaseColor
 
             ZStack {
-                // Track + directional intent fill.
                 Capsule().fill(FishTheme.panel)
                 Capsule().strokeBorder(FishTheme.line, lineWidth: 1)
-                Capsule()
-                    .fill((goingRight ? FishTheme.accent : FishTheme.cyan).opacity(0.10 + 0.20 * progress))
+                Capsule().fill(dirColor.opacity(0.30 * progress))   // neutral at rest
 
-                // Faint directional targets at the edges.
+                // Faint directional arrows only — no edge text for the thumb to cover.
                 HStack {
-                    edge("RELEASE", icon: "arrow.uturn.left", color: FishTheme.cyan,
-                         active: !goingRight && progress > 0.15)
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(active && !goingRight ? releaseColor : FishTheme.inkFaint)
                     Spacer()
-                    edge("KEEP", icon: "checkmark", color: FishTheme.accent,
-                         active: goingRight && progress > 0.15)
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(active && goingRight ? keepColor : FishTheme.inkFaint)
                 }
-                .padding(.horizontal, 20)
+                .font(.system(size: 14, weight: .bold))
+                .padding(.horizontal, 22)
 
-                // The label lives INSIDE the (larger) thumb, so it's never occluded.
-                thumb(goingRight: goingRight, progress: progress)
+                thumb(active: active, goingRight: goingRight, color: dirColor)
                     .offset(x: max(-maxOffset, min(maxOffset, dragX)))
             }
             .frame(height: height)
@@ -516,23 +555,26 @@ private struct SwipeToLogBar: View {
                 DragGesture()
                     .onChanged { g in
                         guard !committing else { return }
-                        dragX = max(-maxOffset, min(maxOffset, g.translation.width))
+                        let x = max(-maxOffset, min(maxOffset, g.translation.width))
+                        dragX = x
+                        signal = Double(x / maxOffset)
                     }
                     .onEnded { _ in
                         if abs(dragX) >= threshold {
                             committing = true
-                            #if canImport(UIKit)
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            #endif
                             let right = dragX >= 0
                             withAnimation(.easeOut(duration: 0.18)) {
                                 dragX = right ? maxOffset : -maxOffset
+                                signal = right ? 1 : -1
                             }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
                                 right ? onKeep() : onRelease()
                             }
                         } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { dragX = 0 }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                dragX = 0; signal = 0
+                            }
                         }
                     }
             )
@@ -540,24 +582,14 @@ private struct SwipeToLogBar: View {
         .frame(height: height)
     }
 
-    private func edge(_ text: String, icon: String, color: Color, active: Bool) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon).font(.system(size: 12, weight: .bold))
-            Text(text).font(FishTheme.mono(11, .medium)).tracking(1)
-        }
-        .foregroundStyle(active ? color : FishTheme.inkFaint)
-    }
-
-    private func thumb(goingRight: Bool, progress: CGFloat) -> some View {
-        let active = progress > 0.15
-        let color = goingRight ? FishTheme.accent : FishTheme.cyan
-        let text = !active ? "SWIPE TO LOG" : (goingRight ? "KEEP & LOG" : "RELEASE & LOG")
+    private func thumb(active: Bool, goingRight: Bool, color: Color) -> some View {
+        let text = !active ? "SWIPE" : (goingRight ? "KEEP" : "RELEASE")
         let icon = !active ? "chevron.left.chevron.right" : (goingRight ? "checkmark" : "arrow.uturn.left")
         return HStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 15, weight: .bold))
-            Text(text).font(FishTheme.mono(13, .medium)).tracking(1)
+            Text(text).font(FishTheme.mono(13, .semibold)).tracking(1.5)
         }
-        .foregroundStyle(active ? FishTheme.accentInk : FishTheme.ink)
+        .foregroundStyle(active ? .white : FishTheme.ink)
         .frame(width: thumbW, height: thumbH)
         .background(
             Capsule().fill(
@@ -568,8 +600,8 @@ private struct SwipeToLogBar: View {
                                                startPoint: .top, endPoint: .bottom))
             )
         )
-        .overlay(Capsule().strokeBorder(active ? .clear : FishTheme.accent.opacity(0.5), lineWidth: 1.5))
-        .shadow(color: active ? color.opacity(0.5) : .black.opacity(0.4),
-                radius: active ? 14 : 8, y: 3)
+        .overlay(Capsule().strokeBorder(active ? .clear : FishTheme.line, lineWidth: 1.5))
+        .shadow(color: active ? color.opacity(0.55) : .black.opacity(0.4),
+                radius: active ? 16 : 8, y: 3)
     }
 }
