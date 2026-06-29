@@ -1,0 +1,1 @@
+Most people just go fishing. We built FishingLogger instead — an offline app for logging walleye on Lake Oahe that grew a satellite trip-replay, year-over-year fish-health analytics, and a Spotify-Wrapped for the trip. Your season. Every fish. Offline.

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      :root {
+        --bg: #06090d;
+        --ink: #f4f8fb;
+        --muted: #9fb0bf;
+        --accent: #20d39b;
+        --gold: #ffd45a;
+        --display: -apple-system, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+        --mono: ui-monospace, "SF Mono", Menlo, monospace;
+      }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      body { font-family: "Inter", sans-serif; color: var(--ink); }
+      .clip { position: absolute; }
+      .fill { inset: 0; width: 1920px; height: 1080px; }
+      .center { left: 50%; transform: translateX(-50%); text-align: center; }
+
+      /* Scene 1 */
+      #s1-sat {
+        background: #06090d url("assets/img/replay.png") center/cover no-repeat;
+        filter: saturate(0.7) brightness(0.55) blur(2px);
+        opacity: 0;
+      }
+      #s1-vig { background: radial-gradient(ellipse at center, rgba(6,9,13,0) 30%, rgba(6,9,13,0.92) 100%); }
+      #s1-hook {
+        top: 430px; width: 1600px; font-size: 92px; font-weight: 800; letter-spacing: -0.02em;
+        opacity: 0; text-shadow: 0 4px 40px rgba(0,0,0,0.6);
+      }
+      #s1-kicker { top: 560px; font-size: 40px; font-weight: 600; color: var(--accent); opacity: 0; letter-spacing: 0.02em; }
+
+      /* Scene 2 */
+      #s2-replay { background: #000 url("assets/img/replay.png") center/cover no-repeat; opacity: 0; }
+      #s2-grad { background: linear-gradient(180deg, rgba(6,9,13,0.55) 0%, rgba(6,9,13,0) 28%, rgba(6,9,13,0) 55%, rgba(6,9,13,0.85) 100%); opacity: 0; }
+      #s2-label {
+        top: 92px; left: 92px; font-size: 26px; font-weight: 700; letter-spacing: 0.32em;
+        color: var(--accent); opacity: 0; text-transform: uppercase;
+      }
+      #s2-line { top: 360px; width: 1600px; font-size: 66px; font-weight: 800; letter-spacing: -0.01em; opacity: 0; text-shadow: 0 4px 30px rgba(0,0,0,0.7); }
+      #s2-stats { bottom: 96px; left: 0; width: 1920px; display: flex; justify-content: center; gap: 86px; }
+      .stat { opacity: 0; text-align: center; }
+      .stat b { display: block; font-family: "JetBrains Mono", monospace; font-size: 60px; font-weight: 800; color: var(--ink); line-height: 1; }
+      .stat span { display: block; margin-top: 10px; font-size: 22px; letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; }
+      .stat.gold b { color: var(--gold); }
+
+      /* Scene 3 */
+      #s3-bg { background: radial-gradient(ellipse at 38% 50%, #0c1622 0%, #06090d 70%); opacity: 0; }
+      #s3-poster {
+        top: 96px; left: 250px; width: 710px; height: 888px;
+        background: #0b1118 url("assets/img/wrapped.png") center/cover no-repeat;
+        border-radius: 26px; opacity: 0;
+        box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(32,211,155,0.18), 0 0 70px rgba(32,211,155,0.12);
+      }
+      #s3-head { top: 360px; left: 1060px; width: 720px; text-align: left; font-size: 70px; font-weight: 800; letter-spacing: -0.015em; opacity: 0; }
+      #s3-sub  { top: 560px; left: 1060px; width: 700px; text-align: left; font-size: 32px; font-weight: 500; color: var(--muted); opacity: 0; line-height: 1.4; }
+      #s3-sub em { color: var(--accent); font-style: normal; font-weight: 700; }
+
+      /* Scene 4 */
+      #s4-bg { background: radial-gradient(ellipse at center, #0a1018 0%, #06090d 75%); opacity: 0; }
+      #s4-title { top: 116px; font-size: 70px; font-weight: 800; letter-spacing: -0.015em; opacity: 0; }
+      #s4-sub { top: 212px; font-size: 38px; font-weight: 600; color: var(--accent); letter-spacing: 0.04em; opacity: 0; }
+      #grid { position: absolute; inset: 0; }
+      .phone {
+        position: absolute; width: 139px; height: 300px; border-radius: 18px;
+        background-size: cover; background-position: center; opacity: 0;
+        box-shadow: 0 14px 34px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+      }
+      #winner {
+        top: 240px; left: 821px; width: 277px; height: 600px; border-radius: 30px;
+        background: url("assets/img/chip-board.png") center/cover no-repeat; opacity: 0;
+        box-shadow: 0 28px 80px rgba(0,0,0,0.7), 0 0 0 2px var(--accent), 0 0 70px rgba(32,211,155,0.35);
+      }
+      #winner-cap { top: 870px; font-size: 34px; font-weight: 700; color: var(--accent); opacity: 0; letter-spacing: 0.01em; }
+
+      /* Scene 5 */
+      #s5-bg { background: #06090d; opacity: 0; }
+      #logo { top: 452px; font-size: 116px; font-weight: 800; letter-spacing: -0.03em; color: var(--accent); opacity: 0; text-shadow: 0 0 60px rgba(32,211,155,0.35); }
+      #tag { top: 600px; font-size: 40px; font-weight: 600; color: var(--ink); opacity: 0; letter-spacing: 0.01em; }
+      #s5-mono { top: 668px; font-size: 24px; font-family: "JetBrains Mono", monospace; color: var(--muted); opacity: 0; letter-spacing: 0.18em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="22.2" data-width="1920" data-height="1080">
+
+      <!-- SCENE 1 — Hook -->
+      <div id="s1-sat" class="clip fill" data-start="0" data-duration="4.2" data-track-index="0"></div>
+      <div id="s1-vig" class="clip fill" data-start="0" data-duration="4.2" data-track-index="1"></div>
+      <div id="s1-hook" class="clip center" data-start="0.4" data-duration="3.8" data-track-index="2">Most people just go fishing.</div>
+      <div id="s1-kicker" class="clip center" data-start="2.5" data-duration="1.7" data-track-index="3">We don't.</div>
+
+      <!-- SCENE 2 — Replay -->
+      <div id="s2-replay" class="clip fill" data-start="3.85" data-duration="5.05" data-track-index="4"></div>
+      <div id="s2-grad" class="clip fill" data-start="3.85" data-duration="5.05" data-track-index="5"></div>
+      <div id="s2-label" class="clip" data-start="4.2" data-duration="4.7" data-track-index="6">Trip Replay · Lake Oahe</div>
+      <div id="s2-line" class="clip center" data-start="4.95" data-duration="3.95" data-track-index="7">We logged every mile.</div>
+      <div id="s2-stats" class="clip" data-start="5.2" data-duration="3.7" data-track-index="8">
+        <div class="stat" id="st1"><b>17</b><span>Fish</span></div>
+        <div class="stat gold" id="st2"><b>6.7</b><span>lb bag</span></div>
+        <div class="stat" id="st3"><b>109</b><span>Miles</span></div>
+        <div class="stat" id="st4"><b>21</b><span>Hours</span></div>
+      </div>
+
+      <!-- SCENE 3 — Trip Wrapped -->
+      <div id="s3-bg" class="clip fill" data-start="8.55" data-duration="4.65" data-track-index="9"></div>
+      <div id="s3-poster" class="clip" data-start="8.74" data-duration="4.46" data-track-index="10"></div>
+      <div id="s3-head" class="clip" data-start="9.2" data-duration="4.0" data-track-index="11">Then we gave it a Wrapped.</div>
+      <div id="s3-sub" class="clip" data-start="9.7" data-duration="3.5" data-track-index="12">Spotify Wrapped — <em>but for walleye.</em></div>
+
+      <!-- SCENE 4 — Ten ways -->
+      <div id="s4-bg" class="clip fill" data-start="13.0" data-duration="6.0" data-track-index="13"></div>
+      <div id="s4-title" class="clip center" data-start="13.1" data-duration="5.9" data-track-index="14">Ten ways to log a catch.</div>
+      <div id="s4-sub" class="clip center" data-start="13.4" data-duration="5.6" data-track-index="15">Under five seconds.</div>
+      <div id="grid" class="clip" data-start="13.5" data-duration="5.5" data-track-index="16">
+        <div class="phone" id="p0" style="left:560px;top:317px;background-image:url('assets/img/radial-dial.png')"></div>
+        <div class="phone" id="p1" style="left:725px;top:317px;background-image:url('assets/img/ruler-hero.png')"></div>
+        <div class="phone" id="p2" style="left:890px;top:317px;background-image:url('assets/img/voice-first.png')"></div>
+        <div class="phone" id="p3" style="left:1055px;top:317px;background-image:url('assets/img/tile-dashboard.png')"></div>
+        <div class="phone" id="p4" style="left:1220px;top:317px;background-image:url('assets/img/drum-wheels.png')"></div>
+        <div class="phone" id="p5" style="left:560px;top:643px;background-image:url('assets/img/map-sheet.png')"></div>
+        <div class="phone" id="p6" style="left:725px;top:643px;background-image:url('assets/img/swipe-deck.png')"></div>
+        <div class="phone" id="p7" style="left:890px;top:643px;background-image:url('assets/img/summary-confirm.png')"></div>
+        <div class="phone" id="p8" style="left:1055px;top:643px;background-image:url('assets/img/watch-compact.png')"></div>
+        <div class="phone" id="p9" style="left:1220px;top:643px;background-image:url('assets/img/chip-board.png')"></div>
+      </div>
+      <div id="winner" class="clip" data-start="17.4" data-duration="1.6" data-track-index="17"></div>
+      <div id="winner-cap" class="clip center" data-start="17.9" data-duration="1.1" data-track-index="18">the one we're building</div>
+
+      <!-- SCENE 5 — Logo -->
+      <div id="s5-bg" class="clip fill" data-start="18.7" data-duration="3.5" data-track-index="19"></div>
+      <div id="logo" class="clip center" data-start="19.6" data-duration="2.6" data-track-index="20">FishingLogger</div>
+      <div id="tag" class="clip center" data-start="20.1" data-duration="2.1" data-track-index="21">Your season. Every fish. Offline.</div>
+      <div id="s5-mono" class="clip center" data-start="20.4" data-duration="1.8" data-track-index="22">LAKE OAHE · OFFLINE-FIRST</div>
+
+      <!-- AUDIO -->
+      <audio id="music" data-start="0" data-duration="22.2" data-track-index="30" data-volume="0.30" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"></audio>
+      <audio id="sfx-hook" data-start="0.48" data-duration="1.4" data-track-index="31" data-volume="0.6" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+      <audio id="sfx-stat1" data-start="5.34" data-duration="0.6" data-track-index="32" data-volume="0.5" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-stat2" data-start="6.00" data-duration="0.6" data-track-index="33" data-volume="0.5" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-stat3" data-start="6.56" data-duration="0.6" data-track-index="34" data-volume="0.5" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-stat4" data-start="7.09" data-duration="0.6" data-track-index="35" data-volume="0.55" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-wrapped" data-start="8.72" data-duration="1.8" data-track-index="36" data-volume="0.72" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+      <audio id="sfx-p0" data-start="13.64" data-duration="0.5" data-track-index="37" data-volume="0.4" src="assets/sfx/casino/card-slide-1.ogg"></audio>
+      <audio id="sfx-p1" data-start="14.04" data-duration="0.5" data-track-index="38" data-volume="0.4" src="assets/sfx/casino/card-slide-2.ogg"></audio>
+      <audio id="sfx-p2" data-start="14.44" data-duration="0.5" data-track-index="39" data-volume="0.4" src="assets/sfx/casino/card-slide-3.ogg"></audio>
+      <audio id="sfx-p3" data-start="14.84" data-duration="0.5" data-track-index="40" data-volume="0.4" src="assets/sfx/casino/card-slide-4.ogg"></audio>
+      <audio id="sfx-p4" data-start="15.24" data-duration="0.5" data-track-index="41" data-volume="0.4" src="assets/sfx/casino/card-slide-1.ogg"></audio>
+      <audio id="sfx-p5" data-start="15.64" data-duration="0.5" data-track-index="42" data-volume="0.4" src="assets/sfx/casino/card-slide-2.ogg"></audio>
+      <audio id="sfx-p6" data-start="16.04" data-duration="0.5" data-track-index="43" data-volume="0.4" src="assets/sfx/casino/card-slide-3.ogg"></audio>
+      <audio id="sfx-p7" data-start="16.44" data-duration="0.5" data-track-index="44" data-volume="0.4" src="assets/sfx/casino/card-slide-4.ogg"></audio>
+      <audio id="sfx-p8" data-start="16.84" data-duration="0.5" data-track-index="45" data-volume="0.4" src="assets/sfx/casino/card-slide-1.ogg"></audio>
+      <audio id="sfx-p9" data-start="17.10" data-duration="0.5" data-track-index="46" data-volume="0.45" src="assets/sfx/casino/card-slide-2.ogg"></audio>
+      <audio id="sfx-winner" data-start="17.42" data-duration="1.3" data-track-index="47" data-volume="0.66" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+      <audio id="sfx-logo" data-start="19.62" data-duration="2.0" data-track-index="48" data-volume="0.74" src="assets/sfx/impact/impactBell_heavy_003.ogg"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // SCENE 1 — Hook
+      tl.to("#s1-sat", { opacity: 0.32, duration: 1.4, ease: "power2.out" }, 0)
+        .fromTo("#s1-sat", { scale: 1.12 }, { scale: 1.22, duration: 4.2, ease: "none" }, 0)
+        .to("#s1-hook", { opacity: 1, duration: 0.5, ease: "power3.out" }, 0.56)   // beat-locked: 0.56
+        .fromTo("#s1-hook", { y: 26, scale: 1.05 }, { y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, 0.56)
+        .to("#s1-kicker", { opacity: 1, duration: 0.5, ease: "power2.out" }, 2.62)
+        .to(["#s1-hook", "#s1-kicker"], { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.55)
+        .to(["#s1-sat", "#s1-vig"], { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.8)
+        .set(["#s1-sat", "#s1-vig"], { opacity: 0 }, 4.2); // hard kill
+
+      // SCENE 2 — Replay
+      tl.fromTo("#s2-replay", { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1.0, duration: 0.8, ease: "power2.out" }, 3.9)
+        .to("#s2-replay", { scale: 1.04, duration: 3.85, ease: "none", overwrite: "auto" }, 4.7)
+        .to("#s2-grad", { opacity: 1, duration: 0.8 }, 3.9)
+        .to("#s2-label", { opacity: 1, duration: 0.5, ease: "power2.out" }, 4.3)
+        .fromTo("#s2-label", { x: -20 }, { x: 0, duration: 0.5, ease: "power2.out" }, 4.3)
+        .to("#s2-line", { opacity: 1, duration: 0.5, ease: "power3.out" }, 4.95)
+        .fromTo("#s2-line", { y: 18 }, { y: 0, duration: 0.6, ease: "power3.out" }, 4.95);
+      // stats tick in on the beat grid  // beat-grid: 5.34, 6.00, 6.56, 7.09
+      [["#st1",5.34],["#st2",6.00],["#st3",6.56],["#st4",7.09]].forEach(([s,t]) => {
+        tl.fromTo(s, { opacity: 0, y: 22, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(1.7)" }, t);
+      });
+      tl.to(["#s2-replay","#s2-grad","#s2-label","#s2-line","#s2-stats"], { opacity: 0, duration: 0.4, ease: "power1.in" }, 8.55)
+        .set(["#s2-replay","#s2-grad","#s2-label","#s2-line","#s2-stats"], { opacity: 0 }, 8.9); // hard kill
+
+      // SCENE 3 — Trip Wrapped
+      tl.to("#s3-bg", { opacity: 1, duration: 0.5 }, 8.55)
+        .fromTo("#s3-poster", { opacity: 0, y: 130, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.85, ease: "back.out(1.4)" }, 8.74) // beat-locked: 8.74
+        .to("#s3-poster", { scale: 1.02, duration: 3.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, 9.6) // subtle breathe (approx audio-reactive)
+        .to("#s3-head", { opacity: 1, duration: 0.55, ease: "power3.out" }, 9.25)
+        .fromTo("#s3-head", { x: 30 }, { x: 0, duration: 0.6, ease: "power3.out" }, 9.25)
+        .to("#s3-sub", { opacity: 1, duration: 0.55, ease: "power2.out" }, 9.75)
+        .to(["#s3-bg","#s3-poster","#s3-head","#s3-sub"], { opacity: 0, duration: 0.45, ease: "power1.in" }, 12.85)
+        .set(["#s3-bg","#s3-poster","#s3-head","#s3-sub"], { opacity: 0 }, 13.2); // hard kill
+
+      // SCENE 4 — Ten ways
+      tl.to("#s4-bg", { opacity: 1, duration: 0.5 }, 12.95)
+        .to("#s4-title", { opacity: 1, duration: 0.5, ease: "power3.out" }, 13.11) // beat-locked: 13.11
+        .fromTo("#s4-title", { y: 20 }, { y: 0, duration: 0.55, ease: "power3.out" }, 13.11)
+        .to("#s4-sub", { opacity: 1, duration: 0.5, ease: "power2.out" }, 13.45);
+      // 10 phones arrive on the beat grid  // beat-grid: 13.64..17.10
+      [["#p0",13.64],["#p1",14.04],["#p2",14.44],["#p3",14.84],["#p4",15.24],
+       ["#p5",15.64],["#p6",16.04],["#p7",16.44],["#p8",16.84],["#p9",17.10]].forEach(([s,t]) => {
+        tl.fromTo(s, { opacity: 0, y: 26, scale: 0.7 }, { opacity: 1, y: 0, scale: 1, duration: 0.36, ease: "back.out(1.7)" }, t);
+      });
+      // converge on the winner  // beat-locked: 17.47
+      tl.to("#grid", { opacity: 0.16, scale: 0.92, duration: 0.5, ease: "power2.inOut", transformOrigin: "50% 45%" }, 17.4)
+        .to(["#s4-title","#s4-sub"], { opacity: 0.18, duration: 0.4 }, 17.4)
+        .fromTo("#winner", { opacity: 0, scale: 0.8, y: 14 }, { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" }, 17.47)
+        .to("#winner-cap", { opacity: 1, duration: 0.5, ease: "power2.out" }, 17.95)
+        .to(["#grid","#s4-bg","#s4-title","#s4-sub","#winner","#winner-cap"], { opacity: 0, duration: 0.45, ease: "power1.in" }, 18.7)
+        .set(["#grid","#s4-bg","#s4-title","#s4-sub","#winner","#winner-cap"], { opacity: 0 }, 19.0); // hard kill
+
+      // SCENE 5 — Logo
+      tl.to("#s5-bg", { opacity: 1, duration: 0.4 }, 18.65)
+        .fromTo("#logo", { opacity: 0, scale: 1.12, y: 12 }, { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: "power3.out" }, 19.66) // beat-locked: 19.66
+        .to("#tag", { opacity: 1, duration: 0.6, ease: "power2.out" }, 20.15)
+        .to("#s5-mono", { opacity: 1, duration: 0.6, ease: "power2.out" }, 20.45)
+        .to("#music", { volume: 0, duration: 1.6, ease: "power1.in" }, 20.5); // fade music under logo
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
