@@ -56,3 +56,7 @@ test:
     else \
         echo "swift package tests not available"; \
     fi
+
+# Secrets guardrail
+check-secrets:
+    gitleaks detect --no-git --redact --source .

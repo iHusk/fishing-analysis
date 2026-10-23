@@ -101,3 +101,7 @@ Remaining:
   the water. See `docs/v2-roadmap.md`.
 - **Future**: multi-year season views + best-spots as the dataset grows; optional re-tag
   affordance on the frozen catch GPS.
+
+## Secrets
+
+No secrets live in this repo. If one is ever needed, follow homelab-main `docs/security/secrets-management-1password.md` (1Password only, `op://` refs in a committed `.env.tpl`). Run `gitleaks detect --no-git --redact --source .` before committing.

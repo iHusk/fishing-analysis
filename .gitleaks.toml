@@ -1,0 +1,5 @@
+# Secrets guardrail. Default gitleaks rules; never allowlist a real secret (rotate and redact instead).
+title = "gitleaks config"
+
+[extend]
+useDefault = true
